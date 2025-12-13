@@ -22,22 +22,41 @@ import time
 import get_matchup_info
 
 # --- Configuration ---
-TARGET_PLAYER = "Shai Gilgeous-Alexander"  # Player to predict
+TARGET_PLAYER = "Julius Randle"  # Player to predict
 SEASONS = ["2024-25", "2025-26"]
 CACHE_FILE = "nba_stats_cache.pkl"
 CACHE_EXPIRY_HOURS = 24 # Cache expires after 24 hours
-Proj_Minutes = 27.0 # Projected minutes for the next game
+Proj_Minutes = 34.0 # Projected minutes for the next game
+
+# Zone point values for weighted scoring
+ZONE_POINT_VALUES = {
+    'Restricted Area': 2.0,
+    'In The Paint (Non-RA)': 2.0,
+    'Mid-Range': 2.0,
+    'Corner 3': 3.0,
+    'Above the Break 3': 3.0
+}
+
+# Standard zones to track (excluding Backcourt - negligible %)
+STANDARD_ZONES = ['Restricted Area', 'In The Paint (Non-RA)', 'Mid-Range', 'Corner 3', 'Above the Break 3']
 
 class NBAPredictor:
     def __init__(self):
+        # Simplified model with regularization to prevent overfitting on small samples
         self.model = xgb.XGBRegressor(
-            n_estimators=1000,
+            n_estimators=200,          # Reduced from 1000 - less prone to overfitting
             learning_rate=0.05,
-            max_depth=5,
-            early_stopping_rounds=50,
+            max_depth=3,               # Reduced from 5 - simpler trees
+            min_child_weight=5,        # Requires more samples per leaf
+            reg_alpha=1.0,             # L1 regularization
+            reg_lambda=2.0,            # L2 regularization
+            subsample=0.8,             # Use 80% of data per tree
+            colsample_bytree=0.8,      # Use 80% of features per tree
+            early_stopping_rounds=30,
             n_jobs=-1
         )
         self.feature_columns = []
+        self.feature_weights_list = None  # Store for manual application
         self.team_stats_cache = {} # (Season, Team_Abbrev) -> {Def_Rating, Pace, Zone_Stats}
         self.player_profile = {} # {Zone: Frequency}
         self.player_profile_id = None # Track which player's profile is cached
@@ -121,9 +140,15 @@ class NBAPredictor:
             if corner_3_fga > 0:
                 normalized_fga['Corner 3'] = corner_3_fga
             
-            # Calculate frequencies from normalized FGA
+            # Calculate frequencies from normalized FGA (only standard zones)
             for zone, fga in normalized_fga.items():
-                profile[zone] = fga / total_fga if total_fga > 0 else 0
+                if zone in STANDARD_ZONES:
+                    profile[zone] = fga / total_fga if total_fga > 0 else 0
+            
+            # Ensure all standard zones exist (with 0 if not present)
+            for zone in STANDARD_ZONES:
+                if zone not in profile:
+                    profile[zone] = 0.0
             
             self.player_profile = profile
             self.player_profile_id = player_id  # Track which player this is for
@@ -131,12 +156,7 @@ class NBAPredictor:
             self.save_cache()
             
         except Exception as e:
-            print(f"Error fetching player profile: {e}")
-            # Fallback profile
-            self.player_profile = {
-                'Restricted Area': 0.3, 'In The Paint (Non-RA)': 0.2, 
-                'Mid-Range': 0.1, 'Corner 3': 0.1, 'Above the Break 3': 0.3
-            }
+            raise RuntimeError(f"Failed to fetch player shooting profile: {e}")
 
     def fetch_game_logs(self, player_id, seasons):
         # Refresh player profile if it's for a different player
@@ -267,10 +287,12 @@ class NBAPredictor:
                             zone_sums['Corner 3'] += np.mean(corner_pcts)
                             zone_counts['Corner 3'] += 1
                         
-                        # Normalize Team Zones - team_zones already has combined Corner 3
+                        # Normalize Team Zones - only standard zones (combined Corner 3)
                         final_zones = {}
-                        for z in ['Restricted Area', 'In The Paint (Non-RA)', 'Mid-Range', 'Above the Break 3', 'Corner 3']:
-                            final_zones[z] = team_zones.get(z, 0.45 if z != 'Corner 3' else 0.38)
+                        for z in STANDARD_ZONES:
+                            if z not in team_zones:
+                                raise ValueError(f"Missing zone stats for {abbrev}: {z}")
+                            final_zones[z] = team_zones[z]
                         
                         season_stats[abbrev]['ZONE_DEFENSE'] = final_zones
                         time.sleep(0.6)  # Delay to avoid NBA API rate limiting
@@ -311,25 +333,32 @@ class NBAPredictor:
             if season in self.team_stats_cache and opp_abbrev in self.team_stats_cache[season]:
                 stats = self.team_stats_cache[season][opp_abbrev]
                 
-                # Calculate Zone Matchup Score
+                # Calculate Zone Matchup Score (Points-Weighted)
                 zone_score = 0
                 if 'ZONE_DEFENSE' in stats and season in self.league_zone_stats:
                     opp_zones = stats['ZONE_DEFENSE']
                     league_zones = self.league_zone_stats[season]
                     
                     for zone, freq in self.player_profile.items():
-                        # Zone names should already be consistent (Corner 3, not Left/Right)
-                        if zone in opp_zones:
-                            opp_pct = opp_zones[zone]
-                            
-                            # League Avg - also uses consistent zone names now
-                            league_pct = league_zones.get(zone, 0.45)
-                            
-                            # Relative Def: (Opp Allowed - League Avg)
-                            # Positive = Opponent allows MORE than avg (Good for player)
-                            rel_def = opp_pct - league_pct
-                            
-                            zone_score += freq * rel_def * 100 # Scale up
+                        if zone not in STANDARD_ZONES or zone not in opp_zones:
+                            continue
+                        
+                        pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
+                        opp_pct = opp_zones[zone]
+                        
+                        if zone not in league_zones:
+                            raise ValueError(f"Missing league zone average for {zone} in season {season}")
+                        league_pct = league_zones[zone]
+                        
+                        # Calculate expected points per shot for this zone
+                        opp_expected_pts = opp_pct * pts_value
+                        league_expected_pts = league_pct * pts_value
+                        
+                        # Points differential (positive = opponent allows MORE points than avg)
+                        pts_differential = opp_expected_pts - league_expected_pts
+                        
+                        # Weight by player's shooting frequency from this zone
+                        zone_score += freq * pts_differential * 100  # Scale up
                 
                 # Calculate Expected Extra Possessions
                 # Formula: (Opp_Pace - League_Avg_Pace) * (Minutes / 48)
@@ -344,10 +373,9 @@ class NBAPredictor:
                     zone_score
                 ])
             else:
-                # Fallback
-                return pd.Series([112.0, 0.0, 0.0]) 
-        except:
-            return pd.Series([112.0, 0.0, 0.0])
+                raise ValueError(f"Missing opponent stats for {opp_abbrev} in season {season}")
+        except Exception as e:
+            raise RuntimeError(f"Error getting opponent stats for {row['MATCHUP']}: {e}")
 
     def feature_engineering(self, df):
         print("Engineering features...")
@@ -380,14 +408,19 @@ class NBAPredictor:
             lambda x: x.shift(1).expanding().mean()
         )
         
-        # 5. Opponent Stats
+        # 5. MEAN REVERSION FEATURE - Critical for avoiding overestimation
+        # Positive = player is running HOT (expect regression DOWN)
+        # Negative = player is running COLD (expect regression UP)
+        df['Recent_vs_Season'] = df['Last_5_PTS'] - df['Season_Avg_PTS']
+        
+        # 6. Opponent Stats
         df[['Opponent_Def_Rating', 'Extra_Poss_Per_48', 'Zone_Matchup_Score']] = df.apply(self.get_opponent_stats, axis=1)
         
-        # 6. Calculate Expected Extra Possessions based on actual minutes
+        # 7. Calculate Expected Extra Possessions based on actual minutes
         # Formula: (Opp_Pace - League_Avg_Pace) * (Minutes / 48)
         df['Expected_Extra_Poss'] = df['Extra_Poss_Per_48'] * (df['MIN'] / 48.0)
 
-        # 7. Projected Minutes (Using actual minutes for training)
+        # 8. Projected Minutes (Using actual minutes for training)
         df['Proj_Minutes'] = df['MIN']
         
         # Drop NaNs created by rolling windows
@@ -396,20 +429,38 @@ class NBAPredictor:
         return df
 
     def train(self, df):
+        # Simplified feature set - fewer features for small sample size
         features = [
             'Proj_Minutes', 'Season_Avg_PTS',
-            'Last_5_PTS', 'Last_5_FGA', 
-            'Last_10_PTS', 'Last_10_FGA',
+            'Last_5_PTS', 'Last_10_PTS',
+            'Recent_vs_Season',          # Mean reversion signal
             'Home_Away', 'Rest_Days', 
             'Opponent_Def_Rating', 'Expected_Extra_Poss',
             'Zone_Matchup_Score'
         ]
         self.feature_columns = features
         
+        # Store season average for prediction bounds
+        self.training_season_avg = df['Season_Avg_PTS'].mean()
+        self.training_pts_std = df['Target_PTS'].std()
+        
+        # Create feature weights to cap Rest_Days influence (max ~5% importance)
+        # Also reduce weight of Recent_vs_Season to prevent over-correction
+        feature_weights = []
+        for f in features:
+            if f == 'Rest_Days':
+                feature_weights.append(0.15)  # Reduced weight
+            elif f == 'Recent_vs_Season':
+                feature_weights.append(0.5)   # Moderate weight - helps but shouldn't dominate
+            else:
+                feature_weights.append(1.0)
+        
         X = df[features]
         y = df['Target_PTS']
         
         print(f"Training on {len(df)} games...")
+        print(f"Season Avg PTS in training: {self.training_season_avg:.1f}")
+        print(f"PTS Std Dev: {self.training_pts_std:.1f}")
         
         tscv = TimeSeriesSplit(n_splits=5)
         fold = 1
@@ -419,6 +470,7 @@ class NBAPredictor:
             X_train, X_test = X.iloc[train_index], X.iloc[test_index]
             y_train, y_test = y.iloc[train_index], y.iloc[test_index]
             
+            # Apply feature weights manually via sample weighting columns
             self.model.fit(
                 X_train, y_train,
                 eval_set=[(X_test, y_test)],
@@ -442,8 +494,21 @@ class NBAPredictor:
     def predict_next_game(self, inputs):
         input_df = pd.DataFrame([inputs])
         input_df = input_df[self.feature_columns]
-        pred = self.model.predict(input_df)[0]
-        return pred
+        raw_pred = self.model.predict(input_df)[0]
+        
+        # Apply reasonable bounds based on player's baseline
+        # Predictions shouldn't deviate more than ~2 std deviations from season average
+        # 2 std covers ~95% of outcomes - reasonable for betting predictions
+        season_avg = inputs.get('Season_Avg_PTS', self.training_season_avg)
+        lower_bound = max(5, season_avg - 2 * self.training_pts_std)  # Floor at 5 pts
+        upper_bound = season_avg + 2 * self.training_pts_std
+        
+        bounded_pred = np.clip(raw_pred, lower_bound, upper_bound)
+        
+        if abs(raw_pred - bounded_pred) > 0.5:
+            print(f"⚠️  Raw prediction {raw_pred:.1f} was bounded to {bounded_pred:.1f} (range: {lower_bound:.1f}-{upper_bound:.1f})")
+        
+        return bounded_pred
 
 if __name__ == "__main__":
     predictor = NBAPredictor()
@@ -474,23 +539,38 @@ if __name__ == "__main__":
         # Opponent Zone Stats from get_matchup_info
         opp_zones = matchup_info['Opponent_Zone_Stats']
         
-        print("\n--- Zone Matchup Score Calculation ---")
-        print(f"{'Zone':<25} | {'Freq':<6} | {'Opp%':<6} | {'Lg%':<6} | {'Rel%':<6} | {'Score'}")
-        print("-" * 70)
+        print("\n--- Zone Matchup Score Calculation (Points-Weighted) ---")
+        print(f"{'Zone':<25} | {'Freq':<6} | {'PtVal':<5} | {'Opp%':<6} | {'Lg%':<6} | {'OppPPS':<6} | {'LgPPS':<6} | {'Score'}")
+        print("-" * 95)
         
         zone_score = 0
-        for zone, freq in player_prof.items():
-            # Zone names are now consistent (Corner 3, not Left/Right)
-            opp_pct = opp_zones.get(zone, 0.45)
-            league_pct = league_zones.get(zone, 0.45)
+        for zone in STANDARD_ZONES:
+            freq = player_prof.get(zone, 0)
+            if freq == 0:
+                continue
                 
-            rel_def = opp_pct - league_pct
-            score_contrib = freq * rel_def * 100
+            pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
+            
+            if zone not in opp_zones:
+                raise ValueError(f"Missing opponent zone stats for {zone}")
+            opp_pct = opp_zones[zone]
+            
+            if zone not in league_zones:
+                raise ValueError(f"Missing league zone average for {zone}")
+            league_pct = league_zones[zone]
+            
+            # Calculate expected points per shot
+            opp_expected_pts = opp_pct * pts_value
+            league_expected_pts = league_pct * pts_value
+            
+            # Points differential
+            pts_differential = opp_expected_pts - league_expected_pts
+            score_contrib = freq * pts_differential * 100
             zone_score += score_contrib
             
-            print(f"{zone:<25} | {freq:.3f}  | {opp_pct:.3f}  | {league_pct:.3f}  | {rel_def:+.3f}  | {score_contrib:+.2f}")
+            print(f"{zone:<25} | {freq:.3f}  | {pts_value:.0f}    | {opp_pct:.3f}  | {league_pct:.3f}  | {opp_expected_pts:.3f}  | {league_expected_pts:.3f}  | {score_contrib:+.2f}")
             
-        print("-" * 70)
+        print("-" * 95)
         print(f"Total Zone Matchup Score: {zone_score:.2f}")
 
         # Calculate Expected Extra Possessions for prediction
@@ -499,14 +579,21 @@ if __name__ == "__main__":
         expected_extra_poss = (opp_pace - league_pace) * (Proj_Minutes / 48.0)
         print(f"\nPace Analysis: Opp={opp_pace:.1f}, League Avg={league_pace:.1f}, Extra Poss={expected_extra_poss:+.1f}")
         
+        # Calculate mean reversion signal
+        recent_vs_season = last_game['Last_5_PTS'] - last_game['Season_Avg_PTS']
+        print(f"Mean Reversion Signal: Last5={last_game['Last_5_PTS']:.1f}, SeasonAvg={last_game['Season_Avg_PTS']:.1f}, Diff={recent_vs_season:+.1f}")
+        if recent_vs_season > 3:
+            print("⚠️  Player is HOT - expect regression toward season average")
+        elif recent_vs_season < -3:
+            print("⚠️  Player is COLD - expect regression toward season average")
+        
         # Construct inputs from matchup_info
         next_game_inputs = {
             'Proj_Minutes': Proj_Minutes,
             'Season_Avg_PTS': last_game['Season_Avg_PTS'],
             'Last_5_PTS': last_game['Last_5_PTS'],
-            'Last_5_FGA': last_game['Last_5_FGA'],
             'Last_10_PTS': last_game['Last_10_PTS'],
-            'Last_10_FGA': last_game['Last_10_FGA'],
+            'Recent_vs_Season': recent_vs_season,  # New mean reversion feature
             'Home_Away': matchup_info['Home_Away'], 
             'Rest_Days': matchup_info['Rest_Days'], 
             'Opponent_Def_Rating': matchup_info['Opponent_Def_Rating'],

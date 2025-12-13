@@ -4,18 +4,48 @@ import pandas as pd
 from datetime import datetime
 
 # Constants
-PLAYER_TEAM_ABBREV = "OKC" # Spurs
-OPPONENT_ABBREV = "PHX"    # Lakers
-DATE_TODAY = "2025-12-10"  # Current Date
+PLAYER_TEAM = "timberwolves"    # Accepts: abbreviation (POR), nickname (Trail Blazers/blazers), full name, or city
+OPPONENT = "warriors"      # Accepts: abbreviation (NOP), nickname (Pelicans), full name, or city
+DATE_TODAY = "2025-12-12"  # Current Date
 SEASON = "2025-26"
 
+def get_team(identifier):
+    """
+    Get team by abbreviation, nickname, full name, or city.
+    Supports partial/case-insensitive matches (e.g., 'blazers' matches 'Trail Blazers').
+    """
+    nba_teams = teams.get_teams()
+    identifier_lower = identifier.lower().strip()
+    
+    # Try exact matches first (case-insensitive)
+    for team in nba_teams:
+        if (team['abbreviation'].lower() == identifier_lower or
+            team['nickname'].lower() == identifier_lower or
+            team['full_name'].lower() == identifier_lower or
+            team['city'].lower() == identifier_lower):
+            return team
+    
+    # Try partial matches (e.g., 'blazers' in 'Trail Blazers')
+    for team in nba_teams:
+        if (identifier_lower in team['nickname'].lower() or
+            identifier_lower in team['full_name'].lower()):
+            return team
+    
+    raise ValueError(f"Team not found: {identifier}")
+
 def get_game_info():
-    print(f"Gathering info for {PLAYER_TEAM_ABBREV} vs {OPPONENT_ABBREV} on {DATE_TODAY}...")
+    # Resolve team identifiers to actual team data
+    player_team = get_team(PLAYER_TEAM)
+    opponent_team = get_team(OPPONENT)
+    
+    player_abbrev = player_team['abbreviation']
+    opponent_abbrev = opponent_team['abbreviation']
+    
+    print(f"Gathering info for {player_team['full_name']} vs {opponent_team['full_name']} on {DATE_TODAY}...")
     
     # 1. Check Schedule for Home/Away and Rest Days
     nba_teams = teams.get_teams()
-    min_team = [t for t in nba_teams if t['abbreviation'] == PLAYER_TEAM_ABBREV][0]
-    min_id = min_team['id']
+    min_id = player_team['id']
     
     gamefinder = leaguegamefinder.LeagueGameFinder(team_id_nullable=min_id)
     games = gamefinder.get_data_frames()[0]
@@ -47,8 +77,8 @@ def get_game_info():
         print("No game found for MIN today in Scoreboard. Assuming hypothetical or checking schedule...")
         is_home = 0 
     
-    # 2. Get Opponent Stats (PHX)
-    print(f"Fetching stats for {OPPONENT_ABBREV}...")
+    # 2. Get Opponent Stats
+    print(f"Fetching stats for {opponent_team['full_name']}...")
     
     # Advanced Stats
     adv_stats = leaguedashteamstats.LeagueDashTeamStats(season=SEASON, measure_type_detailed_defense='Advanced')
@@ -68,15 +98,15 @@ def get_game_info():
     opp_df['TEAM_ABBREVIATION'] = opp_df['TEAM_ID'].map(id_to_abbrev)
     
     # Get specific team stats
-    team_adv = adv_df[adv_df['TEAM_ABBREVIATION'] == OPPONENT_ABBREV].iloc[0]
-    team_opp = opp_df[opp_df['TEAM_ABBREVIATION'] == OPPONENT_ABBREV].iloc[0]
+    team_adv = adv_df[adv_df['TEAM_ABBREVIATION'] == opponent_abbrev].iloc[0]
+    team_opp = opp_df[opp_df['TEAM_ABBREVIATION'] == opponent_abbrev].iloc[0]
     
     def_rating = team_adv['DEF_RATING']
     pace = team_adv['PACE']
     opp_fg3m = team_opp['OPP_FG3M']
     opp_fgm = team_opp['OPP_FGM']
     
-    print(f"Opponent ({OPPONENT_ABBREV}) Stats:")
+    print(f"Opponent ({opponent_abbrev}) Stats:")
     print(f"- Def Rating: {def_rating}")
     print(f"- Pace: {pace}")
     print(f"- Opp 3PM/Game: {opp_fg3m}")
@@ -85,9 +115,9 @@ def get_game_info():
     # Fetch Zone Stats for Opponent
     print("Fetching Opponent Zone Stats...")
     from nba_api.stats.endpoints import teamdashboardbyshootingsplits
-    phx_id = [t for t in nba_teams if t['abbreviation'] == OPPONENT_ABBREV][0]['id']
+    opp_id = opponent_team['id']
     splits = teamdashboardbyshootingsplits.TeamDashboardByShootingSplits(
-        team_id=phx_id,
+        team_id=opp_id,
         season=SEASON,
         measure_type_detailed_defense='Opponent',
         per_mode_detailed='PerGame'
