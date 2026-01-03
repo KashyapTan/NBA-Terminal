@@ -3,6 +3,8 @@ import numpy as np
 import sys
 import pickle
 import os
+import tkinter as tk
+from tkinter import ttk
 from datetime import datetime, timedelta
 from tqdm import tqdm
 
@@ -17,16 +19,16 @@ except ImportError as e:
     sys.exit(1)
 
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playergamelog, leaguedashteamstats, teamdashboardbyshootingsplits, playerdashboardbyshootingsplits
+from nba_api.stats.endpoints import playergamelog, leaguedashteamstats, leaguedashteamshotlocations, playerdashboardbyshootingsplits
 import time
 import get_matchup_info
 
 # --- Configuration ---
-TARGET_PLAYER = "Julius Randle"  # Player to predict
+TARGET_PLAYER = input("Enter the player to predict: ")  # Player to predict
 SEASONS = ["2024-25", "2025-26"]
 CACHE_FILE = "nba_stats_cache.pkl"
 CACHE_EXPIRY_HOURS = 24 # Cache expires after 24 hours
-Proj_Minutes = 34.0 # Projected minutes for the next game
+Proj_Minutes = float(input("Enter projected minutes for the next game: ")) # Projected minutes for the next game
 
 # Zone point values for weighted scoring
 ZONE_POINT_VALUES = {
@@ -164,23 +166,37 @@ class NBAPredictor:
             self.fetch_player_profile(player_id)
         
         all_logs = []
+        seasons_with_data = []
+        
         for season in seasons:
             print(f"Fetching game logs for season {season}...")
             try:
                 log = playergamelog.PlayerGameLog(player_id=player_id, season=season)
                 df = log.get_data_frames()[0]
+                
+                # Check if the player has any games in this season
+                if df.empty:
+                    print(f"  → No games found for {season} (player may be a rookie)")
+                    continue
+                    
                 df['SEASON_ID'] = season 
                 all_logs.append(df)
+                seasons_with_data.append(season)
                 
                 # Pre-fetch team stats for this season
                 self.fetch_season_team_stats(season)
                 
                 time.sleep(0.6) 
             except Exception as e:
-                print(f"Error fetching logs for {season}: {e}")
+                print(f"  → No data for {season}: {e} (player may be a rookie)")
         
         if not all_logs:
             raise ValueError("No game logs found.")
+        
+        # Detect if player is a rookie (only has current season data)
+        if len(seasons_with_data) == 1 and seasons_with_data[0] == seasons[-1]:
+            print(f"\n  ⭐ ROOKIE DETECTED: Player only has data for {seasons_with_data[0]}")
+            print(f"     Using single-season model...\n")
             
         full_df = pd.concat(all_logs, ignore_index=True)
         full_df['GAME_DATE'] = pd.to_datetime(full_df['GAME_DATE'])
@@ -213,100 +229,102 @@ class NBAPredictor:
                     season_stats[abbrev] = {
                         'DEF_RATING': row['DEF_RATING'],
                         'PACE': row['PACE'],
-                        'ZONE_DEFENSE': {} # Will populate below
+                        'ZONE_DEFENSE': {} # Will populate below (only for current season)
                     }
                     pace_values.append(row['PACE'])
             
             # Store league average pace for this season
             self.league_avg_pace[season] = np.mean(pace_values) if pace_values else 100.0
             
-            # 2. Fetch Zone Defense Stats (Heavy Operation)
-            print("Fetching detailed zone defense stats (this may take a moment)...")
-            zone_sums = {}
-            zone_counts = {}
+            # 2. Fetch Zone Defense Stats ONLY for current season
+            # Previous season zone stats are not used (zone_score=0 for historical games)
+            current_season = SEASONS[-1]
+            if season != current_season:
+                print(f"Skipping zone stats for {season} (only fetching for current season {current_season})")
+                self.team_stats_cache[season] = season_stats
+                self.save_cache()
+                return
             
-            # Filter teams that need updating
-            teams_to_fetch = []
-            for team in nba_teams:
-                abbrev = team['abbreviation']
-                # If we already have zone stats for this team in this season, skip
-                if abbrev in season_stats and 'ZONE_DEFENSE' in season_stats[abbrev] and season_stats[abbrev]['ZONE_DEFENSE']:
-                    # Add to sums for league avg calculation
-                    zones = season_stats[abbrev]['ZONE_DEFENSE']
-                    for z, pct in zones.items():
-                        if z not in zone_sums: zone_sums[z] = 0; zone_counts[z] = 0
-                        zone_sums[z] += pct
-                        zone_counts[z] += 1
-                    continue
+            print("Fetching zone defense stats using LeagueDashTeamShotLocations...")
+            
+            # Initialize zone tracking variables
+            zone_sums = {z: 0 for z in STANDARD_ZONES}
+            zone_counts = {z: 0 for z in STANDARD_ZONES}
+            
+            # Use LeagueDashTeamShotLocations with Opponent measure - returns CORRECT FG% allowed
+            # This endpoint returns ALL teams in one call (much faster than per-team API calls)
+            try:
+                shot_locs = leaguedashteamshotlocations.LeagueDashTeamShotLocations(
+                    season=season,
+                    per_mode_detailed='PerGame',
+                    distance_range='By Zone',
+                    measure_type_simple='Opponent',  # CRITICAL: This gets opponent FG% allowed
+                    timeout=60
+                )
                 
-                if abbrev in season_stats:
-                    teams_to_fetch.append(team)
-
-            if teams_to_fetch:
-                print(f"Fetching zone stats for {len(teams_to_fetch)} teams...")
-                for team in tqdm(teams_to_fetch, desc=f"Zone Stats {season}"):
-                    tid = team['id']
-                    abbrev = team['abbreviation']
+                zone_df = shot_locs.get_data_frames()[0]
+                
+                # The dataframe has multi-level columns like (('Restricted Area', 'OPP_FG_PCT'))
+                # Process each team
+                for _, row in zone_df.iterrows():
+                    # Get team ID (first column)
+                    tid = row.iloc[0]
+                    if tid not in id_to_abbrev:
+                        continue
+                    abbrev = id_to_abbrev[tid]
                     
-                    try:
-                        splits = teamdashboardbyshootingsplits.TeamDashboardByShootingSplits(
-                            team_id=tid,
-                            season=season,
-                            measure_type_detailed_defense='Opponent',
-                            per_mode_detailed='PerGame',
-                            timeout=30
-                        )
-                        # Frame 3 is Shot Area (verified from actual API response)
-                        area_df = splits.get_data_frames()[3]
-                        
-                        team_zones = {}
-                        corner_pcts = []  # Collect corner 3 FG_PCT values
-                        
-                        for _, row in area_df.iterrows():
-                            zone = row['GROUP_VALUE']
-                            pct = row['FG_PCT']
+                    if abbrev not in season_stats:
+                        continue
+                    
+                    # Extract zone FG% allowed - columns are multi-level tuples
+                    team_zones = {}
+                    corner_pcts = []
+                    
+                    for col in zone_df.columns:
+                        if len(col) == 2:
+                            zone_name, stat_type = col
+                            # Convert numpy strings to regular strings
+                            zone_name = str(zone_name)
+                            stat_type = str(stat_type)
                             
-                            # Normalize zone name for storage
-                            if 'Corner 3' in zone:
-                                corner_pcts.append(pct)
-                            else:
-                                team_zones[zone] = pct
-                                # Accumulate for League Avg with original zone name
-                                if zone not in zone_sums:
-                                    zone_sums[zone] = 0
-                                    zone_counts[zone] = 0
-                                zone_sums[zone] += pct
-                                zone_counts[zone] += 1
-                        
-                        # Combine corner 3s
-                        if corner_pcts:
-                            team_zones['Corner 3'] = np.mean(corner_pcts)
-                            if 'Corner 3' not in zone_sums:
-                                zone_sums['Corner 3'] = 0
-                                zone_counts['Corner 3'] = 0
-                            zone_sums['Corner 3'] += np.mean(corner_pcts)
-                            zone_counts['Corner 3'] += 1
-                        
-                        # Normalize Team Zones - only standard zones (combined Corner 3)
-                        final_zones = {}
-                        for z in STANDARD_ZONES:
-                            if z not in team_zones:
-                                raise ValueError(f"Missing zone stats for {abbrev}: {z}")
+                            if stat_type == 'OPP_FG_PCT':
+                                pct = row[col]
+                                if pd.notna(pct):
+                                    if 'Corner 3' in zone_name and zone_name != 'Corner 3':
+                                        # Left/Right Corner 3 - collect for averaging
+                                        corner_pcts.append(pct)
+                                    elif zone_name in STANDARD_ZONES:
+                                        team_zones[zone_name] = pct
+                    
+                    # Combine Left/Right Corner 3 into single Corner 3
+                    if corner_pcts:
+                        team_zones['Corner 3'] = np.mean(corner_pcts)
+                    
+                    # Store zone stats for this team
+                    final_zones = {}
+                    for z in STANDARD_ZONES:
+                        if z in team_zones:
                             final_zones[z] = team_zones[z]
-                        
-                        season_stats[abbrev]['ZONE_DEFENSE'] = final_zones
-                        time.sleep(0.6)  # Delay to avoid NBA API rate limiting
-                        
-                    except Exception as e:
-                        # print(f"Failed zone stats for {abbrev}: {e}")
-                        pass
-            else:
-                print("All team zone stats found in cache.")
+                            zone_sums[z] += team_zones[z]
+                            zone_counts[z] += 1
+                        else:
+                            final_zones[z] = 0.45  # Default fallback
+                    
+                    season_stats[abbrev]['ZONE_DEFENSE'] = final_zones
+                
+                print(f"Successfully fetched zone stats for {len([a for a in season_stats if season_stats[a].get('ZONE_DEFENSE')])} teams")
+                
+            except Exception as e:
+                print(f"Error fetching zone stats: {e}")
+                # Fallback: set empty zone stats
+                for abbrev in season_stats:
+                    if 'ZONE_DEFENSE' not in season_stats[abbrev] or not season_stats[abbrev]['ZONE_DEFENSE']:
+                        season_stats[abbrev]['ZONE_DEFENSE'] = {z: 0.45 for z in STANDARD_ZONES}
 
             # Calculate League Averages
             league_avgs = {}
-            for z, total in zone_sums.items():
-                league_avgs[z] = total / zone_counts[z] if zone_counts[z] > 0 else 0.45
+            for z in STANDARD_ZONES:
+                league_avgs[z] = zone_sums[z] / zone_counts[z] if zone_counts[z] > 0 else 0.45
             
             # Sanity check: warn if too few teams were used
             min_count = min(zone_counts.values()) if zone_counts else 0
@@ -330,35 +348,45 @@ class NBAPredictor:
             opp_abbrev = matchup.split(' ')[-1]
             season = row['SEASON_ID']
             
+            # Current season for zone matchup calculations ONLY
+            current_season = SEASONS[-1]
+            
             if season in self.team_stats_cache and opp_abbrev in self.team_stats_cache[season]:
                 stats = self.team_stats_cache[season][opp_abbrev]
                 
-                # Calculate Zone Matchup Score (Points-Weighted)
+                # Zone Matchup Score: ONLY calculated for current season games
+                # Previous season zone stats are outdated (roster/coaching changes) and would
+                # create train/predict mismatch. Set to 0 for historical games.
                 zone_score = 0
-                if 'ZONE_DEFENSE' in stats and season in self.league_zone_stats:
-                    opp_zones = stats['ZONE_DEFENSE']
-                    league_zones = self.league_zone_stats[season]
-                    
-                    for zone, freq in self.player_profile.items():
-                        if zone not in STANDARD_ZONES or zone not in opp_zones:
-                            continue
+                
+                if season == current_season:
+                    # Only calculate zone matchup for current season games
+                    current_season_stats = self.team_stats_cache.get(current_season, {}).get(opp_abbrev, {})
+                    if 'ZONE_DEFENSE' in current_season_stats and current_season in self.league_zone_stats:
+                        opp_zones = current_season_stats['ZONE_DEFENSE']
+                        league_zones = self.league_zone_stats[current_season]
                         
-                        pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
-                        opp_pct = opp_zones[zone]
-                        
-                        if zone not in league_zones:
-                            raise ValueError(f"Missing league zone average for {zone} in season {season}")
-                        league_pct = league_zones[zone]
-                        
-                        # Calculate expected points per shot for this zone
-                        opp_expected_pts = opp_pct * pts_value
-                        league_expected_pts = league_pct * pts_value
-                        
-                        # Points differential (positive = opponent allows MORE points than avg)
-                        pts_differential = opp_expected_pts - league_expected_pts
-                        
-                        # Weight by player's shooting frequency from this zone
-                        zone_score += freq * pts_differential * 100  # Scale up
+                        for zone, freq in self.player_profile.items():
+                            if zone not in STANDARD_ZONES or zone not in opp_zones:
+                                continue
+                            
+                            pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
+                            opp_pct = opp_zones[zone]
+                            
+                            if zone not in league_zones:
+                                raise ValueError(f"Missing league zone average for {zone} in season {current_season}")
+                            league_pct = league_zones[zone]
+                            
+                            # Calculate expected points per shot for this zone
+                            opp_expected_pts = opp_pct * pts_value
+                            league_expected_pts = league_pct * pts_value
+                            
+                            # Points differential (positive = opponent allows MORE points than avg)
+                            pts_differential = opp_expected_pts - league_expected_pts
+                            
+                            # Weight by player's shooting frequency from this zone
+                            zone_score += freq * pts_differential * 100  # Scale up
+                # else: zone_score remains 0 for previous season games (2024-25)
                 
                 # Calculate Expected Extra Possessions
                 # Formula: (Opp_Pace - League_Avg_Pace) * (Minutes / 48)
@@ -418,10 +446,17 @@ class NBAPredictor:
         
         # 7. Calculate Expected Extra Possessions based on actual minutes
         # Formula: (Opp_Pace - League_Avg_Pace) * (Minutes / 48)
-        df['Expected_Extra_Poss'] = df['Extra_Poss_Per_48'] * (df['MIN'] / 48.0)
+        df['Expected_Extra_Poss'] = pd.to_numeric(df['Extra_Poss_Per_48'], errors='coerce') * (pd.to_numeric(df['MIN'], errors='coerce') / 48.0)
 
         # 8. Projected Minutes (Using actual minutes for training)
-        df['Proj_Minutes'] = df['MIN']
+        df['Proj_Minutes'] = pd.to_numeric(df['MIN'], errors='coerce')
+        
+        # Ensure all numeric columns are properly typed
+        numeric_cols = ['Opponent_Def_Rating', 'Extra_Poss_Per_48', 'Zone_Matchup_Score', 
+                        'Expected_Extra_Poss', 'Proj_Minutes']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         
         # Drop NaNs created by rolling windows
         df = df.dropna()
@@ -455,12 +490,25 @@ class NBAPredictor:
             else:
                 feature_weights.append(1.0)
         
-        X = df[features]
-        y = df['Target_PTS']
+        X = df[features].copy()
+        y = df['Target_PTS'].copy()
         
-        print(f"Training on {len(df)} games...")
-        print(f"Season Avg PTS in training: {self.training_season_avg:.1f}")
-        print(f"PTS Std Dev: {self.training_pts_std:.1f}")
+        # Ensure all feature columns are numeric (fixes rookie/missing data issues)
+        for col in X.columns:
+            X[col] = pd.to_numeric(X[col], errors='coerce')
+        y = pd.to_numeric(y, errors='coerce')
+        
+        # Drop any rows with NaN values created by type conversion
+        valid_mask = X.notna().all(axis=1) & y.notna()
+        X = X[valid_mask]
+        y = y[valid_mask]
+        
+        if len(X) == 0:
+            raise ValueError("No valid training data after type conversion. Check data quality.")
+        
+        print(f"Training on {len(X)} games...")
+        print(f"  → Season Avg PTS: {self.training_season_avg:.1f}")
+        print(f"  → PTS Std Dev:    {self.training_pts_std:.1f}")
         
         tscv = TimeSeriesSplit(n_splits=5)
         fold = 1
@@ -479,17 +527,18 @@ class NBAPredictor:
             
             preds = self.model.predict(X_test)
             mae = mean_absolute_error(y_test, preds)
-            print(f"Fold {fold} MAE: {mae:.2f} points")
+            print(f"  Fold {fold}: MAE = {mae:.2f} pts")
             mae_scores.append(mae)
             fold += 1
             
-        print(f"Average MAE: {np.mean(mae_scores):.2f}")
+        print(f"  ─────────────────────")
+        print(f"  Average MAE: {np.mean(mae_scores):.2f} pts")
         
         # Final fit
         # Disable early stopping for final fit as we use all data
         self.model.set_params(early_stopping_rounds=None)
         self.model.fit(X, y, verbose=False)
-        print("Final model trained.")
+        print("  ✅ Model training complete!")
 
     def predict_next_game(self, inputs):
         input_df = pd.DataFrame([inputs])
@@ -510,11 +559,305 @@ class NBAPredictor:
         
         return bounded_pred
 
+
+def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pace_data, reversion_data, importance_pairs, matchup_info):
+    """Display prediction results in a styled GUI popup"""
+    
+    root = tk.Tk()
+    root.title(f"NBA Points Prediction - {player_name}")
+    root.geometry("900x850")
+    root.configure(bg='#000000')
+    
+    # Style configuration (matching stats.py)
+    style = ttk.Style()
+    style.theme_use('clam')
+    style.configure('TFrame', background='#000000')
+    style.configure('TLabel', background='#000000', foreground='#ffffff', font=('Arial', 10))
+    style.configure('Title.TLabel', font=('Arial', 16, 'bold'), foreground='#ffffff', background='#000000')
+    style.configure('Header.TLabel', font=('Arial', 12, 'bold'), foreground='#00d9ff', background='#1a1a1a')
+    style.configure('Stat.TLabel', font=('Arial', 11), foreground='#ffffff', background='#1a1a1a')
+    
+    # Main scrollable canvas
+    main_canvas = tk.Canvas(root, bg='#000000', highlightthickness=0)
+    scrollbar = ttk.Scrollbar(root, orient="vertical", command=main_canvas.yview)
+    scrollable_frame = ttk.Frame(main_canvas)
+    
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+    )
+    
+    main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    main_canvas.configure(yscrollcommand=scrollbar.set)
+    
+    # Bind mouse wheel
+    def on_mousewheel(event):
+        main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    main_canvas.bind_all("<MouseWheel>", on_mousewheel)
+    
+    main_canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+    
+    main_frame = ttk.Frame(scrollable_frame)
+    main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+    
+    # ===== HEADER - PREDICTION RESULT =====
+    header_frame = tk.Frame(main_frame, bg='#00d9ff', relief=tk.RAISED, borderwidth=2)
+    header_frame.pack(fill="x", pady=(0, 20))
+    
+    tk.Label(header_frame, text=f"🏀 PREDICTED POINTS FOR {player_name.upper()}", 
+             bg='#00d9ff', fg='#000000', font=('Arial', 14, 'bold'), pady=10).pack()
+    tk.Label(header_frame, text=f"{prediction:.1f}", 
+             bg='#00d9ff', fg='#000000', font=('Arial', 36, 'bold'), pady=5).pack()
+    
+    opponent = matchup_info.get('Opponent_Name', 'Unknown')
+    tk.Label(header_frame, text=f"vs {opponent}", 
+             bg='#00d9ff', fg='#1a1a2e', font=('Arial', 11), pady=5).pack()
+    
+    # ===== ZONE MATCHUP ANALYSIS =====
+    zone_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, 
+                         highlightbackground='#333333', highlightthickness=1)
+    zone_card.pack(fill="x", pady=10)
+    
+    tk.Label(zone_card, text="🎯 ZONE MATCHUP ANALYSIS", bg='#1a1a1a', fg='#00d9ff',
+             font=('Arial', 12, 'bold'), pady=10).pack()
+    
+    # Zone table
+    zone_table = tk.Frame(zone_card, bg='#1a1a1a')
+    zone_table.pack(fill="x", padx=15, pady=(0, 10))
+    
+    # Headers
+    headers = ['Zone', 'Freq', 'Pts', 'Opp%', 'Lg%', 'Diff', 'Score']
+    header_widths = [18, 6, 4, 7, 7, 7, 8]
+    for i, (header, width) in enumerate(zip(headers, header_widths)):
+        tk.Label(zone_table, text=header, bg='#2a2a2a', fg='#ffffff', 
+                 font=('Arial', 9, 'bold'), width=width, pady=5).grid(row=0, column=i, sticky='ew', padx=1)
+    
+    # Zone data rows
+    player_profile = zone_data['player_profile']
+    opp_zones = zone_data['opp_zones']
+    league_zones = zone_data['league_zones']
+    
+    row_num = 1
+    for zone in STANDARD_ZONES:
+        freq = player_profile.get(zone, 0)
+        if freq == 0:
+            continue
+            
+        pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
+        opp_pct = opp_zones.get(zone, 0)
+        league_pct = league_zones.get(zone, 0)
+        diff_pct = (opp_pct - league_pct) * 100
+        
+        opp_expected_pts = opp_pct * pts_value
+        league_expected_pts = league_pct * pts_value
+        pts_differential = opp_expected_pts - league_expected_pts
+        score_contrib = freq * pts_differential * 100
+        
+        # Determine indicator color
+        if score_contrib > 0.5:
+            indicator = "🟢"
+            row_bg = '#0d2818'
+        elif score_contrib < -0.5:
+            indicator = "🔴"
+            row_bg = '#281010'
+        else:
+            indicator = "⚪"
+            row_bg = '#0a0a0a'
+        
+        values = [zone, f"{freq:.2f}", f"{pts_value:.0f}", f"{opp_pct:.1%}", 
+                  f"{league_pct:.1%}", f"{diff_pct:+.1f}%", f"{score_contrib:+.2f} {indicator}"]
+        
+        for i, (val, width) in enumerate(zip(values, header_widths)):
+            tk.Label(zone_table, text=val, bg=row_bg, fg='#ffffff', 
+                     font=('Arial', 9), width=width, pady=4).grid(row=row_num, column=i, sticky='ew', padx=1)
+        row_num += 1
+    
+    # Total score
+    zone_score = zone_data['zone_score']
+    zone_indicator = "🟢 Favorable" if zone_score > 1 else ("🔴 Unfavorable" if zone_score < -1 else "⚪ Neutral")
+    total_frame = tk.Frame(zone_card, bg='#1a1a1a')
+    total_frame.pack(fill="x", padx=15, pady=(5, 15))
+    tk.Label(total_frame, text=f"Total Zone Matchup Score: {zone_score:+.2f}  {zone_indicator}", 
+             bg='#1a1a1a', fg='#ffffff', font=('Arial', 11, 'bold')).pack()
+    
+    # ===== PACE & TEMPO + MEAN REVERSION (Side by Side) =====
+    analysis_row = tk.Frame(main_frame, bg='#000000')
+    analysis_row.pack(fill="x", pady=10)
+    
+    # Pace Card
+    pace_card = tk.Frame(analysis_row, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
+                         highlightbackground='#333333', highlightthickness=1)
+    pace_card.pack(side="left", fill="both", expand=True, padx=(0, 5))
+    
+    tk.Label(pace_card, text="📊 PACE & TEMPO", bg='#1a1a1a', fg='#00d9ff',
+             font=('Arial', 12, 'bold'), pady=10).pack()
+    
+    pace_content = tk.Frame(pace_card, bg='#1a1a1a')
+    pace_content.pack(fill="x", padx=15, pady=(0, 15))
+    
+    opp_pace = pace_data['opp_pace']
+    league_pace = pace_data['league_pace']
+    pace_diff = opp_pace - league_pace
+    pace_indicator = "🏃 Fast" if pace_diff > 2 else ("🐢 Slow" if pace_diff < -2 else "➡️ Average")
+    
+    pace_stats = [
+        ("Opponent Pace:", f"{opp_pace:.1f}"),
+        ("League Average:", f"{league_pace:.1f}"),
+        ("Pace Differential:", f"{pace_diff:+.1f}  {pace_indicator}"),
+        ("Extra Possessions:", f"{pace_data['expected_extra_poss']:+.1f}")
+    ]
+    
+    for label, value in pace_stats:
+        row = tk.Frame(pace_content, bg='#1a1a1a')
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), width=18, anchor='w').pack(side='left')
+        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
+    
+    # Mean Reversion Card
+    reversion_card = tk.Frame(analysis_row, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
+                              highlightbackground='#333333', highlightthickness=1)
+    reversion_card.pack(side="right", fill="both", expand=True, padx=(5, 0))
+    
+    tk.Label(reversion_card, text="📈 MEAN REVERSION", bg='#1a1a1a', fg='#00d9ff',
+             font=('Arial', 12, 'bold'), pady=10).pack()
+    
+    reversion_content = tk.Frame(reversion_card, bg='#1a1a1a')
+    reversion_content.pack(fill="x", padx=15, pady=(0, 10))
+    
+    reversion_stats = [
+        ("Last 5 Games Avg:", f"{reversion_data['last_5']:.1f}"),
+        ("Season Average:", f"{reversion_data['season_avg']:.1f}"),
+        ("Differential:", f"{reversion_data['diff']:+.1f}")
+    ]
+    
+    for label, value in reversion_stats:
+        row = tk.Frame(reversion_content, bg='#1a1a1a')
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), width=18, anchor='w').pack(side='left')
+        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
+    
+    # Status message
+    diff = reversion_data['diff']
+    if diff > 3:
+        status_msg = "⚠️ Player is HOT → Expect regression DOWN"
+        status_color = '#ff9500'
+    elif diff < -3:
+        status_msg = "⚠️ Player is COLD → Expect regression UP"
+        status_color = '#ff9500'
+    else:
+        status_msg = "✅ Performing near season average"
+        status_color = '#00ff88'
+    
+    tk.Label(reversion_card, text=status_msg, bg='#1a1a1a', fg=status_color,
+             font=('Arial', 10, 'bold'), pady=10).pack()
+    
+    # ===== MODEL INPUT FEATURES =====
+    inputs_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
+                           highlightbackground='#333333', highlightthickness=1)
+    inputs_card.pack(fill="x", pady=10)
+    
+    tk.Label(inputs_card, text="🔢 MODEL INPUT FEATURES", bg='#1a1a1a', fg='#00d9ff',
+             font=('Arial', 12, 'bold'), pady=10).pack()
+    
+    inputs_content = tk.Frame(inputs_card, bg='#1a1a1a')
+    inputs_content.pack(fill="x", padx=15, pady=(0, 15))
+    
+    # Create two columns
+    left_col = tk.Frame(inputs_content, bg='#1a1a1a')
+    left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
+    
+    right_col = tk.Frame(inputs_content, bg='#1a1a1a')
+    right_col.pack(side='right', fill='both', expand=True, padx=(10, 0))
+    
+    home_away_str = "🏠 Home" if next_game_inputs['Home_Away'] == 1 else "✈️ Away"
+    def_rating = float(next_game_inputs['Opponent_Def_Rating'])
+    def_indicator = "🛡️ Elite" if def_rating < 108 else ("💪 Strong" if def_rating < 112 else ("📊 Average" if def_rating < 115 else "🎯 Weak"))
+    
+    left_inputs = [
+        ("Projected Minutes:", f"{next_game_inputs['Proj_Minutes']:.1f}"),
+        ("Season Avg PTS:", f"{float(next_game_inputs['Season_Avg_PTS']):.1f}"),
+        ("Last 5 Games PTS:", f"{float(next_game_inputs['Last_5_PTS']):.1f}"),
+        ("Last 10 Games PTS:", f"{float(next_game_inputs['Last_10_PTS']):.1f}"),
+        ("Recent vs Season:", f"{float(next_game_inputs['Recent_vs_Season']):+.1f}")
+    ]
+    
+    right_inputs = [
+        ("Location:", home_away_str),
+        ("Rest Days:", f"{next_game_inputs['Rest_Days']} day(s)"),
+        ("Opp Def Rating:", f"{def_rating:.1f} {def_indicator}"),
+        ("Extra Possessions:", f"{float(next_game_inputs['Expected_Extra_Poss']):+.1f}"),
+        ("Zone Matchup:", f"{float(next_game_inputs['Zone_Matchup_Score']):+.2f}")
+    ]
+    
+    for label, value in left_inputs:
+        row = tk.Frame(left_col, bg='#1a1a1a')
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), anchor='w').pack(side='left')
+        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
+    
+    for label, value in right_inputs:
+        row = tk.Frame(right_col, bg='#1a1a1a')
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), anchor='w').pack(side='left')
+        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
+    
+    # ===== FEATURE IMPORTANCE =====
+    importance_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
+                               highlightbackground='#333333', highlightthickness=1)
+    importance_card.pack(fill="x", pady=10)
+    
+    tk.Label(importance_card, text="📊 FEATURE IMPORTANCE", bg='#1a1a1a', fg='#00d9ff',
+             font=('Arial', 12, 'bold'), pady=10).pack()
+    
+    importance_content = tk.Frame(importance_card, bg='#1a1a1a')
+    importance_content.pack(fill="x", padx=15, pady=(0, 15))
+    
+    for name, imp in importance_pairs:
+        row = tk.Frame(importance_content, bg='#1a1a1a')
+        row.pack(fill="x", pady=2)
+        
+        tk.Label(row, text=name, bg='#1a1a1a', fg='#ffffff', font=('Arial', 9), 
+                 width=20, anchor='w').pack(side='left')
+        
+        # Progress bar frame
+        bar_frame = tk.Frame(row, bg='#333333', height=16)
+        bar_frame.pack(side='left', fill='x', expand=True, padx=5)
+        bar_frame.pack_propagate(False)
+        
+        # Filled portion
+        bar_width = imp  # imp is already 0-1
+        filled = tk.Frame(bar_frame, bg='#00d9ff')
+        filled.place(relx=0, rely=0, relwidth=bar_width, relheight=1)
+        
+        tk.Label(row, text=f"{imp*100:.1f}%", bg='#1a1a1a', fg='#ffffff', 
+                 font=('Arial', 9, 'bold'), width=6, anchor='e').pack(side='right')
+    
+    # ===== CLOSE BUTTON =====
+    close_btn = tk.Button(main_frame, text="Close", command=root.destroy,
+                          bg='#e74c3c', fg='white', font=('Arial', 11, 'bold'),
+                          padx=30, pady=8, relief=tk.FLAT, cursor='hand2')
+    close_btn.pack(pady=20)
+    
+    # Center window on screen
+    root.update_idletasks()
+    x = (root.winfo_screenwidth() // 2) - (900 // 2)
+    y = (root.winfo_screenheight() // 2) - (850 // 2)
+    root.geometry(f"700x850+{x}+{y}")
+    
+    root.mainloop()
+
+
 if __name__ == "__main__":
     predictor = NBAPredictor()
     
     try:
-        print(f"Starting prediction pipeline for {TARGET_PLAYER}...")
+        print("\n" + "╔" + "═" * 58 + "╗")
+        print(f"║   🏀  NBA POINTS PREDICTOR                              ║")
+        print(f"║   Player: {TARGET_PLAYER:<43}   ║")
+        print("╚" + "═" * 58 + "╝")
+        print()
+        
         pid = predictor.get_player_id(TARGET_PLAYER)
         df = predictor.fetch_game_logs(pid, SEASONS)
         
@@ -522,10 +865,27 @@ if __name__ == "__main__":
         
         predictor.train(df_processed)
         
-        # Example Prediction
+        # For prediction, we need the ACTUAL last N games (not shifted)
+        # The shifted values in df_processed are for training (to avoid leakage)
+        # But for predicting the NEXT game, we use the most recent actual games
         last_game = df_processed.iloc[-1]
-        print("\n--- Prediction Example ---")
-        print(f"Predicting for {TARGET_PLAYER} next game...")
+        
+        # Calculate actual rolling stats from raw game log (df) for prediction
+        # These are the TRUE last 5/10 games before the upcoming game
+        actual_last_5_pts = df['PTS'].tail(5).mean()
+        actual_last_10_pts = df['PTS'].tail(10).mean()
+        
+        # Season average should include ALL games in current season
+        current_season = SEASONS[-1]
+        current_season_games = df[df['SEASON_ID'] == current_season]
+        actual_season_avg = current_season_games['PTS'].mean()
+        
+        # Mean reversion signal using actual values
+        actual_recent_vs_season = actual_last_5_pts - actual_season_avg
+        
+        print("\n" + "╔" + "═" * 58 + "╗")
+        print(f"║   🔮  GENERATING PREDICTION FOR {TARGET_PLAYER.upper():<18}   ║")
+        print("╚" + "═" * 58 + "╝")
         
         # Fetch Matchup Info
         matchup_info = get_matchup_info.get_game_info()
@@ -539,11 +899,31 @@ if __name__ == "__main__":
         # Opponent Zone Stats from get_matchup_info
         opp_zones = matchup_info['Opponent_Zone_Stats']
         
-        print("\n--- Zone Matchup Score Calculation (Points-Weighted) ---")
-        print(f"{'Zone':<25} | {'Freq':<6} | {'PtVal':<5} | {'Opp%':<6} | {'Lg%':<6} | {'OppPPS':<6} | {'LgPPS':<6} | {'Score'}")
-        print("-" * 95)
+        # Sanity check: Compare zone matchup direction with defensive rating
+        opp_def_rating = matchup_info['Opponent_Def_Rating']
+        opp_name = matchup_info.get('Opponent_Name', 'Unknown')
+        
+        print("\n" + "═" * 85)
+        print("  🎯  ZONE MATCHUP ANALYSIS (Points-Weighted)")
+        print("═" * 85)
+        
+        # Show defensive context
+        if opp_def_rating < 108:
+            def_tier = "ELITE (Top 5)"
+        elif opp_def_rating < 112:
+            def_tier = "Strong (Top 10)"
+        elif opp_def_rating < 115:
+            def_tier = "Average"
+        else:
+            def_tier = "Weak (Bottom 10)"
+        print(f"  Opponent: {opp_name} | Def Rating: {opp_def_rating:.1f} ({def_tier})")
+        print("  " + "─" * 83)
+        
+        print(f"  {'Zone':<22} │ {'Freq':^6} │ {'Pts':^4} │ {'Opp%':^6} │ {'Lg%':^6} │ {'Diff':^6} │ {'Score':^7}")
+        print("  " + "─" * 22 + "┼" + "─" * 8 + "┼" + "─" * 6 + "┼" + "─" * 8 + "┼" + "─" * 8 + "┼" + "─" * 8 + "┼" + "─" * 9)
         
         zone_score = 0
+        
         for zone in STANDARD_ZONES:
             freq = player_prof.get(zone, 0)
             if freq == 0:
@@ -568,32 +948,55 @@ if __name__ == "__main__":
             score_contrib = freq * pts_differential * 100
             zone_score += score_contrib
             
-            print(f"{zone:<25} | {freq:.3f}  | {pts_value:.0f}    | {opp_pct:.3f}  | {league_pct:.3f}  | {opp_expected_pts:.3f}  | {league_expected_pts:.3f}  | {score_contrib:+.2f}")
+            # Color indicator for score
+            score_indicator = "🟢" if score_contrib > 0.5 else ("🔴" if score_contrib < -0.5 else "⚪")
+            diff_pct = (opp_pct - league_pct) * 100
+            print(f"  {zone:<22} │ {freq:^6.2f} │ {pts_value:^4.0f} │ {opp_pct:^6.1%} │ {league_pct:^6.1%} │ {diff_pct:^+5.1f}% │ {score_contrib:^+6.2f} {score_indicator}")
             
-        print("-" * 95)
-        print(f"Total Zone Matchup Score: {zone_score:.2f}")
+        print("  " + "─" * 22 + "┴" + "─" * 8 + "┴" + "─" * 6 + "┴" + "─" * 8 + "┴" + "─" * 8 + "┴" + "─" * 8 + "┴" + "─" * 9)
+        zone_indicator = "🟢 Favorable" if zone_score > 1 else ("🔴 Unfavorable" if zone_score < -1 else "⚪ Neutral")
+        print(f"  {'TOTAL ZONE MATCHUP SCORE:':<56} {zone_score:^+6.2f}  {zone_indicator}")
+        
+        print("═" * 85)
 
         # Calculate Expected Extra Possessions for prediction
         opp_pace = matchup_info['Opponent_Pace']
         league_pace = predictor.league_avg_pace.get(current_season, 100.0)
         expected_extra_poss = (opp_pace - league_pace) * (Proj_Minutes / 48.0)
-        print(f"\nPace Analysis: Opp={opp_pace:.1f}, League Avg={league_pace:.1f}, Extra Poss={expected_extra_poss:+.1f}")
         
-        # Calculate mean reversion signal
-        recent_vs_season = last_game['Last_5_PTS'] - last_game['Season_Avg_PTS']
-        print(f"Mean Reversion Signal: Last5={last_game['Last_5_PTS']:.1f}, SeasonAvg={last_game['Season_Avg_PTS']:.1f}, Diff={recent_vs_season:+.1f}")
-        if recent_vs_season > 3:
-            print("⚠️  Player is HOT - expect regression toward season average")
-        elif recent_vs_season < -3:
-            print("⚠️  Player is COLD - expect regression toward season average")
+        print("\n" + "═" * 60)
+        print("  📊  PACE & TEMPO ANALYSIS")
+        print("═" * 60)
+        pace_diff = opp_pace - league_pace
+        pace_indicator = "🏃 Fast" if pace_diff > 2 else ("🐢 Slow" if pace_diff < -2 else "➡️  Average")
+        print(f"  Opponent Pace:      {opp_pace:>8.1f}")
+        print(f"  League Average:     {league_pace:>8.1f}")
+        print(f"  Pace Differential:  {pace_diff:>+8.1f}  {pace_indicator}")
+        print(f"  Expected Extra Possessions: {expected_extra_poss:>+.1f}")
+        print("─" * 60)
         
-        # Construct inputs from matchup_info
+        # Mean reversion analysis using ACTUAL recent stats
+        print("\n" + "═" * 60)
+        print("  📈  MEAN REVERSION ANALYSIS")
+        print("═" * 60)
+        print(f"  Last 5 Games Avg:   {actual_last_5_pts:>8.1f}")
+        print(f"  Season Average:     {actual_season_avg:>8.1f}")
+        print(f"  Differential:       {actual_recent_vs_season:>+8.1f}")
+        print("─" * 60)
+        if actual_recent_vs_season > 3:
+            print("  ⚠️  Player is HOT → Expect regression DOWN toward season avg")
+        elif actual_recent_vs_season < -3:
+            print("  ⚠️  Player is COLD → Expect regression UP toward season avg")
+        else:
+            print("  ✅  Player performing near season average")
+        
+        # Construct inputs using ACTUAL recent stats (not shifted training values)
         next_game_inputs = {
             'Proj_Minutes': Proj_Minutes,
-            'Season_Avg_PTS': last_game['Season_Avg_PTS'],
-            'Last_5_PTS': last_game['Last_5_PTS'],
-            'Last_10_PTS': last_game['Last_10_PTS'],
-            'Recent_vs_Season': recent_vs_season,  # New mean reversion feature
+            'Season_Avg_PTS': actual_season_avg,
+            'Last_5_PTS': actual_last_5_pts,
+            'Last_10_PTS': actual_last_10_pts,
+            'Recent_vs_Season': actual_recent_vs_season,
             'Home_Away': matchup_info['Home_Away'], 
             'Rest_Days': matchup_info['Rest_Days'], 
             'Opponent_Def_Rating': matchup_info['Opponent_Def_Rating'],
@@ -602,13 +1005,75 @@ if __name__ == "__main__":
         }
         
         prediction = predictor.predict_next_game(next_game_inputs)
-        print(f"Inputs: {next_game_inputs}")
-        print(f"Predicted Points: {prediction:.1f}")
         
-        print("\nFeature Importance:")
+        # Pretty print inputs
+        print("\n" + "═" * 60)
+        print("  🔢  MODEL INPUT FEATURES")
+        print("═" * 60)
+        home_away_str = "🏠 Home" if next_game_inputs['Home_Away'] == 1 else "✈️  Away"
+        rest_str = f"{next_game_inputs['Rest_Days']} day(s)"
+        def_rating = float(next_game_inputs['Opponent_Def_Rating'])
+        def_indicator = "🛡️ Elite" if def_rating < 108 else ("💪 Strong" if def_rating < 112 else ("📊 Average" if def_rating < 115 else "🎯 Weak"))
+        
+        print(f"  {'Projected Minutes:':<28} {Proj_Minutes:>10.1f}")
+        print(f"  {'Season Average PTS:':<28} {float(next_game_inputs['Season_Avg_PTS']):>10.1f}")
+        print(f"  {'Last 5 Games PTS:':<28} {float(next_game_inputs['Last_5_PTS']):>10.1f}")
+        print(f"  {'Last 10 Games PTS:':<28} {float(next_game_inputs['Last_10_PTS']):>10.1f}")
+        print(f"  {'Recent vs Season:':<28} {float(next_game_inputs['Recent_vs_Season']):>+10.1f}")
+        print("  " + "─" * 56)
+        print(f"  {'Location:':<28} {home_away_str:>10}")
+        print(f"  {'Rest Days:':<28} {rest_str:>10}")
+        print("  " + "─" * 56)
+        print(f"  {'Opponent Def Rating:':<28} {def_rating:>10.1f}  {def_indicator}")
+        print(f"  {'Expected Extra Poss:':<28} {float(next_game_inputs['Expected_Extra_Poss']):>+10.1f}")
+        print(f"  {'Zone Matchup Score:':<28} {float(next_game_inputs['Zone_Matchup_Score']):>+10.2f}")
+        print("═" * 60)
+        
+        # Final Prediction Box
+        print("\n" + "╔" + "═" * 58 + "╗")
+        print("║" + " " * 58 + "║")
+        print(f"║   🏀  PREDICTED POINTS FOR {TARGET_PLAYER.upper():<21}    ║")
+        print("║" + " " * 58 + "║")
+        print(f"║                      {prediction:>6.1f}                              ║")
+        print("║" + " " * 58 + "║")
+        print("╚" + "═" * 58 + "╝")
+        
+        print("\n" + "═" * 60)
+        print("  📊  FEATURE IMPORTANCE")
+        print("═" * 60)
         importances = predictor.model.feature_importances_
-        for name, imp in zip(predictor.feature_columns, importances):
-            print(f"{name}: {imp* 100:.2f}%")
+        # Sort by importance
+        importance_pairs = sorted(zip(predictor.feature_columns, importances), key=lambda x: x[1], reverse=True)
+        for name, imp in importance_pairs:
+            bar_len = int(imp * 40)
+            bar = "█" * bar_len + "░" * (40 - bar_len)
+            print(f"  {name:<22} │ {bar} │ {imp*100:>5.1f}%")
+        print("═" * 60)
+        
+        # Launch GUI with results
+        show_prediction_gui(
+            player_name=TARGET_PLAYER,
+            prediction=prediction,
+            next_game_inputs=next_game_inputs,
+            zone_data={
+                'player_profile': player_prof,
+                'opp_zones': opp_zones,
+                'league_zones': league_zones,
+                'zone_score': zone_score
+            },
+            pace_data={
+                'opp_pace': opp_pace,
+                'league_pace': league_pace,
+                'expected_extra_poss': expected_extra_poss
+            },
+            reversion_data={
+                'last_5': actual_last_5_pts,
+                'season_avg': actual_season_avg,
+                'diff': actual_recent_vs_season
+            },
+            importance_pairs=importance_pairs,
+            matchup_info=matchup_info
+        )
             
     except Exception as e:
         print(f"An error occurred: {e}")

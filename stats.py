@@ -15,7 +15,7 @@ class NBAStatsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("NBA Player Statistics Viewer")
-        self.root.geometry("1350x800")
+        self.root.geometry("1575x800")
         self.root.configure(bg='#000000')
         
         # Store image references to prevent garbage collection
@@ -329,10 +329,13 @@ class NBAStatsGUI:
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", style="Custom.Vertical.TScrollbar")
         
         # Create treeview
+        # PRA, PR, PA, RA are calculated columns (not from API)
+        calculated_cols = ['PRA', 'PR', 'PA', 'RA']
         visible_columns = ['GAME_DATE', 'MATCHUP', 'WL', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 
+                   'PRA', 'PR', 'PA', 'RA',
                    'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT', 'TS_PCT', 'PLUS_MINUS']
-        # Filter to only include columns that exist in the dataframe
-        visible_columns = [col for col in visible_columns if col in game_log_df.columns]
+        # Filter to only include columns that exist in the dataframe OR are calculated
+        visible_columns = [col for col in visible_columns if col in game_log_df.columns or col in calculated_cols]
         
         # Add Game_ID to columns if it exists, but not to visible_columns
         columns = list(visible_columns)
@@ -360,6 +363,10 @@ class NBAStatsGUI:
             'AST': 55,
             'STL': 55,
             'BLK': 55,
+            'PRA': 55,
+            'PR': 55,
+            'PA': 55,
+            'RA': 55,
             'FGM': 55,
             'FGA': 55,
             'FG_PCT': 70,
@@ -411,7 +418,17 @@ class NBAStatsGUI:
         # Insert data
         for idx, row in game_log_df.iterrows():
             values = []
+            # Pre-calculate PRA, PR, PA, RA
+            pts = float(row['PTS']) if 'PTS' in row and row['PTS'] else 0
+            reb = float(row['REB']) if 'REB' in row and row['REB'] else 0
+            ast = float(row['AST']) if 'AST' in row and row['AST'] else 0
+            calc_values = {'PRA': pts + reb + ast, 'PR': pts + reb, 'PA': pts + ast, 'RA': reb + ast}
+            
             for col in columns:
+                # Handle calculated columns
+                if col in calc_values:
+                    values.append(str(int(calc_values[col])))
+                    continue
                 val = row[col]
                 # Format the value
                 if col == 'MIN':

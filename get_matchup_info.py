@@ -4,9 +4,10 @@ import pandas as pd
 from datetime import datetime
 
 # Constants
-PLAYER_TEAM = "timberwolves"    # Accepts: abbreviation (POR), nickname (Trail Blazers/blazers), full name, or city
-OPPONENT = "warriors"      # Accepts: abbreviation (NOP), nickname (Pelicans), full name, or city
-DATE_TODAY = "2025-12-12"  # Current Date
+PLAYER_TEAM = input("Enter the player's team: ")    # Accepts: abbreviation (POR), nickname (Trail Blazers/blazers), full name, or city
+OPPONENT = input("Enter the opponent's team: ")    # Accepts: abbreviation (NOP), nickname (Pelicans), full name, or city
+DATE_TODAY = datetime.today().strftime('%Y-%m-%d')# Current Date
+print(f"Current Date: {DATE_TODAY}")  
 SEASON = "2025-26"
 
 def get_team(identifier):
@@ -112,41 +113,58 @@ def get_game_info():
     print(f"- Opp 3PM/Game: {opp_fg3m}")
     print(f"- Opp FGM/Game: {opp_fgm}")
 
-    # Fetch Zone Stats for Opponent
-    print("Fetching Opponent Zone Stats...")
-    from nba_api.stats.endpoints import teamdashboardbyshootingsplits
-    opp_id = opponent_team['id']
-    splits = teamdashboardbyshootingsplits.TeamDashboardByShootingSplits(
-        team_id=opp_id,
-        season=SEASON,
-        measure_type_detailed_defense='Opponent',
-        per_mode_detailed='PerGame'
-    )
-    # Frame 3 is Shot Area (verified from actual API response)
-    area_df = splits.get_data_frames()[3]
-    print("Opponent Zone FG% Allowed:")
-    zone_stats = {}
-    corner_pcts = []
-    for _, row in area_df.iterrows():
-        zone = row['GROUP_VALUE']
-        pct = row['FG_PCT']
-        print(f"- {zone}: {pct}")
-        
-        # Normalize zone names - combine Left/Right Corner 3
-        if 'Corner 3' in zone:
-            corner_pcts.append(pct)
-        else:
-            zone_stats[zone] = pct
+    # Fetch Zone Stats for Opponent using CORRECT endpoint
+    print("Fetching Opponent Zone FG% Allowed...")
+    from nba_api.stats.endpoints import leaguedashteamshotlocations
+    import numpy as np
     
-    # Add combined Corner 3 if we have corner data
-    if corner_pcts:
-        import numpy as np
-        zone_stats['Corner 3'] = np.mean(corner_pcts)
-        print(f"- Corner 3 (combined): {zone_stats['Corner 3']:.3f}")
+    # Use LeagueDashTeamShotLocations with Opponent measure - returns CORRECT FG% allowed
+    shot_locs = leaguedashteamshotlocations.LeagueDashTeamShotLocations(
+        season=SEASON,
+        per_mode_detailed='PerGame',
+        distance_range='By Zone',
+        measure_type_simple='Opponent'  # CRITICAL: This gets opponent FG% allowed
+    )
+    zone_df = shot_locs.get_data_frames()[0]
+    
+    # Find the opponent team's row
+    opp_id = opponent_team['id']
+    opp_row = zone_df[zone_df.iloc[:, 0] == opp_id]
+    
+    zone_stats = {}
+    if not opp_row.empty:
+        opp_row = opp_row.iloc[0]
+        corner_pcts = []
+        
+        print("Opponent Zone FG% Allowed:")
+        for col in zone_df.columns:
+            if len(col) == 2:
+                zone_name, stat_type = col
+                zone_name = str(zone_name)
+                stat_type = str(stat_type)
+                
+                if stat_type == 'OPP_FG_PCT':
+                    pct = opp_row[col]
+                    if pd.notna(pct):
+                        print(f"- {zone_name}: {pct:.3f}")
+                        
+                        if 'Corner 3' in zone_name and zone_name != 'Corner 3':
+                            corner_pcts.append(pct)
+                        elif zone_name in ['Restricted Area', 'In The Paint (Non-RA)', 'Mid-Range', 'Above the Break 3']:
+                            zone_stats[zone_name] = pct
+        
+        # Combine Left/Right Corner 3
+        if corner_pcts:
+            zone_stats['Corner 3'] = np.mean(corner_pcts)
+            print(f"- Corner 3 (combined): {zone_stats['Corner 3']:.3f}")
+    else:
+        print("WARNING: Could not find zone stats for opponent")
     
     return {
         'Home_Away': is_home,
         'Rest_Days': rest_days,
+        'Opponent_Name': opponent_team['full_name'],
+        'Opponent_Abbrev': opponent_abbrev,
         'Opponent_Def_Rating': def_rating,
         'Opponent_Pace': pace,
         'Opponent_FG3M': opp_fg3m,
