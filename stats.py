@@ -258,6 +258,124 @@ class NBAStatsGUI:
         for i in range(col_num):
             table_frame.columnconfigure(i, weight=1)
     
+    def calculate_rolling_stats(self, game_log_df, n_games):
+        """Calculate averages and CV for the last n games from game log"""
+        if game_log_df is None or game_log_df.empty or len(game_log_df) < n_games:
+            return None
+        
+        # Game log is already sorted most recent first, take first n games
+        recent_games = game_log_df.head(n_games)
+        
+        stats = {
+            'averages': {},
+            'std_devs': {},
+            'games_played': n_games
+        }
+        
+        # Map columns to stat keys
+        col_mapping = {
+            'points': 'PTS',
+            'rebounds': 'REB', 
+            'assists': 'AST',
+            'blocks': 'BLK',
+            'steals': 'STL',
+            '3pt': 'FG3M'
+        }
+        
+        for stat_key, col_name in col_mapping.items():
+            if col_name in recent_games.columns:
+                values = pd.to_numeric(recent_games[col_name], errors='coerce')
+                stats['averages'][stat_key] = values.mean()
+                stats['std_devs'][stat_key] = values.std()
+        
+        return stats
+    
+    def create_rolling_stats_card(self, parent, title, game_log_df, row, col, colspan=6):
+        """Create a card showing L5, L10, L15 rolling averages with CV"""
+        card = tk.Frame(parent, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, highlightbackground='#333333', highlightthickness=1)
+        card.grid(row=row, column=col, columnspan=colspan, padx=10, pady=10, sticky="nsew")
+        
+        # Title
+        title_label = tk.Label(card, text=title, bg='#1a1a1a', fg='#ffffff',
+                              font=('Arial', 12, 'bold'), pady=10)
+        title_label.pack(fill=tk.X)
+        
+        # Stats table
+        table_frame = tk.Frame(card, bg='#1a1a1a')
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        
+        stat_order = ['points', 'rebounds', 'assists', 'blocks', 'steals', '3pt']
+        stat_names = ['Points', 'Rebounds', 'Assists', 'Blocks', 'Steals', '3PTM']
+        windows = [5, 10, 15]
+        
+        # Calculate stats for each window
+        rolling_stats = {}
+        for n in windows:
+            rolling_stats[n] = self.calculate_rolling_stats(game_log_df, n)
+        
+        # Header row - stat names
+        tk.Label(table_frame, text='Statistic', bg='#2a2a2a', fg='#ffffff',
+                font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=0, column=0, sticky="ew")
+        
+        col_num = 1
+        for stat_name in stat_names:
+            col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
+            tk.Label(table_frame, text=stat_name, bg=col_bg, fg='#ffffff',
+                    font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=0, column=col_num, sticky="ew")
+            col_num += 1
+        
+        # Data rows for each window
+        row_num = 1
+        for n in windows:
+            stats = rolling_stats[n]
+            
+            # Row label (L5, L10, L15)
+            tk.Label(table_frame, text=f'L{n} Avg', bg='#2a2a2a', fg='#ffffff',
+                    font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=row_num, column=0, sticky="ew")
+            
+            col_num = 1
+            for stat_key in stat_order:
+                col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
+                if stats and stat_key in stats['averages']:
+                    avg = stats['averages'][stat_key]
+                    tk.Label(table_frame, text=f"{avg:.1f}", bg=col_bg, fg='#ffffff',
+                            font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                else:
+                    tk.Label(table_frame, text="-", bg=col_bg, fg='#666666',
+                            font=('Arial', 10), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                col_num += 1
+            row_num += 1
+            
+            # CV row for this window
+            tk.Label(table_frame, text=f'L{n} CV%', bg='#2a2a2a', fg='#999999',
+                    font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=0, sticky="ew")
+            
+            col_num = 1
+            for stat_key in stat_order:
+                col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
+                if stats and stat_key in stats['averages'] and stat_key in stats['std_devs']:
+                    avg = stats['averages'][stat_key]
+                    std = stats['std_devs'][stat_key]
+                    cv = 100 * (std / avg) if avg > 0 else 0
+                    tk.Label(table_frame, text=f"{cv:.1f}%", bg=col_bg, fg='#999999',
+                            font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                else:
+                    tk.Label(table_frame, text="-", bg=col_bg, fg='#666666',
+                            font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                col_num += 1
+            row_num += 1
+        
+        # Configure column weights
+        for i in range(len(stat_names) + 1):
+            table_frame.columnconfigure(i, weight=1)
+        
+        # Games available info
+        total_games = len(game_log_df) if game_log_df is not None else 0
+        info_frame = tk.Frame(card, bg='#1a1a1a')
+        info_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
+        tk.Label(info_frame, text=f"Total Games Available: {total_games}", 
+                bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold')).pack()
+    
     def create_chart_display(self, parent, image_path, title, row, col, colspan=3):
         """Display chart image in the GUI"""
         if not os.path.exists(image_path):
@@ -648,6 +766,14 @@ class NBAStatsGUI:
                 error_label.grid(row=current_row, column=3, columnspan=3, padx=10, pady=10, sticky="ew")
             
             current_row += 1
+            
+            # Rolling stats cards - ONLY for current season (2025-26)
+            if season == '2025-26' and data.get('game_log') is not None:
+                self.create_rolling_stats_card(self.results_frame,
+                                              f"{player} - Recent Game Trends (L5/L10/L15)",
+                                              data['game_log'],
+                                              current_row, 0, colspan=6)
+                current_row += 1
             
             # Season chart
             if data.get('chart_path'):
