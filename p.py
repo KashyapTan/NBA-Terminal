@@ -8,7 +8,6 @@ from tkinter import ttk
 from datetime import datetime, timedelta
 from tqdm import tqdm
 
-# Check for required packages
 try:
     import xgboost as xgb
     from sklearn.model_selection import TimeSeriesSplit
@@ -44,16 +43,15 @@ STANDARD_ZONES = ['Restricted Area', 'In The Paint (Non-RA)', 'Mid-Range', 'Corn
 
 class NBAPredictor:
     def __init__(self):
-        # Simplified model with regularization to prevent overfitting on small samples
         self.model = xgb.XGBRegressor(
-            n_estimators=200,          # Reduced from 1000 - less prone to overfitting
+            n_estimators=200,
             learning_rate=0.05,
-            max_depth=3,               # Reduced from 5 - simpler trees
-            min_child_weight=5,        # Requires more samples per leaf
-            reg_alpha=1.0,             # L1 regularization
-            reg_lambda=2.0,            # L2 regularization
-            subsample=0.8,             # Use 80% of data per tree
-            colsample_bytree=0.8,      # Use 80% of features per tree
+            max_depth=3,
+            min_child_weight=5,        
+            reg_alpha=1.0, # L1 regularization
+            reg_lambda=2.0, # L2 regularization
+            subsample=0.8, # Use 80% of data per tree
+            colsample_bytree=0.8, # Use 80% of features per tree
             early_stopping_rounds=30,
             n_jobs=-1
         )
@@ -69,7 +67,6 @@ class NBAPredictor:
     def load_cache(self):
         if os.path.exists(CACHE_FILE):
             try:
-                # Check file age
                 file_time = datetime.fromtimestamp(os.path.getmtime(CACHE_FILE))
                 if datetime.now() - file_time > timedelta(hours=CACHE_EXPIRY_HOURS):
                     print("Cache expired. Will refresh data.")
@@ -116,8 +113,7 @@ class NBAPredictor:
                 season=season,
                 per_mode_detailed='PerGame'
             )
-            # Frame 3 is Shot Area (verified from actual API response)
-            # Actual Order: 0=Overall, 1=Shot5FT, 2=Shot8FT, 3=ShotArea, 4=AssistedShot, 5=ShotTypeSummary, 6=ShotTypeDetail
+            # Order: 0=Overall, 1=Shot5FT, 2=Shot8FT, 3=ShotArea, 4=AssistedShot, 5=ShotTypeSummary, 6=ShotTypeDetail
             area_df = splits.get_data_frames()[3]
             
             # Calculate Frequencies
@@ -195,8 +191,8 @@ class NBAPredictor:
         
         # Detect if player is a rookie (only has current season data)
         if len(seasons_with_data) == 1 and seasons_with_data[0] == seasons[-1]:
-            print(f"\n  ⭐ ROOKIE DETECTED: Player only has data for {seasons_with_data[0]}")
-            print(f"     Using single-season model...\n")
+            print(f"\n ROOKIE DETECTED: Player only has data for {seasons_with_data[0]}")
+            print(f" Using single-season model...\n")
             
         full_df = pd.concat(all_logs, ignore_index=True)
         full_df['GAME_DATE'] = pd.to_datetime(full_df['GAME_DATE'])
@@ -217,7 +213,6 @@ class NBAPredictor:
             nba_teams = teams.get_teams()
             id_to_abbrev = {t['id']: t['abbreviation'] for t in nba_teams}
             
-            # Create lookup dict for this season
             season_stats = {}
             
             # Process Advanced Stats and calculate league average pace
@@ -1006,7 +1001,7 @@ if __name__ == "__main__":
         
         prediction = predictor.predict_next_game(next_game_inputs)
         
-        # Pretty print inputs
+        # Print inputs
         print("\n" + "═" * 60)
         print("  🔢  MODEL INPUT FEATURES")
         print("═" * 60)
