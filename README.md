@@ -350,5 +350,5 @@ This tool is for educational and entertainment purposes only. Sports betting inv
 MIT License - feel free to use and modify for your own projects.
 
 ---
-
-**Built with ❤️ for NBA analytics enthusiasts**
+## Coming Soon
+- Migrate front-end to electron/react instead of py GUI's
