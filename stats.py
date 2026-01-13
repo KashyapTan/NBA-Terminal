@@ -32,7 +32,7 @@ class NBAStatsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("NBA Player Statistics Viewer")
-        self.root.geometry("1575x900")
+        self.root.geometry("1600x900")
         self.root.configure(bg=self.COLORS['bg_primary'])
         
         # Store image references to prevent garbage collection
@@ -509,7 +509,7 @@ class NBAStatsGUI:
         table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
         table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
-        thresholds = [10, 15, 20, 25, 30]
+        thresholds = [10, 12, 15, 18, 20, 25, 30]
         windows = [5, 10, 15]
         
         # Calculate hit rates for each window
@@ -598,7 +598,7 @@ class NBAStatsGUI:
         table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
         table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
-        thresholds = [4, 6, 8, 10, 12]
+        thresholds = [4, 5, 6, 7, 8, 9, 10, 11, 12]
         windows = [5, 10, 15]
         
         # Calculate hit rates for each window
@@ -687,7 +687,7 @@ class NBAStatsGUI:
         table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
         table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
-        thresholds = [4, 6, 8, 10, 12]
+        thresholds = [4, 5, 6, 7, 8, 9, 10, 11, 12]
         windows = [5, 10, 15]
         
         # Calculate hit rates for each window

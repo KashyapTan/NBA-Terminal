@@ -853,7 +853,7 @@ def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pa
     # ===== FEATURE IMPORTANCE CARD =====
     importance_card = create_card(content_frame, "MODEL WEIGHTS")
     
-    for name, imp in importance_pairs[:6]:  # Top 6 features only
+    for name, imp in importance_pairs:  # Show all features
         row = tk.Frame(importance_card, bg=COLORS['bg_card'])
         row.pack(fill="x", pady=6)
         
