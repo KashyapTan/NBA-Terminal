@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from helper.formula import get_player_season_stats, get_player_vs_team_stats
-from helper.percentile import plot_player_percentiles_season, plot_player_percentiles_vs_team
 from helper.gamelog import get_player_game_log
 import threading
 from PIL import Image, ImageTk
@@ -12,26 +11,46 @@ from nba_api.stats.endpoints import boxscoretraditionalv2, boxscoretraditionalv3
 from c import clear_charts_folder
 
 class NBAStatsGUI:
+    # Modern color palette matching p.py
+    COLORS = {
+        'bg_primary': '#0f0f0f',        # Deep black background
+        'bg_card': '#1a1a1a',           # Card background
+        'bg_elevated': '#242424',       # Elevated elements
+        'bg_hover': '#2a2a2a',          # Hover state
+        'text_primary': '#ffffff',      # Primary text
+        'text_secondary': '#8b8b8b',    # Secondary/muted text
+        'text_tertiary': '#5c5c5c',     # Tertiary text
+        'accent': '#6366f1',            # Modern indigo accent
+        'accent_soft': '#4f46e5',       # Softer accent
+        'success': '#10b981',           # Green for positive
+        'warning': '#f59e0b',           # Amber for warning
+        'danger': '#ef4444',            # Red for negative
+        'border': '#2a2a2a',            # Subtle border
+        'divider': '#1f1f1f',           # Divider lines
+    }
+    
     def __init__(self, root):
         self.root = root
         self.root.title("NBA Player Statistics Viewer")
-        self.root.geometry("1575x800")
-        self.root.configure(bg='#000000')
+        self.root.geometry("1575x900")
+        self.root.configure(bg=self.COLORS['bg_primary'])
         
         # Store image references to prevent garbage collection
         self.chart_images = []
         
-        # Style configuration
+        # Modern style configuration
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure('TFrame', background='#000000')
-        style.configure('TLabel', background='#000000', foreground='#ffffff', font=('Arial', 10))
-        style.configure('Title.TLabel', font=('Arial', 16, 'bold'), foreground='#ffffff')
-        style.configure('Subtitle.TLabel', font=('Arial', 12, 'bold'), foreground='#ffffff')
-        style.configure('Stat.TLabel', font=('Arial', 11), foreground='#ffffff')
-        style.configure('TButton', font=('Arial', 10, 'bold'), padding=8)
-        style.configure('TEntry', fieldbackground='#1a1a1a', foreground='#ffffff')
-        style.configure('TCheckbutton', background='#000000', foreground='#ffffff')
+        style.configure('TFrame', background=self.COLORS['bg_primary'])
+        style.configure('TLabel', background=self.COLORS['bg_primary'], foreground=self.COLORS['text_primary'], font=('Segoe UI', 10))
+        style.configure('Title.TLabel', font=('Segoe UI', 20, 'bold'), foreground=self.COLORS['text_primary'])
+        style.configure('Subtitle.TLabel', font=('Segoe UI', 12, 'bold'), foreground=self.COLORS['text_primary'])
+        style.configure('Stat.TLabel', font=('Segoe UI', 11), foreground=self.COLORS['text_secondary'])
+        style.configure('TButton', font=('Segoe UI', 10, 'bold'), padding=8)
+        style.configure('TEntry', fieldbackground=self.COLORS['bg_card'], foreground=self.COLORS['text_primary'])
+        style.configure('TCheckbutton', background=self.COLORS['bg_primary'], foreground=self.COLORS['text_primary'])
+        style.configure('TScrollbar', background=self.COLORS['bg_card'], troughcolor=self.COLORS['bg_primary'],
+                        bordercolor=self.COLORS['bg_primary'], arrowcolor=self.COLORS['text_secondary'])
         
         # Setup the GUI
         self.setup_gui()
@@ -78,7 +97,7 @@ class NBAStatsGUI:
     def setup_gui(self):
         """Setup the GUI components"""
         # Main container with scrollbar
-        main_canvas = tk.Canvas(self.root, bg='#000000', highlightthickness=0)
+        main_canvas = tk.Canvas(self.root, bg=self.COLORS['bg_primary'], highlightthickness=0, bd=0)
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=main_canvas.yview)
         self.scrollable_frame = ttk.Frame(main_canvas)
         
@@ -96,38 +115,68 @@ class NBAStatsGUI:
         # Bind mouse wheel
         main_canvas.bind_all("<MouseWheel>", lambda e: main_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
         
-        main_frame = ttk.Frame(self.scrollable_frame, padding="20")
+        main_frame = ttk.Frame(self.scrollable_frame, padding="32")
         main_frame.grid(row=0, column=0, sticky="nsew")
         
-        # Title
-        title = ttk.Label(main_frame, text="NBA Player Statistics Analyzer", style='Title.TLabel')
-        title.grid(row=0, column=0, columnspan=6, pady=(0, 20))
+        # Hero Section - Title
+        hero_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
+        hero_frame.grid(row=0, column=0, columnspan=6, pady=(0, 32), sticky="ew")
         
-        # Input section
-        input_frame = ttk.Frame(main_frame)
-        input_frame.grid(row=1, column=0, columnspan=6, pady=(0, 20), sticky="ew")
+        tk.Label(hero_frame, text="NBA STATISTICS", bg=self.COLORS['bg_primary'], 
+                fg=self.COLORS['text_tertiary'], font=('Segoe UI', 10, 'bold')).pack(anchor='w')
+        tk.Label(hero_frame, text="Player Analytics", bg=self.COLORS['bg_primary'], 
+                fg=self.COLORS['text_primary'], font=('Segoe UI', 28, 'bold')).pack(anchor='w', pady=(4, 0))
+        
+        # Input section - Modern card style
+        input_card = tk.Frame(main_frame, bg=self.COLORS['bg_card'])
+        input_card.grid(row=1, column=0, columnspan=6, pady=(0, 16), sticky="ew")
+        
+        input_inner = tk.Frame(input_card, bg=self.COLORS['bg_card'])
+        input_inner.pack(fill="x", padx=24, pady=20)
+        
+        # Input fields row
+        input_row = tk.Frame(input_inner, bg=self.COLORS['bg_card'])
+        input_row.pack(fill="x")
         
         # Player Name
-        ttk.Label(input_frame, text="Player Name:").grid(row=0, column=0, padx=(0, 10), sticky=tk.W)
-        self.player_entry = ttk.Entry(input_frame, width=25, font=('Arial', 10))
-        self.player_entry.grid(row=0, column=1, padx=(0, 20), sticky="ew")
+        player_frame = tk.Frame(input_row, bg=self.COLORS['bg_card'])
+        player_frame.pack(side='left', fill='x', expand=True, padx=(0, 16))
+        tk.Label(player_frame, text="PLAYER NAME", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+        self.player_entry = tk.Entry(player_frame, width=30, font=('Segoe UI', 11),
+                                     bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_primary'],
+                                     insertbackground=self.COLORS['text_primary'], relief=tk.FLAT,
+                                     highlightthickness=1, highlightbackground=self.COLORS['border'],
+                                     highlightcolor=self.COLORS['accent'])
+        self.player_entry.pack(fill='x', pady=(6, 0), ipady=8)
         self.player_entry.insert(0, "James Harden")
         
         # Team Name
-        ttk.Label(input_frame, text="Opponent Team:").grid(row=0, column=2, padx=(0, 10), sticky=tk.W)
-        self.team_entry = ttk.Entry(input_frame, width=25, font=('Arial', 10))
-        self.team_entry.grid(row=0, column=3, sticky="ew")
+        team_frame = tk.Frame(input_row, bg=self.COLORS['bg_card'])
+        team_frame.pack(side='left', fill='x', expand=True)
+        tk.Label(team_frame, text="OPPONENT TEAM", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+        self.team_entry = tk.Entry(team_frame, width=30, font=('Segoe UI', 11),
+                                   bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_primary'],
+                                   insertbackground=self.COLORS['text_primary'], relief=tk.FLAT,
+                                   highlightthickness=1, highlightbackground=self.COLORS['border'],
+                                   highlightcolor=self.COLORS['accent'])
+        self.team_entry.pack(fill='x', pady=(6, 0), ipady=8)
         self.team_entry.insert(0, "76ers")
         
-        # Configure input frame columns
-        input_frame.columnconfigure(1, weight=1)
-        input_frame.columnconfigure(3, weight=1)
+        # Season selection - Modern card style
+        season_card = tk.Frame(main_frame, bg=self.COLORS['bg_card'])
+        season_card.grid(row=2, column=0, columnspan=6, pady=(0, 16), sticky="ew")
         
-        # Season selection with scrollable frame
-        season_frame = ttk.Frame(main_frame)
-        season_frame.grid(row=2, column=0, columnspan=6, pady=(0, 10))
+        season_inner = tk.Frame(season_card, bg=self.COLORS['bg_card'])
+        season_inner.pack(fill="x", padx=24, pady=20)
         
-        ttk.Label(season_frame, text="Select Seasons:", style='Stat.TLabel').grid(row=0, column=0, padx=(0, 15), sticky=tk.W)
+        tk.Label(season_inner, text="SELECT SEASONS", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+        
+        # Season checkboxes row
+        checkbox_frame = tk.Frame(season_inner, bg=self.COLORS['bg_card'])
+        checkbox_frame.pack(fill="x", pady=(12, 0))
         
         # Create checkbuttons for seasons 2020-21 through 2025-26
         self.season_vars = {}
@@ -136,37 +185,55 @@ class NBAStatsGUI:
         for i, season in enumerate(seasons):
             var = tk.BooleanVar(value=(season in ['2024-25', '2025-26']))  # Default last 2 seasons
             self.season_vars[season] = var
-            ttk.Checkbutton(season_frame, text=season, variable=var).grid(row=0, column=i+1, padx=5)
+            cb = tk.Checkbutton(checkbox_frame, text=season, variable=var,
+                               bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                               selectcolor=self.COLORS['bg_elevated'], activebackground=self.COLORS['bg_card'],
+                               activeforeground=self.COLORS['text_primary'], font=('Segoe UI', 10),
+                               highlightthickness=0, bd=0, cursor='hand2')
+            cb.pack(side='left', padx=(0, 20))
         
         # Select/Deselect all buttons
-        select_frame = ttk.Frame(season_frame)
-        select_frame.grid(row=1, column=0, columnspan=7, pady=(5, 0))
+        select_frame = tk.Frame(season_inner, bg=self.COLORS['bg_card'])
+        select_frame.pack(fill="x", pady=(12, 0))
         
         tk.Button(select_frame, text="Select All", command=self.select_all_seasons,
-                 bg='#333333', fg='#ffffff', font=('Arial', 9), padx=10, pady=3, relief=tk.FLAT, cursor='hand2').grid(row=0, column=0, padx=5)
+                 bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_secondary'], font=('Segoe UI', 9), 
+                 padx=16, pady=6, relief=tk.FLAT, cursor='hand2', bd=0,
+                 activebackground=self.COLORS['bg_hover'], activeforeground=self.COLORS['text_primary']).pack(side='left', padx=(0, 8))
         tk.Button(select_frame, text="Deselect All", command=self.deselect_all_seasons,
-                 bg='#333333', fg='#ffffff', font=('Arial', 9), padx=10, pady=3, relief=tk.FLAT, cursor='hand2').grid(row=0, column=1, padx=5)
+                 bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_secondary'], font=('Segoe UI', 9), 
+                 padx=16, pady=6, relief=tk.FLAT, cursor='hand2', bd=0,
+                 activebackground=self.COLORS['bg_hover'], activeforeground=self.COLORS['text_primary']).pack(side='left')
         
-        # Buttons
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=6, pady=(0, 20))
+        # Action Buttons - Modern style
+        button_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
+        button_frame.grid(row=3, column=0, columnspan=6, pady=(0, 24))
         
         self.fetch_btn = tk.Button(button_frame, text="Fetch Statistics", command=self.fetch_stats,
-                                   bg='#00d9ff', fg='#1a1a2e', font=('Arial', 11, 'bold'),
-                                   padx=20, pady=8, relief=tk.FLAT, cursor='hand2')
-        self.fetch_btn.grid(row=0, column=0, padx=5)
+                                   bg=self.COLORS['accent'], fg=self.COLORS['text_primary'], 
+                                   font=('Segoe UI', 11, 'bold'),
+                                   padx=32, pady=12, relief=tk.FLAT, cursor='hand2', bd=0,
+                                   activebackground=self.COLORS['accent_soft'], 
+                                   activeforeground=self.COLORS['text_primary'])
+        self.fetch_btn.pack(side='left', padx=(0, 12))
         
         clear_btn = tk.Button(button_frame, text="Clear Results", command=self.clear_results,
-                             bg='#e74c3c', fg='white', font=('Arial', 11, 'bold'),
-                             padx=20, pady=8, relief=tk.FLAT, cursor='hand2')
-        clear_btn.grid(row=0, column=1, padx=5)
+                             bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_secondary'], 
+                             font=('Segoe UI', 11),
+                             padx=24, pady=12, relief=tk.FLAT, cursor='hand2', bd=0,
+                             activebackground=self.COLORS['bg_hover'], 
+                             activeforeground=self.COLORS['text_primary'])
+        clear_btn.pack(side='left')
         
-        # Status bar
-        self.status_label = ttk.Label(main_frame, text="Ready", foreground='#999999', font=('Arial', 10, 'italic'))
-        self.status_label.grid(row=4, column=0, columnspan=6, pady=(0, 10), sticky=tk.W)
+        # Status bar - Modern minimal
+        status_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
+        status_frame.grid(row=4, column=0, columnspan=6, pady=(0, 16), sticky=tk.W)
+        self.status_label = tk.Label(status_frame, text="Ready", bg=self.COLORS['bg_primary'],
+                                     fg=self.COLORS['text_tertiary'], font=('Segoe UI', 10))
+        self.status_label.pack(anchor='w')
         
-        # Results container
-        self.results_frame = ttk.Frame(main_frame)
+        # Results container - Modern style
+        self.results_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
         self.results_frame.grid(row=5, column=0, columnspan=6, sticky="nsew")
         
         # Configure grid weights
@@ -199,29 +266,30 @@ class NBAStatsGUI:
         self.update_status("Results cleared")
     
     def create_stat_card(self, parent, title, stats_data, row, col, colspan=2):
-        """Create a nice stat card with organized layout"""
-        card = tk.Frame(parent, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, highlightbackground='#333333', highlightthickness=1)
-        card.grid(row=row, column=col, columnspan=colspan, padx=10, pady=10, sticky="nsew")
+        """Create a modern stat card with organized layout"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
         
-        # Title
-        title_label = tk.Label(card, text=title, bg='#1a1a1a', fg='#ffffff',
-                              font=('Arial', 12, 'bold'), pady=10)
-        title_label.pack(fill=tk.X)
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
+        
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w')
         
         # Stats table
-        table_frame = tk.Frame(card, bg='#1a1a1a')
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
         # Row headers (vertical)
-        row_labels = ['Statistic', 'Average', 'Std Dev', 'CV %']
+        row_labels = ['Stat', 'Avg', 'Std', 'CV%']
         for i, label in enumerate(row_labels):
-            tk.Label(table_frame, text=label, bg='#2a2a2a', fg='#ffffff',
-                    font=('Arial', 10, 'bold'), padx=10, pady=5,
-                    relief=tk.FLAT).grid(row=i, column=0, sticky="ew")
+            tk.Label(table_frame, text=label, bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                    font=('Segoe UI', 9), width=6).grid(row=i, column=0, sticky="w", pady=4)
         
         # Data columns
         stat_order = ['points', 'rebounds', 'assists', 'blocks', 'steals', '3pt']
-        stat_names = ['Points', 'Rebounds', 'Assists', 'Blocks', 'Steals', '3PTM']
+        stat_names = ['PTS', 'REB', 'AST', 'BLK', 'STL', '3PM']
         
         col_num = 1
         for stat_key, stat_name in zip(stat_order, stat_names):
@@ -230,29 +298,31 @@ class NBAStatsGUI:
                 std = stats_data['std_devs'][stat_key]
                 cv = 100 * (std / avg) if avg > 0 else 0
                 
-                # Alternate column colors
-                col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
-                
                 # Statistic name
-                tk.Label(table_frame, text=stat_name, bg=col_bg, fg='#ffffff',
-                        font=('Arial', 10), padx=10, pady=8).grid(row=0, column=col_num, sticky="ew")
-                # Average
-                tk.Label(table_frame, text=f"{avg:.1f}", bg=col_bg, fg='#ffffff',
-                        font=('Arial', 10, 'bold'), padx=10, pady=8).grid(row=1, column=col_num, sticky="ew")
+                tk.Label(table_frame, text=stat_name, bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                        font=('Segoe UI', 10, 'bold'), width=6).grid(row=0, column=col_num, pady=4)
+                # Average - Primary value
+                tk.Label(table_frame, text=f"{avg:.1f}", bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                        font=('Segoe UI', 12, 'bold'), width=6).grid(row=1, column=col_num, pady=4)
                 # Std Dev
-                tk.Label(table_frame, text=f"±{std:.1f}", bg=col_bg, fg='#cccccc',
-                        font=('Arial', 10), padx=10, pady=8).grid(row=2, column=col_num, sticky="ew")
-                # CV
-                tk.Label(table_frame, text=f"{cv:.1f}%", bg=col_bg, fg='#999999',
-                        font=('Arial', 10), padx=10, pady=8).grid(row=3, column=col_num, sticky="ew")
+                tk.Label(table_frame, text=f"±{std:.1f}", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                        font=('Segoe UI', 9), width=6).grid(row=2, column=col_num, pady=4)
+                # CV - Color coded
+                cv_color = self.COLORS['success'] if cv < 30 else (self.COLORS['warning'] if cv < 50 else self.COLORS['danger'])
+                tk.Label(table_frame, text=f"{cv:.0f}%", bg=self.COLORS['bg_card'], fg=cv_color,
+                        font=('Segoe UI', 9), width=6).grid(row=3, column=col_num, pady=4)
                 
                 col_num += 1
         
-        # Games played info at bottom
-        games_frame = tk.Frame(card, bg='#1a1a1a')
-        games_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
-        tk.Label(games_frame, text=f"Games Played: {stats_data['games_played']}", 
-                bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold')).pack()
+        # Games played info at bottom - Divider line
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        games_row = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        games_row.pack(fill='x')
+        tk.Label(games_row, text="Games Played", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_secondary'], font=('Segoe UI', 10)).pack(side='left')
+        tk.Label(games_row, text=f"{stats_data['games_played']}", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_primary'], font=('Segoe UI', 10, 'bold')).pack(side='right')
         
         # Configure column weights
         for i in range(col_num):
@@ -291,21 +361,23 @@ class NBAStatsGUI:
         return stats
     
     def create_rolling_stats_card(self, parent, title, game_log_df, row, col, colspan=6):
-        """Create a card showing L5, L10, L15 rolling averages with CV"""
-        card = tk.Frame(parent, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, highlightbackground='#333333', highlightthickness=1)
-        card.grid(row=row, column=col, columnspan=colspan, padx=10, pady=10, sticky="nsew")
+        """Create a modern card showing L5, L10, L15 rolling averages with CV"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
         
-        # Title
-        title_label = tk.Label(card, text=title, bg='#1a1a1a', fg='#ffffff',
-                              font=('Arial', 12, 'bold'), pady=10)
-        title_label.pack(fill=tk.X)
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
+        
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w')
         
         # Stats table
-        table_frame = tk.Frame(card, bg='#1a1a1a')
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
         stat_order = ['points', 'rebounds', 'assists', 'blocks', 'steals', '3pt']
-        stat_names = ['Points', 'Rebounds', 'Assists', 'Blocks', 'Steals', '3PTM']
+        stat_names = ['PTS', 'REB', 'AST', 'BLK', 'STL', '3PM']
         windows = [5, 10, 15]
         
         # Calculate stats for each window
@@ -313,15 +385,19 @@ class NBAStatsGUI:
         for n in windows:
             rolling_stats[n] = self.calculate_rolling_stats(game_log_df, n)
         
+        # Configure columns to expand evenly
+        table_frame.columnconfigure(0, weight=1)
+        for i in range(1, len(stat_names) + 1):
+            table_frame.columnconfigure(i, weight=1)
+        
         # Header row - stat names
-        tk.Label(table_frame, text='Statistic', bg='#2a2a2a', fg='#ffffff',
-                font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=0, column=0, sticky="ew")
+        tk.Label(table_frame, text='GAMES', bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, pady=6)
         
         col_num = 1
         for stat_name in stat_names:
-            col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
-            tk.Label(table_frame, text=stat_name, bg=col_bg, fg='#ffffff',
-                    font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=0, column=col_num, sticky="ew")
+            tk.Label(table_frame, text=stat_name, bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=0, column=col_num, pady=6)
             col_num += 1
         
         # Data rows for each window
@@ -330,121 +406,386 @@ class NBAStatsGUI:
             stats = rolling_stats[n]
             
             # Row label (L5, L10, L15)
-            tk.Label(table_frame, text=f'L{n} Avg', bg='#2a2a2a', fg='#ffffff',
-                    font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=row_num, column=0, sticky="ew")
+            tk.Label(table_frame, text=f'L{n}', bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=row_num, column=0, pady=6)
             
             col_num = 1
             for stat_key in stat_order:
-                col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
                 if stats and stat_key in stats['averages']:
                     avg = stats['averages'][stat_key]
-                    tk.Label(table_frame, text=f"{avg:.1f}", bg=col_bg, fg='#ffffff',
-                            font=('Arial', 10, 'bold'), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                    tk.Label(table_frame, text=f"{avg:.1f}", bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                            font=('Segoe UI', 11, 'bold')).grid(row=row_num, column=col_num, pady=6)
                 else:
-                    tk.Label(table_frame, text="-", bg=col_bg, fg='#666666',
-                            font=('Arial', 10), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                    tk.Label(table_frame, text="-", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 11)).grid(row=row_num, column=col_num, pady=6)
                 col_num += 1
             row_num += 1
             
             # CV row for this window
-            tk.Label(table_frame, text=f'L{n} CV%', bg='#2a2a2a', fg='#999999',
-                    font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=0, sticky="ew")
+            tk.Label(table_frame, text=f'CV%', bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                    font=('Segoe UI', 9)).grid(row=row_num, column=0, pady=2)
             
             col_num = 1
             for stat_key in stat_order:
-                col_bg = '#0a0a0a' if col_num % 2 == 0 else '#1a1a1a'
                 if stats and stat_key in stats['averages'] and stat_key in stats['std_devs']:
                     avg = stats['averages'][stat_key]
                     std = stats['std_devs'][stat_key]
                     cv = 100 * (std / avg) if avg > 0 else 0
-                    tk.Label(table_frame, text=f"{cv:.1f}%", bg=col_bg, fg='#999999',
-                            font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                    cv_color = self.COLORS['success'] if cv < 30 else (self.COLORS['warning'] if cv < 50 else self.COLORS['danger'])
+                    tk.Label(table_frame, text=f"{cv:.0f}%", bg=self.COLORS['bg_card'], fg=cv_color,
+                            font=('Segoe UI', 9)).grid(row=row_num, column=col_num, pady=2)
                 else:
-                    tk.Label(table_frame, text="-", bg=col_bg, fg='#666666',
-                            font=('Arial', 9), padx=10, pady=6).grid(row=row_num, column=col_num, sticky="ew")
+                    tk.Label(table_frame, text="-", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 9)).grid(row=row_num, column=col_num, pady=2)
                 col_num += 1
             row_num += 1
         
-        # Configure column weights
-        for i in range(len(stat_names) + 1):
+        # Games available info - Divider
+        total_games = len(game_log_df) if game_log_df is not None else 0
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        info_row = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        info_row.pack(fill='x')
+        tk.Label(info_row, text="Total Games Available", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_secondary'], font=('Segoe UI', 10)).pack(side='left')
+        tk.Label(info_row, text=f"{total_games}", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_primary'], font=('Segoe UI', 10, 'bold')).pack(side='right')
+    
+    def calculate_hit_rates(self, game_log_df, n_games, thresholds):
+        """Calculate hit rates for point thresholds over last n games"""
+        if game_log_df is None or game_log_df.empty or len(game_log_df) < n_games:
+            return None
+        
+        recent_games = game_log_df.head(n_games)
+        hit_rates = {}
+        
+        for threshold in thresholds:
+            games_hit = len(recent_games[recent_games['PTS'] >= threshold])
+            hit_rates[threshold] = (games_hit / n_games) * 100
+        
+        return hit_rates
+    
+    def calculate_rebound_hit_rates(self, game_log_df, n_games, thresholds):
+        """Calculate hit rates for rebound thresholds over last n games"""
+        if game_log_df is None or game_log_df.empty or len(game_log_df) < n_games:
+            return None
+        
+        recent_games = game_log_df.head(n_games)
+        hit_rates = {}
+        
+        for threshold in thresholds:
+            games_hit = len(recent_games[recent_games['REB'] >= threshold])
+            hit_rates[threshold] = (games_hit / n_games) * 100
+        
+        return hit_rates
+    
+    def calculate_assist_hit_rates(self, game_log_df, n_games, thresholds):
+        """Calculate hit rates for assist thresholds over last n games"""
+        if game_log_df is None or game_log_df.empty or len(game_log_df) < n_games:
+            return None
+        
+        recent_games = game_log_df.head(n_games)
+        hit_rates = {}
+        
+        for threshold in thresholds:
+            games_hit = len(recent_games[recent_games['AST'] >= threshold])
+            hit_rates[threshold] = (games_hit / n_games) * 100
+        
+        return hit_rates
+    
+    def create_hit_rate_card(self, parent, title, game_log_df, row, col, colspan=3):
+        """Create a modern card showing hit rates for point thresholds"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
+        
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
+        
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w')
+        
+        # Stats table
+        table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+        
+        thresholds = [10, 15, 20, 25, 30]
+        windows = [5, 10, 15]
+        
+        # Calculate hit rates for each window
+        hit_rates = {}
+        for n in windows:
+            hit_rates[n] = self.calculate_hit_rates(game_log_df, n, thresholds)
+        
+        # Configure columns to expand evenly
+        table_frame.columnconfigure(0, weight=1)
+        for i in range(1, len(thresholds) + 1):
             table_frame.columnconfigure(i, weight=1)
         
-        # Games available info
-        total_games = len(game_log_df) if game_log_df is not None else 0
-        info_frame = tk.Frame(card, bg='#1a1a1a')
-        info_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
-        tk.Label(info_frame, text=f"Total Games Available: {total_games}", 
-                bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold')).pack()
+        # Header row - threshold columns
+        tk.Label(table_frame, text='', bg=self.COLORS['bg_card']).grid(row=0, column=0)
+        
+        col_num = 1
+        for threshold in thresholds:
+            tk.Label(table_frame, text=f"{threshold}+", bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=0, column=col_num, pady=6)
+            col_num += 1
+        
+        # Data rows for each window
+        row_num = 1
+        for n in windows:
+            rates = hit_rates[n]
+            
+            # Row label (L5, L10, L15)
+            tk.Label(table_frame, text=f'L{n}', bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=row_num, column=0, pady=8)
+            
+            col_num = 1
+            for threshold in thresholds:
+                if rates and threshold in rates:
+                    rate = rates[threshold]
+                    # Color code based on hit rate
+                    if rate >= 80:
+                        rate_color = self.COLORS['success']
+                    elif rate >= 50:
+                        rate_color = self.COLORS['warning']
+                    else:
+                        rate_color = self.COLORS['danger']
+                    
+                    tk.Label(table_frame, text=f"{rate:.0f}%", bg=self.COLORS['bg_card'], fg=rate_color,
+                            font=('Segoe UI', 11, 'bold')).grid(row=row_num, column=col_num, pady=8)
+                else:
+                    tk.Label(table_frame, text="-", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 11)).grid(row=row_num, column=col_num, pady=8)
+                col_num += 1
+            row_num += 1
+        
+        # Info section - Divider
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        # Legend
+        legend_row = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        legend_row.pack(fill='x')
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['success'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="≥80%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['warning'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="50-79%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="<50%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 0))
     
-    def create_chart_display(self, parent, image_path, title, row, col, colspan=3):
-        """Display chart image in the GUI"""
-        if not os.path.exists(image_path):
-            return
+    def create_rebound_hit_rate_card(self, parent, title, game_log_df, row, col, colspan=3):
+        """Create a modern card showing hit rates for rebound thresholds"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
         
-        card = tk.Frame(parent, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, highlightbackground='#333333', highlightthickness=1)
-        card.grid(row=row, column=col, columnspan=colspan, padx=10, pady=10, sticky="nsew")
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
         
-        # Title
-        title_label = tk.Label(card, text=title, bg='#1a1a1a', fg='#ffffff',
-                              font=('Arial', 12, 'bold'), pady=10)
-        title_label.pack(fill=tk.X)
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w')
         
-        try:
-            # Load and resize image
-            img = Image.open(image_path)
-            # Calculate new size maintaining aspect ratio
-            original_width, original_height = img.size
-            # Use a max width that scales with window
-            new_width = min(1100, int(self.root.winfo_width() * 0.85)) if self.root.winfo_width() > 1 else 1100
-            aspect_ratio = original_height / original_width
-            new_height = int(new_width * aspect_ratio)
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
+        # Stats table
+        table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+        
+        thresholds = [4, 6, 8, 10, 12]
+        windows = [5, 10, 15]
+        
+        # Calculate hit rates for each window
+        hit_rates = {}
+        for n in windows:
+            hit_rates[n] = self.calculate_rebound_hit_rates(game_log_df, n, thresholds)
+        
+        # Configure columns to expand evenly
+        table_frame.columnconfigure(0, weight=1)
+        for i in range(1, len(thresholds) + 1):
+            table_frame.columnconfigure(i, weight=1)
+        
+        # Header row - threshold columns
+        tk.Label(table_frame, text='', bg=self.COLORS['bg_card']).grid(row=0, column=0)
+        
+        col_num = 1
+        for threshold in thresholds:
+            tk.Label(table_frame, text=f"{threshold}+", bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=0, column=col_num, pady=6)
+            col_num += 1
+        
+        # Data rows for each window
+        row_num = 1
+        for n in windows:
+            rates = hit_rates[n]
             
-            # Keep reference to prevent garbage collection
-            self.chart_images.append(photo)
+            # Row label (L5, L10, L15)
+            tk.Label(table_frame, text=f'L{n}', bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=row_num, column=0, pady=8)
             
-            # Display image
-            img_label = tk.Label(card, image=photo, bg='#1a1a1a')
-            img_label.pack(padx=10, pady=10)
-        except Exception as e:
-            tk.Label(card, text=f"Error loading chart: {str(e)}", 
-                    bg='#1a1a1a', fg='#ff6b6b', font=('Arial', 10),
-                    pady=20).pack()
+            col_num = 1
+            for threshold in thresholds:
+                if rates and threshold in rates:
+                    rate = rates[threshold]
+                    # Color code based on hit rate
+                    if rate >= 80:
+                        rate_color = self.COLORS['success']
+                    elif rate >= 50:
+                        rate_color = self.COLORS['warning']
+                    else:
+                        rate_color = self.COLORS['danger']
+                    
+                    tk.Label(table_frame, text=f"{rate:.0f}%", bg=self.COLORS['bg_card'], fg=rate_color,
+                            font=('Segoe UI', 11, 'bold')).grid(row=row_num, column=col_num, pady=8)
+                else:
+                    tk.Label(table_frame, text="-", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 11)).grid(row=row_num, column=col_num, pady=8)
+                col_num += 1
+            row_num += 1
+        
+        # Info section - Divider
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        # Legend
+        legend_row = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        legend_row.pack(fill='x')
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['success'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="≥80%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['warning'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="50-79%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="<50%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 0))
+    
+    def create_assist_hit_rate_card(self, parent, title, game_log_df, row, col, colspan=3):
+        """Create a modern card showing hit rates for assist thresholds"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
+        
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
+        
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w')
+        
+        # Stats table
+        table_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+        
+        thresholds = [4, 6, 8, 10, 12]
+        windows = [5, 10, 15]
+        
+        # Calculate hit rates for each window
+        hit_rates = {}
+        for n in windows:
+            hit_rates[n] = self.calculate_assist_hit_rates(game_log_df, n, thresholds)
+        
+        # Configure columns to expand evenly
+        table_frame.columnconfigure(0, weight=1)
+        for i in range(1, len(thresholds) + 1):
+            table_frame.columnconfigure(i, weight=1)
+        
+        # Header row - threshold columns
+        tk.Label(table_frame, text='', bg=self.COLORS['bg_card']).grid(row=0, column=0)
+        
+        col_num = 1
+        for threshold in thresholds:
+            tk.Label(table_frame, text=f"{threshold}+", bg=self.COLORS['bg_card'], fg=self.COLORS['text_secondary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=0, column=col_num, pady=6)
+            col_num += 1
+        
+        # Data rows for each window
+        row_num = 1
+        for n in windows:
+            rates = hit_rates[n]
+            
+            # Row label (L5, L10, L15)
+            tk.Label(table_frame, text=f'L{n}', bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                    font=('Segoe UI', 10, 'bold')).grid(row=row_num, column=0, pady=8)
+            
+            col_num = 1
+            for threshold in thresholds:
+                if rates and threshold in rates:
+                    rate = rates[threshold]
+                    # Color code based on hit rate
+                    if rate >= 80:
+                        rate_color = self.COLORS['success']
+                    elif rate >= 50:
+                        rate_color = self.COLORS['warning']
+                    else:
+                        rate_color = self.COLORS['danger']
+                    
+                    tk.Label(table_frame, text=f"{rate:.0f}%", bg=self.COLORS['bg_card'], fg=rate_color,
+                            font=('Segoe UI', 11, 'bold')).grid(row=row_num, column=col_num, pady=8)
+                else:
+                    tk.Label(table_frame, text="-", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 11)).grid(row=row_num, column=col_num, pady=8)
+                col_num += 1
+            row_num += 1
+        
+        # Info section - Divider
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        # Legend
+        legend_row = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        legend_row.pack(fill='x')
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['success'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="≥80%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['warning'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="50-79%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 12))
+        
+        tk.Label(legend_row, text="●", bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                font=('Segoe UI', 8)).pack(side='left')
+        tk.Label(legend_row, text="<50%", bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9)).pack(side='left', padx=(2, 0))
     
     def create_game_log_display(self, parent, game_log_df, title, row, col, colspan=6):
-        """Display game log in a scrollable table"""
-        card = tk.Frame(parent, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, highlightbackground='#333333', highlightthickness=1)
-        card.grid(row=row, column=col, columnspan=colspan, padx=10, pady=10, sticky="nsew")
+        """Display game log in a modern scrollable table"""
+        card = tk.Frame(parent, bg=self.COLORS['bg_card'])
+        card.grid(row=row, column=col, columnspan=colspan, padx=8, pady=8, sticky="nsew")
         
-        # Title
-        title_label = tk.Label(card, text=title, bg='#1a1a1a', fg='#ffffff',
-                              font=('Arial', 12, 'bold'), pady=10)
-        title_label.pack(fill=tk.X)
+        inner = tk.Frame(card, bg=self.COLORS['bg_card'])
+        inner.pack(fill="both", expand=True, padx=24, pady=20)
+        
+        # Title - Modern minimal
+        tk.Label(inner, text=title.upper(), bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(0, 16))
         
         # Create frame for treeview and scrollbars
-        tree_frame = tk.Frame(card, bg='#1a1a1a')
-        tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        tree_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        tree_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Style scrollbars
+        # Modern scrollbar style
         scrollbar_style = ttk.Style()
-        scrollbar_style.configure("Custom.Vertical.TScrollbar",
-                                  background='#2a2a2a',
-                                  troughcolor='#0a0a0a',
-                                  bordercolor='#333333',
-                                  arrowcolor='#ffffff',
-                                  darkcolor='#2a2a2a',
-                                  lightcolor='#2a2a2a')
-        scrollbar_style.configure("Custom.Horizontal.TScrollbar",
-                                  background='#2a2a2a',
-                                  troughcolor='#0a0a0a',
-                                  bordercolor='#333333',
-                                  arrowcolor='#ffffff',
-                                  darkcolor='#2a2a2a',
-                                  lightcolor='#2a2a2a')
+        scrollbar_style.configure("Modern.Vertical.TScrollbar",
+                                  background=self.COLORS['bg_elevated'],
+                                  troughcolor=self.COLORS['bg_primary'],
+                                  bordercolor=self.COLORS['bg_primary'],
+                                  arrowcolor=self.COLORS['text_secondary'])
         
         # Create scrollbars
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", style="Custom.Vertical.TScrollbar")
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical", style="Modern.Vertical.TScrollbar")
         
         # Create treeview
         # PRA, PR, PA, RA are calculated columns (not from API)
@@ -512,26 +853,29 @@ class NBAStatsGUI:
             width = column_widths.get(col, 80)
             tree.column(col, width=width, anchor='center')
         
-        # Style the treeview
+        # Modern Treeview styling
         style = ttk.Style()
-        style.configure("Treeview",
-                       background="#0a0a0a",
-                       foreground="#ffffff",
-                       fieldbackground="#0a0a0a",
+        style.configure("Modern.Treeview",
+                       background=self.COLORS['bg_primary'],
+                       foreground=self.COLORS['text_primary'],
+                       fieldbackground=self.COLORS['bg_primary'],
                        borderwidth=0,
                        relief='flat',
-                       rowheight=30)
-        style.configure("Treeview.Heading",
-                       background="#1a1a1a",
-                       foreground="#cccccc",
+                       rowheight=32,
+                       font=('Segoe UI', 10))
+        style.configure("Modern.Treeview.Heading",
+                       background=self.COLORS['bg_elevated'],
+                       foreground=self.COLORS['text_secondary'],
                        borderwidth=0,
                        relief='flat',
-                       font=('Arial', 9))
-        style.map('Treeview', 
-                 background=[('selected', '#333333')],
-                 foreground=[('selected', '#ffffff')])
-        style.map('Treeview.Heading',
-                 background=[('active', '#2a2a2a')])
+                       font=('Segoe UI', 9, 'bold'))
+        style.map('Modern.Treeview', 
+                 background=[('selected', self.COLORS['accent_soft'])],
+                 foreground=[('selected', self.COLORS['text_primary'])])
+        style.map('Modern.Treeview.Heading',
+                 background=[('active', self.COLORS['bg_hover'])])
+        
+        tree.configure(style="Modern.Treeview")
         
         # Insert data
         for idx, row in game_log_df.iterrows():
@@ -586,11 +930,11 @@ class NBAStatsGUI:
                 tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             tree.insert('', 'end', values=values, tags=(tag,))
         
-        # Configure row colors - subtle win/loss highlighting
-        tree.tag_configure('win', background='#0d2818', foreground='#ffffff')  # Subtle green tint
-        tree.tag_configure('loss', background='#281010', foreground='#ffffff')  # Subtle red tint
-        tree.tag_configure('evenrow', background='#0a0a0a', foreground='#ffffff')
-        tree.tag_configure('oddrow', background='#0a0a0a', foreground='#ffffff')
+        # Modern row colors - subtle win/loss highlighting
+        tree.tag_configure('win', background='#0d291a', foreground=self.COLORS['text_primary'])  # Subtle green
+        tree.tag_configure('loss', background='#291414', foreground=self.COLORS['text_primary'])  # Subtle red
+        tree.tag_configure('evenrow', background=self.COLORS['bg_primary'], foreground=self.COLORS['text_primary'])
+        tree.tag_configure('oddrow', background=self.COLORS['bg_primary'], foreground=self.COLORS['text_primary'])
         
         # Pack elements
         tree.grid(row=0, column=0, sticky='nsew')
@@ -599,17 +943,37 @@ class NBAStatsGUI:
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
         
-        # Add summary info
-        summary_frame = tk.Frame(card, bg='#1a1a1a')
-        summary_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
+        # Add summary info - Modern style with divider
+        tk.Frame(inner, bg=self.COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
+        
+        summary_frame = tk.Frame(inner, bg=self.COLORS['bg_card'])
+        summary_frame.pack(fill=tk.X)
         
         total_games = len(game_log_df)
         wins = len(game_log_df[game_log_df['WL'] == 'W']) if 'WL' in game_log_df.columns else 0
         losses = total_games - wins
         
-        summary_text = f"Total Games: {total_games}  |  Wins: {wins}  |  Losses: {losses}"
-        tk.Label(summary_frame, text=summary_text, bg='#1a1a1a', fg='#ffffff',
-                font=('Arial', 10, 'bold')).pack()
+        # Stats row
+        stats_row = tk.Frame(summary_frame, bg=self.COLORS['bg_card'])
+        stats_row.pack(fill='x')
+        
+        # Total Games
+        tk.Label(stats_row, text="Total", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_secondary'], font=('Segoe UI', 10)).pack(side='left')
+        tk.Label(stats_row, text=f"{total_games}", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_primary'], font=('Segoe UI', 10, 'bold')).pack(side='left', padx=(4, 20))
+        
+        # Wins
+        tk.Label(stats_row, text="Wins", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_secondary'], font=('Segoe UI', 10)).pack(side='left')
+        tk.Label(stats_row, text=f"{wins}", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['success'], font=('Segoe UI', 10, 'bold')).pack(side='left', padx=(4, 20))
+        
+        # Losses
+        tk.Label(stats_row, text="Losses", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['text_secondary'], font=('Segoe UI', 10)).pack(side='left')
+        tk.Label(stats_row, text=f"{losses}", bg=self.COLORS['bg_card'], 
+                fg=self.COLORS['danger'], font=('Segoe UI', 10, 'bold')).pack(side='left', padx=(4, 0))
     
     def fetch_stats(self):
         player = self.player_entry.get().strip()
@@ -649,9 +1013,7 @@ class NBAStatsGUI:
                 season_data = {
                     'season': season,
                     'season_stats': None,
-                    'vs_team_stats': None,
-                    'chart_path': None,
-                    'vs_chart_path': None
+                    'vs_team_stats': None
                 }
                 
                 # Season statistics
@@ -669,22 +1031,6 @@ class NBAStatsGUI:
                     season_data['vs_team_stats'] = stats
                 except Exception as e:
                     season_data['vs_team_error'] = str(e)
-                
-                # Generate charts
-                self.update_status(f"Generating percentile charts for {season}...")
-                try:
-                    chart_path = f"charts/{player.replace(' ', '_').lower()}_{season}.png"
-                    plot_player_percentiles_season(player, season, save_path=chart_path)
-                    season_data['chart_path'] = chart_path
-                except Exception as e:
-                    season_data['chart_error'] = str(e)
-                
-                try:
-                    vs_chart_path = f"charts/{player.replace(' ', '_').lower()}_vs_{team.replace(' ', '_').lower()}_{season}.png"
-                    plot_player_percentiles_vs_team(player, season, team, save_path=vs_chart_path)
-                    season_data['vs_chart_path'] = vs_chart_path
-                except Exception as e:
-                    season_data['vs_chart_error'] = str(e)
                 
                 # Get game log
                 self.update_status(f"Fetching game log for {season}...")
@@ -732,11 +1078,14 @@ class NBAStatsGUI:
         for data in all_data:
             season = data['season']
             
-            # Season header
-            header = tk.Label(self.results_frame, text=f"Season {season}", 
-                            bg='#000000', fg='#ffffff',
-                            font=('Arial', 14, 'bold'), pady=15)
-            header.grid(row=current_row, column=0, columnspan=6, sticky="ew")
+            # Season header - Modern style
+            header_frame = tk.Frame(self.results_frame, bg=self.COLORS['bg_primary'])
+            header_frame.grid(row=current_row, column=0, columnspan=6, sticky="ew", pady=(24, 8))
+            
+            tk.Label(header_frame, text="SEASON", bg=self.COLORS['bg_primary'], 
+                    fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+            tk.Label(header_frame, text=season, bg=self.COLORS['bg_primary'], 
+                    fg=self.COLORS['text_primary'], font=('Segoe UI', 20, 'bold')).pack(anchor='w', pady=(2, 0))
             current_row += 1
             
             # Season stats card
@@ -746,11 +1095,11 @@ class NBAStatsGUI:
                                      data['season_stats'], 
                                      current_row, 0, colspan=3)
             elif data.get('season_error'):
-                error_label = tk.Label(self.results_frame, 
-                                      text=f"Season Error: {data['season_error']}", 
-                                      bg='#1a1a1a', fg='#ff6b6b',
-                                      font=('Arial', 10), pady=20, padx=20)
-                error_label.grid(row=current_row, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
+                error_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
+                error_card.grid(row=current_row, column=0, columnspan=3, padx=8, pady=8, sticky="ew")
+                tk.Label(error_card, text=f"Season Error: {data['season_error']}", 
+                        bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                        font=('Segoe UI', 10), pady=20, padx=24).pack()
             
             # VS Team stats card
             if data.get('vs_team_stats'):
@@ -759,11 +1108,11 @@ class NBAStatsGUI:
                                      data['vs_team_stats'], 
                                      current_row, 3, colspan=3)
             elif data.get('vs_team_error'):
-                error_label = tk.Label(self.results_frame, 
-                                      text=f"VS Team Error: {data['vs_team_error']}", 
-                                      bg='#1a1a1a', fg='#ff6b6b',
-                                      font=('Arial', 10), pady=20, padx=20)
-                error_label.grid(row=current_row, column=3, columnspan=3, padx=10, pady=10, sticky="ew")
+                error_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
+                error_card.grid(row=current_row, column=3, columnspan=3, padx=8, pady=8, sticky="ew")
+                tk.Label(error_card, text=f"VS Team Error: {data['vs_team_error']}", 
+                        bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                        font=('Segoe UI', 10), pady=20, padx=24).pack()
             
             current_row += 1
             
@@ -774,21 +1123,20 @@ class NBAStatsGUI:
                                               data['game_log'],
                                               current_row, 0, colspan=6)
                 current_row += 1
-            
-            # Season chart
-            if data.get('chart_path'):
-                self.create_chart_display(self.results_frame, 
-                                         data['chart_path'],
-                                         f"{player} - {season} Percentile Distribution",
-                                         current_row, 0, colspan=6)
-                current_row += 1
-            
-            # VS Team chart
-            if data.get('vs_chart_path'):
-                self.create_chart_display(self.results_frame, 
-                                         data['vs_chart_path'],
-                                         f"{player} vs {team} - {season} Percentile Distribution",
-                                         current_row, 0, colspan=6)
+                
+                # Hit rate cards row - Points, Rebounds, Assists
+                self.create_hit_rate_card(self.results_frame,
+                                         f"{player} - Points Hit Rate",
+                                         data['game_log'],
+                                         current_row, 0, colspan=2)
+                self.create_rebound_hit_rate_card(self.results_frame,
+                                         f"{player} - Rebounds Hit Rate",
+                                         data['game_log'],
+                                         current_row, 2, colspan=2)
+                self.create_assist_hit_rate_card(self.results_frame,
+                                         f"{player} - Assists Hit Rate",
+                                         data['game_log'],
+                                         current_row, 4, colspan=2)
                 current_row += 1
             
             # Game log
@@ -799,11 +1147,11 @@ class NBAStatsGUI:
                                             current_row, 0, colspan=6)
                 current_row += 1
             elif data.get('game_log_error'):
-                error_label = tk.Label(self.results_frame, 
-                                      text=f"Game Log Error: {data['game_log_error']}", 
-                                      bg='#1a1a1a', fg='#ff6b6b',
-                                      font=('Arial', 10), pady=20, padx=20)
-                error_label.grid(row=current_row, column=0, columnspan=6, padx=10, pady=10, sticky="ew")
+                error_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
+                error_card.grid(row=current_row, column=0, columnspan=6, padx=8, pady=8, sticky="ew")
+                tk.Label(error_card, text=f"Game Log Error: {data['game_log_error']}", 
+                        bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                        font=('Segoe UI', 10), pady=20, padx=24).pack()
                 current_row += 1
             
             # VS Team game log
@@ -820,11 +1168,10 @@ class NBAStatsGUI:
                 else:
                     message = f"No games found for {player} vs {team} in {season} season"
                 
-                no_games_label = tk.Label(self.results_frame, 
-                                         text=message, 
-                                         bg='#1a1a1a', fg='#999999',
-                                         font=('Arial', 10, 'italic'), pady=10, padx=20)
-                no_games_label.grid(row=current_row, column=0, columnspan=6, padx=10, pady=(10, 0), sticky="ew")
+                msg_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
+                msg_card.grid(row=current_row, column=0, columnspan=6, padx=8, pady=8, sticky="ew")
+                tk.Label(msg_card, text=message, bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                        font=('Segoe UI', 10), pady=16, padx=24).pack()
                 current_row += 1
                 
                 # Show available matchups for debugging
@@ -833,21 +1180,21 @@ class NBAStatsGUI:
                     if len(data['available_matchups']) > 15:
                         matchups_text += f"\n... and {len(data['available_matchups']) - 15} more"
                     
-                    matchups_label = tk.Label(self.results_frame, text=matchups_text,
-                                            font=("Arial", 8), bg='#1a1a1a', fg='#666666',
-                                            justify='left', pady=10, padx=20)
-                    matchups_label.grid(row=current_row, column=0, columnspan=6, padx=10, pady=(0, 10), sticky="ew")
+                    matchups_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
+                    matchups_card.grid(row=current_row, column=0, columnspan=6, padx=8, pady=(0, 8), sticky="ew")
+                    tk.Label(matchups_card, text=matchups_text, bg=self.COLORS['bg_card'], fg=self.COLORS['text_tertiary'],
+                            font=('Segoe UI', 9), justify='left', pady=12, padx=24).pack(anchor='w')
                     current_row += 1
             
-            # Add separator
-            separator = tk.Frame(self.results_frame, height=2, bg='#333333')
-            separator.grid(row=current_row, column=0, columnspan=6, sticky="ew", pady=20)
+            # Add separator - Modern divider
+            separator = tk.Frame(self.results_frame, height=1, bg=self.COLORS['divider'])
+            separator.grid(row=current_row, column=0, columnspan=6, sticky="ew", pady=24)
             current_row += 1
         
         self.update_status(f"Statistics loaded successfully for {len(all_data)} season(s)!")
         
     def enable_fetch_button(self):
-        self.fetch_btn.config(state='normal', text='Fetch Statistics')
+        self.fetch_btn.config(state='normal', text='Fetch Statistics', bg=self.COLORS['accent'])
     
     def on_game_click(self, event):
         """Handle click on game log row"""
@@ -901,11 +1248,20 @@ class NBAStatsGUI:
             game_id = game_id.zfill(10)
             print(f"DEBUG: Fetching box score for Game ID: '{game_id}'")
             
-            # Create loading window
+            # Create modern loading window
             loading = tk.Toplevel(self.root)
-            loading.title("Loading...")
-            loading.geometry("300x100")
-            tk.Label(loading, text="Fetching Box Score...", font=('Arial', 12)).pack(expand=True)
+            loading.title("Loading")
+            loading.geometry("300x120")
+            loading.configure(bg=self.COLORS['bg_card'])
+            loading.resizable(False, False)
+            
+            loading_inner = tk.Frame(loading, bg=self.COLORS['bg_card'])
+            loading_inner.pack(expand=True, fill='both', padx=24, pady=24)
+            
+            tk.Label(loading_inner, text="LOADING", bg=self.COLORS['bg_card'], 
+                    fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+            tk.Label(loading_inner, text="Fetching Box Score...", bg=self.COLORS['bg_card'], 
+                    fg=self.COLORS['text_primary'], font=('Segoe UI', 14, 'bold')).pack(anchor='w', pady=(4, 0))
             loading.update()
             
             # Fetch data
@@ -983,28 +1339,32 @@ class NBAStatsGUI:
                 messagebox.showinfo("Info", f"No box score data available for game {game_id}.")
                 return
             
-            # Create Box Score Window
+            # Create Modern Box Score Window
             bs_window = tk.Toplevel(self.root)
             bs_window.title(f"Box Score - {game_id}")
             bs_window.geometry("1200x950")
-            bs_window.configure(bg='#000000')
+            bs_window.configure(bg=self.COLORS['bg_primary'])
             
             # Create scrollable canvas
-            canvas = tk.Canvas(bs_window, bg='#000000', highlightthickness=0)
+            canvas = tk.Canvas(bs_window, bg=self.COLORS['bg_primary'], highlightthickness=0, bd=0)
             scrollbar = ttk.Scrollbar(bs_window, orient="vertical", command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
+            scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
             
-            # Configure style for box score
+            # Configure modern style for box score treeview
             style = ttk.Style()
             style.configure("BoxScore.Treeview", 
-                          background="#0a0a0a",
-                          foreground="#ffffff",
-                          fieldbackground="#0a0a0a",
-                          rowheight=25)
+                          background=self.COLORS['bg_primary'],
+                          foreground=self.COLORS['text_primary'],
+                          fieldbackground=self.COLORS['bg_primary'],
+                          rowheight=28,
+                          font=('Segoe UI', 10))
             style.configure("BoxScore.Treeview.Heading",
-                          background="#1a1a1a",
-                          foreground="#cccccc",
-                          font=('Arial', 9, 'bold'))
+                          background=self.COLORS['bg_elevated'],
+                          foreground=self.COLORS['text_secondary'],
+                          font=('Segoe UI', 9, 'bold'))
+            style.map('BoxScore.Treeview',
+                     background=[('selected', self.COLORS['accent_soft'])],
+                     foreground=[('selected', self.COLORS['text_primary'])])
             
             scrollable_frame.bind(
                 "<Configure>",
@@ -1025,15 +1385,21 @@ class NBAStatsGUI:
             canvas.pack(side="left", fill="both", expand=True)
             scrollbar.pack(side="right", fill="y")
             
-            # Display Matchup Header
+            # Display Matchup Header - Modern style
             if not team_stats.empty:
                 try:
                     team1 = team_stats.iloc[0]
                     team2 = team_stats.iloc[1]
                     
-                    header_text = f"{team1['TEAM_ABBREVIATION']} {team1['PTS']} - {team2['PTS']} {team2['TEAM_ABBREVIATION']}"
-                    tk.Label(scrollable_frame, text=header_text, bg='#000000', fg='#ffffff',
-                            font=('Arial', 20, 'bold'), pady=20).pack(fill=tk.X)
+                    header_frame = tk.Frame(scrollable_frame, bg=self.COLORS['bg_primary'])
+                    header_frame.pack(fill=tk.X, padx=32, pady=(24, 16))
+                    
+                    tk.Label(header_frame, text="BOX SCORE", bg=self.COLORS['bg_primary'], 
+                            fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
+                    
+                    score_text = f"{team1['TEAM_ABBREVIATION']} {team1['PTS']} - {team2['PTS']} {team2['TEAM_ABBREVIATION']}"
+                    tk.Label(header_frame, text=score_text, bg=self.COLORS['bg_primary'], 
+                            fg=self.COLORS['text_primary'], font=('Segoe UI', 24, 'bold')).pack(anchor='w', pady=(4, 0))
                 except Exception:
                     pass # Skip header if data format is unexpected
             
@@ -1082,20 +1448,25 @@ class NBAStatsGUI:
                     except Exception as e:
                         print(f"DEBUG: Sorting error: {e}")
                     
-                    # Team Header
-                    tk.Label(scrollable_frame, text=f"{team_abbr} Stats", bg='#000000', fg='#ffffff',
-                            font=('Arial', 16, 'bold'), pady=10).pack(fill=tk.X, padx=10)
+                    # Team Header - Modern style
+                    team_header = tk.Frame(scrollable_frame, bg=self.COLORS['bg_primary'])
+                    team_header.pack(fill=tk.X, padx=32, pady=(16, 8))
+                    tk.Label(team_header, text=f"{team_abbr}", bg=self.COLORS['bg_primary'], fg=self.COLORS['text_primary'],
+                            font=('Segoe UI', 14, 'bold')).pack(anchor='w')
                     
-                    # Create Treeview for team stats
+                    # Create Treeview for team stats in a card
                     cols = ['PLAYER_NAME', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF', 'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT', 'PLUS_MINUS']
                     
                     # Filter cols that exist
                     cols = [c for c in cols if c in player_stats.columns]
                     
-                    tree_frame = tk.Frame(scrollable_frame, bg='#000000')
-                    tree_frame.pack(fill=tk.X, padx=10, pady=5)
+                    tree_card = tk.Frame(scrollable_frame, bg=self.COLORS['bg_card'])
+                    tree_card.pack(fill=tk.X, padx=32, pady=8)
                     
-                    tree = ttk.Treeview(tree_frame, columns=cols, show='headings', 
+                    tree_inner = tk.Frame(tree_card, bg=self.COLORS['bg_card'])
+                    tree_inner.pack(fill=tk.X, padx=16, pady=16)
+                    
+                    tree = ttk.Treeview(tree_inner, columns=cols, show='headings', 
                                       height=len(team_players), style="BoxScore.Treeview")
                     
                     # Configure columns
@@ -1133,7 +1504,11 @@ class NBAStatsGUI:
                     
                     tree.pack(fill=tk.X)
             else:
-                tk.Label(scrollable_frame, text="Player stats format not recognized", bg='#000000', fg='#ff6b6b').pack(pady=20)
+                error_frame = tk.Frame(scrollable_frame, bg=self.COLORS['bg_card'])
+                error_frame.pack(fill=tk.X, padx=32, pady=16)
+                tk.Label(error_frame, text="Player stats format not recognized", 
+                        bg=self.COLORS['bg_card'], fg=self.COLORS['danger'],
+                        font=('Segoe UI', 10), pady=20, padx=24).pack()
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load box score: {str(e)}")

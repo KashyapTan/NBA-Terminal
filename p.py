@@ -556,26 +556,43 @@ class NBAPredictor:
 
 
 def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pace_data, reversion_data, importance_pairs, matchup_info):
-    """Display prediction results in a styled GUI popup"""
+    """Display prediction results in a modern minimalist GUI"""
+    
+    # ===== MODERN COLOR PALETTE =====
+    COLORS = {
+        'bg_primary': '#0f0f0f',        # Deep black background
+        'bg_card': '#1a1a1a',           # Card background
+        'bg_elevated': '#242424',       # Elevated elements
+        'bg_hover': '#2a2a2a',          # Hover state
+        'text_primary': '#ffffff',      # Primary text
+        'text_secondary': '#8b8b8b',    # Secondary/muted text
+        'text_tertiary': '#5c5c5c',     # Tertiary text
+        'accent': '#6366f1',            # Modern indigo accent
+        'accent_soft': '#4f46e5',       # Softer accent
+        'success': '#10b981',           # Green for positive
+        'warning': '#f59e0b',           # Amber for warning
+        'danger': '#ef4444',            # Red for negative
+        'border': '#2a2a2a',            # Subtle border
+        'divider': '#1f1f1f',           # Divider lines
+    }
     
     root = tk.Tk()
-    root.title(f"NBA Points Prediction - {player_name}")
-    root.geometry("900x850")
-    root.configure(bg='#000000')
+    root.title(f"NBA Prediction • {player_name}")
+    root.geometry("800x900")
+    root.configure(bg=COLORS['bg_primary'])
     
-    # Style configuration (matching stats.py)
+    # Configure ttk styles for modern look
     style = ttk.Style()
     style.theme_use('clam')
-    style.configure('TFrame', background='#000000')
-    style.configure('TLabel', background='#000000', foreground='#ffffff', font=('Arial', 10))
-    style.configure('Title.TLabel', font=('Arial', 16, 'bold'), foreground='#ffffff', background='#000000')
-    style.configure('Header.TLabel', font=('Arial', 12, 'bold'), foreground='#00d9ff', background='#1a1a1a')
-    style.configure('Stat.TLabel', font=('Arial', 11), foreground='#ffffff', background='#1a1a1a')
+    style.configure('TFrame', background=COLORS['bg_primary'])
+    style.configure('Card.TFrame', background=COLORS['bg_card'])
+    style.configure('TScrollbar', background=COLORS['bg_card'], troughcolor=COLORS['bg_primary'],
+                    bordercolor=COLORS['bg_primary'], arrowcolor=COLORS['text_secondary'])
     
     # Main scrollable canvas
-    main_canvas = tk.Canvas(root, bg='#000000', highlightthickness=0)
+    main_canvas = tk.Canvas(root, bg=COLORS['bg_primary'], highlightthickness=0, bd=0)
     scrollbar = ttk.Scrollbar(root, orient="vertical", command=main_canvas.yview)
-    scrollable_frame = ttk.Frame(main_canvas)
+    scrollable_frame = tk.Frame(main_canvas, bg=COLORS['bg_primary'])
     
     scrollable_frame.bind(
         "<Configure>",
@@ -585,7 +602,6 @@ def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pa
     main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     main_canvas.configure(yscrollcommand=scrollbar.set)
     
-    # Bind mouse wheel
     def on_mousewheel(event):
         main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
     main_canvas.bind_all("<MouseWheel>", on_mousewheel)
@@ -593,52 +609,126 @@ def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pa
     main_canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
     
-    main_frame = ttk.Frame(scrollable_frame)
-    main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+    # Content container with max width for clean layout
+    content_frame = tk.Frame(scrollable_frame, bg=COLORS['bg_primary'])
+    content_frame.pack(fill="both", expand=True, padx=32, pady=32)
     
-    # ===== HEADER - PREDICTION RESULT =====
-    header_frame = tk.Frame(main_frame, bg='#00d9ff', relief=tk.RAISED, borderwidth=2)
-    header_frame.pack(fill="x", pady=(0, 20))
+    # ===== HERO SECTION - PREDICTION =====
+    hero_frame = tk.Frame(content_frame, bg=COLORS['bg_primary'])
+    hero_frame.pack(fill="x", pady=(0, 40))
     
-    tk.Label(header_frame, text=f"🏀 PREDICTED POINTS FOR {player_name.upper()}", 
-             bg='#00d9ff', fg='#000000', font=('Arial', 14, 'bold'), pady=10).pack()
-    tk.Label(header_frame, text=f"{prediction:.1f}", 
-             bg='#00d9ff', fg='#000000', font=('Arial', 36, 'bold'), pady=5).pack()
+    # Player name - subtle label
+    tk.Label(hero_frame, text="POINTS PREDICTION", 
+             bg=COLORS['bg_primary'], fg=COLORS['text_tertiary'], 
+             font=('Segoe UI', 10, 'bold')).pack(anchor='w')
     
+    # Player name - main title
+    tk.Label(hero_frame, text=player_name.title(), 
+             bg=COLORS['bg_primary'], fg=COLORS['text_primary'], 
+             font=('Segoe UI', 28, 'bold')).pack(anchor='w', pady=(4, 0))
+    
+    # Opponent info
     opponent = matchup_info.get('Opponent_Name', 'Unknown')
-    tk.Label(header_frame, text=f"vs {opponent}", 
-             bg='#00d9ff', fg='#1a1a2e', font=('Arial', 11), pady=5).pack()
+    home_away = "Home" if next_game_inputs['Home_Away'] == 1 else "Away"
+    tk.Label(hero_frame, text=f"vs {opponent}  •  {home_away}", 
+             bg=COLORS['bg_primary'], fg=COLORS['text_secondary'], 
+             font=('Segoe UI', 12)).pack(anchor='w', pady=(2, 16))
     
-    # ===== ZONE MATCHUP ANALYSIS =====
-    zone_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1, 
-                         highlightbackground='#333333', highlightthickness=1)
-    zone_card.pack(fill="x", pady=10)
+    # Prediction value - large and prominent
+    pred_container = tk.Frame(hero_frame, bg=COLORS['bg_primary'])
+    pred_container.pack(anchor='w')
     
-    tk.Label(zone_card, text="🎯 ZONE MATCHUP ANALYSIS", bg='#1a1a1a', fg='#00d9ff',
-             font=('Arial', 12, 'bold'), pady=10).pack()
+    tk.Label(pred_container, text=f"{prediction:.1f}", 
+             bg=COLORS['bg_primary'], fg=COLORS['accent'], 
+             font=('Segoe UI', 56, 'bold')).pack(side='left')
     
-    # Zone table
-    zone_table = tk.Frame(zone_card, bg='#1a1a1a')
-    zone_table.pack(fill="x", padx=15, pady=(0, 10))
+    tk.Label(pred_container, text="pts", 
+             bg=COLORS['bg_primary'], fg=COLORS['text_tertiary'], 
+             font=('Segoe UI', 18)).pack(side='left', padx=(8, 0), pady=(20, 0))
     
-    # Headers
-    headers = ['Zone', 'Freq', 'Pts', 'Opp%', 'Lg%', 'Diff', 'Score']
-    header_widths = [18, 6, 4, 7, 7, 7, 8]
-    for i, (header, width) in enumerate(zip(headers, header_widths)):
-        tk.Label(zone_table, text=header, bg='#2a2a2a', fg='#ffffff', 
-                 font=('Arial', 9, 'bold'), width=width, pady=5).grid(row=0, column=i, sticky='ew', padx=1)
+    # Helper function to create modern cards
+    def create_card(parent, title=None):
+        card = tk.Frame(parent, bg=COLORS['bg_card'])
+        card.pack(fill="x", pady=(0, 16))
+        
+        inner = tk.Frame(card, bg=COLORS['bg_card'])
+        inner.pack(fill="x", padx=24, pady=20)
+        
+        if title:
+            tk.Label(inner, text=title, bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                     font=('Segoe UI', 11, 'bold')).pack(anchor='w', pady=(0, 16))
+        
+        return inner
     
-    # Zone data rows
+    # Helper to create stat rows
+    def create_stat_row(parent, label, value, value_color=None):
+        row = tk.Frame(parent, bg=COLORS['bg_card'])
+        row.pack(fill="x", pady=6)
+        
+        tk.Label(row, text=label, bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                 font=('Segoe UI', 11)).pack(side='left')
+        
+        color = value_color if value_color else COLORS['text_primary']
+        tk.Label(row, text=value, bg=COLORS['bg_card'], fg=color,
+                 font=('Segoe UI', 11, 'bold')).pack(side='right')
+    
+    # ===== KEY METRICS ROW =====
+    metrics_frame = tk.Frame(content_frame, bg=COLORS['bg_primary'])
+    metrics_frame.pack(fill="x", pady=(0, 24))
+    
+    # Season avg metric
+    def create_metric_box(parent, label, value, subtitle=None):
+        box = tk.Frame(parent, bg=COLORS['bg_card'])
+        box.pack(side='left', fill='both', expand=True, padx=(0, 8))
+        
+        inner = tk.Frame(box, bg=COLORS['bg_card'])
+        inner.pack(fill="x", padx=20, pady=16)
+        
+        tk.Label(inner, text=label, bg=COLORS['bg_card'], fg=COLORS['text_tertiary'],
+                 font=('Segoe UI', 9)).pack(anchor='w')
+        tk.Label(inner, text=value, bg=COLORS['bg_card'], fg=COLORS['text_primary'],
+                 font=('Segoe UI', 22, 'bold')).pack(anchor='w', pady=(4, 0))
+        if subtitle:
+            tk.Label(inner, text=subtitle, bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                     font=('Segoe UI', 9)).pack(anchor='w', pady=(2, 0))
+    
+    create_metric_box(metrics_frame, "SEASON AVG", f"{float(next_game_inputs['Season_Avg_PTS']):.1f}")
+    create_metric_box(metrics_frame, "LAST 5", f"{float(next_game_inputs['Last_5_PTS']):.1f}")
+    create_metric_box(metrics_frame, "LAST 10", f"{float(next_game_inputs['Last_10_PTS']):.1f}")
+    
+    # Fix last box padding
+    for child in metrics_frame.winfo_children():
+        child.pack_configure(padx=4)
+    metrics_frame.winfo_children()[0].pack_configure(padx=(0, 4))
+    metrics_frame.winfo_children()[-1].pack_configure(padx=(4, 0))
+    
+    # ===== ZONE MATCHUP CARD =====
+    zone_card = create_card(content_frame, "ZONE MATCHUP SCORE")
+    
     player_profile = zone_data['player_profile']
     opp_zones = zone_data['opp_zones']
     league_zones = zone_data['league_zones']
+    zone_score = zone_data['zone_score']
     
-    row_num = 1
+    # Table header - must match data row widths exactly
+    header_row = tk.Frame(zone_card, bg=COLORS['bg_card'])
+    header_row.pack(fill="x", pady=(0, 12))
+    
+    headers = [('Zone', 22, 'w'), ('Freq', 7, 'center'), ('Pts', 5, 'center'), 
+               ('Opp%', 8, 'center'), ('Lg%', 8, 'center'), ('Diff', 8, 'center'), ('Score', 9, 'e')]
+    for header, width, anchor in headers:
+        tk.Label(header_row, text=header, bg=COLORS['bg_card'], fg=COLORS['text_tertiary'],
+                 font=('Segoe UI', 11), width=width, anchor=anchor).pack(side='left', padx=3)
+    
+    # Divider under header
+    tk.Frame(zone_card, bg=COLORS['divider'], height=1).pack(fill='x', pady=(0, 10))
+    
+    # Zone rows - full data table
     for zone in STANDARD_ZONES:
         freq = player_profile.get(zone, 0)
         if freq == 0:
             continue
-            
+        
         pts_value = ZONE_POINT_VALUES.get(zone, 2.0)
         opp_pct = opp_zones.get(zone, 0)
         league_pct = league_zones.get(zone, 0)
@@ -649,196 +739,158 @@ def show_prediction_gui(player_name, prediction, next_game_inputs, zone_data, pa
         pts_differential = opp_expected_pts - league_expected_pts
         score_contrib = freq * pts_differential * 100
         
-        # Determine indicator color
+        # Determine row background based on score
         if score_contrib > 0.5:
-            indicator = "🟢"
-            row_bg = '#0d2818'
+            row_bg = '#0d1f14'  # Subtle green tint
         elif score_contrib < -0.5:
-            indicator = "🔴"
-            row_bg = '#281010'
+            row_bg = '#1f0d0d'  # Subtle red tint
         else:
-            indicator = "⚪"
-            row_bg = '#0a0a0a'
+            row_bg = COLORS['bg_card']
         
-        values = [zone, f"{freq:.2f}", f"{pts_value:.0f}", f"{opp_pct:.1%}", 
-                  f"{league_pct:.1%}", f"{diff_pct:+.1f}%", f"{score_contrib:+.2f} {indicator}"]
+        row = tk.Frame(zone_card, bg=row_bg)
+        row.pack(fill="x", pady=5)
         
-        for i, (val, width) in enumerate(zip(values, header_widths)):
-            tk.Label(zone_table, text=val, bg=row_bg, fg='#ffffff', 
-                     font=('Arial', 9), width=width, pady=4).grid(row=row_num, column=i, sticky='ew', padx=1)
-        row_num += 1
+        # Zone name
+        tk.Label(row, text=zone, bg=row_bg, fg=COLORS['text_primary'],
+                 font=('Segoe UI', 11), width=22, anchor='w').pack(side='left', padx=3)
+        
+        # Frequency
+        tk.Label(row, text=f"{freq:.2f}", bg=row_bg, fg=COLORS['text_secondary'],
+                 font=('Segoe UI', 11), width=7, anchor='center').pack(side='left', padx=3)
+        
+        # Points value
+        tk.Label(row, text=f"{pts_value:.0f}", bg=row_bg, fg=COLORS['text_secondary'],
+                 font=('Segoe UI', 11), width=5, anchor='center').pack(side='left', padx=3)
+        
+        # Opp%
+        tk.Label(row, text=f"{opp_pct:.1%}", bg=row_bg, fg=COLORS['text_primary'],
+                 font=('Segoe UI', 11), width=8, anchor='center').pack(side='left', padx=3)
+        
+        # League%
+        tk.Label(row, text=f"{league_pct:.1%}", bg=row_bg, fg=COLORS['text_secondary'],
+                 font=('Segoe UI', 11), width=8, anchor='center').pack(side='left', padx=3)
+        
+        # Diff%
+        diff_color = COLORS['success'] if diff_pct > 1 else (COLORS['danger'] if diff_pct < -1 else COLORS['text_secondary'])
+        tk.Label(row, text=f"{diff_pct:+.1f}%", bg=row_bg, fg=diff_color,
+                 font=('Segoe UI', 11, 'bold'), width=8, anchor='center').pack(side='left', padx=3)
+        
+        # Score contribution
+        score_color = COLORS['success'] if score_contrib > 0.5 else (COLORS['danger'] if score_contrib < -0.5 else COLORS['text_secondary'])
+        tk.Label(row, text=f"{score_contrib:+.2f}", bg=row_bg, fg=score_color,
+                 font=('Segoe UI', 11, 'bold'), width=9, anchor='e').pack(side='left', padx=3)
+    
+    # Divider
+    tk.Frame(zone_card, bg=COLORS['divider'], height=1).pack(fill='x', pady=(16, 12))
     
     # Total score
-    zone_score = zone_data['zone_score']
-    zone_indicator = "🟢 Favorable" if zone_score > 1 else ("🔴 Unfavorable" if zone_score < -1 else "⚪ Neutral")
-    total_frame = tk.Frame(zone_card, bg='#1a1a1a')
-    total_frame.pack(fill="x", padx=15, pady=(5, 15))
-    tk.Label(total_frame, text=f"Total Zone Matchup Score: {zone_score:+.2f}  {zone_indicator}", 
-             bg='#1a1a1a', fg='#ffffff', font=('Arial', 11, 'bold')).pack()
+    score_row = tk.Frame(zone_card, bg=COLORS['bg_card'])
+    score_row.pack(fill="x")
     
-    # ===== PACE & TEMPO + MEAN REVERSION (Side by Side) =====
-    analysis_row = tk.Frame(main_frame, bg='#000000')
-    analysis_row.pack(fill="x", pady=10)
+    tk.Label(score_row, text="Total Score", bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+             font=('Segoe UI', 11)).pack(side='left')
     
-    # Pace Card
-    pace_card = tk.Frame(analysis_row, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
-                         highlightbackground='#333333', highlightthickness=1)
-    pace_card.pack(side="left", fill="both", expand=True, padx=(0, 5))
+    score_color = COLORS['success'] if zone_score > 1 else (COLORS['danger'] if zone_score < -1 else COLORS['text_secondary'])
+    score_label = "Favorable" if zone_score > 1 else ("Unfavorable" if zone_score < -1 else "Neutral")
     
-    tk.Label(pace_card, text="📊 PACE & TEMPO", bg='#1a1a1a', fg='#00d9ff',
-             font=('Arial', 12, 'bold'), pady=10).pack()
+    tk.Label(score_row, text=f"{zone_score:+.2f}  {score_label}", bg=COLORS['bg_card'], fg=score_color,
+             font=('Segoe UI', 11, 'bold')).pack(side='right')
     
-    pace_content = tk.Frame(pace_card, bg='#1a1a1a')
-    pace_content.pack(fill="x", padx=15, pady=(0, 15))
+    # ===== PACE & REVERSION CARDS (SIDE BY SIDE) =====
+    analysis_row = tk.Frame(content_frame, bg=COLORS['bg_primary'])
+    analysis_row.pack(fill="x", pady=(0, 16))
+    
+    # Pace card
+    pace_box = tk.Frame(analysis_row, bg=COLORS['bg_card'])
+    pace_box.pack(side='left', fill='both', expand=True, padx=(0, 8))
+    
+    pace_inner = tk.Frame(pace_box, bg=COLORS['bg_card'])
+    pace_inner.pack(fill="x", padx=20, pady=20)
+    
+    tk.Label(pace_inner, text="PACE", bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+             font=('Segoe UI', 10, 'bold')).pack(anchor='w', pady=(0, 12))
     
     opp_pace = pace_data['opp_pace']
     league_pace = pace_data['league_pace']
     pace_diff = opp_pace - league_pace
-    pace_indicator = "🏃 Fast" if pace_diff > 2 else ("🐢 Slow" if pace_diff < -2 else "➡️ Average")
     
-    pace_stats = [
-        ("Opponent Pace:", f"{opp_pace:.1f}"),
-        ("League Average:", f"{league_pace:.1f}"),
-        ("Pace Differential:", f"{pace_diff:+.1f}  {pace_indicator}"),
-        ("Extra Possessions:", f"{pace_data['expected_extra_poss']:+.1f}")
-    ]
+    create_stat_row(pace_inner, "Opponent", f"{opp_pace:.1f}")
+    create_stat_row(pace_inner, "League Avg", f"{league_pace:.1f}")
     
-    for label, value in pace_stats:
-        row = tk.Frame(pace_content, bg='#1a1a1a')
-        row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), width=18, anchor='w').pack(side='left')
-        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
+    pace_color = COLORS['success'] if pace_diff > 2 else (COLORS['danger'] if pace_diff < -2 else COLORS['text_secondary'])
+    create_stat_row(pace_inner, "Differential", f"{pace_diff:+.1f}", pace_color)
     
-    # Mean Reversion Card
-    reversion_card = tk.Frame(analysis_row, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
-                              highlightbackground='#333333', highlightthickness=1)
-    reversion_card.pack(side="right", fill="both", expand=True, padx=(5, 0))
+    # Reversion card
+    rev_box = tk.Frame(analysis_row, bg=COLORS['bg_card'])
+    rev_box.pack(side='right', fill='both', expand=True, padx=(8, 0))
     
-    tk.Label(reversion_card, text="📈 MEAN REVERSION", bg='#1a1a1a', fg='#00d9ff',
-             font=('Arial', 12, 'bold'), pady=10).pack()
+    rev_inner = tk.Frame(rev_box, bg=COLORS['bg_card'])
+    rev_inner.pack(fill="x", padx=20, pady=20)
     
-    reversion_content = tk.Frame(reversion_card, bg='#1a1a1a')
-    reversion_content.pack(fill="x", padx=15, pady=(0, 10))
+    tk.Label(rev_inner, text="TREND", bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+             font=('Segoe UI', 10, 'bold')).pack(anchor='w', pady=(0, 12))
     
-    reversion_stats = [
-        ("Last 5 Games Avg:", f"{reversion_data['last_5']:.1f}"),
-        ("Season Average:", f"{reversion_data['season_avg']:.1f}"),
-        ("Differential:", f"{reversion_data['diff']:+.1f}")
-    ]
-    
-    for label, value in reversion_stats:
-        row = tk.Frame(reversion_content, bg='#1a1a1a')
-        row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), width=18, anchor='w').pack(side='left')
-        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
-    
-    # Status message
     diff = reversion_data['diff']
-    if diff > 3:
-        status_msg = "⚠️ Player is HOT → Expect regression DOWN"
-        status_color = '#ff9500'
-    elif diff < -3:
-        status_msg = "⚠️ Player is COLD → Expect regression UP"
-        status_color = '#ff9500'
-    else:
-        status_msg = "✅ Performing near season average"
-        status_color = '#00ff88'
+    create_stat_row(rev_inner, "Recent", f"{reversion_data['last_5']:.1f}")
+    create_stat_row(rev_inner, "Season", f"{reversion_data['season_avg']:.1f}")
     
-    tk.Label(reversion_card, text=status_msg, bg='#1a1a1a', fg=status_color,
-             font=('Arial', 10, 'bold'), pady=10).pack()
+    trend_color = COLORS['warning'] if abs(diff) > 3 else COLORS['text_secondary']
+    trend_text = "Hot" if diff > 3 else ("Cold" if diff < -3 else "Stable")
+    create_stat_row(rev_inner, "Status", f"{diff:+.1f} • {trend_text}", trend_color)
     
-    # ===== MODEL INPUT FEATURES =====
-    inputs_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
-                           highlightbackground='#333333', highlightthickness=1)
-    inputs_card.pack(fill="x", pady=10)
+    # ===== DEFENSE & CONTEXT CARD =====
+    context_card = create_card(content_frame, "MATCHUP CONTEXT")
     
-    tk.Label(inputs_card, text="🔢 MODEL INPUT FEATURES", bg='#1a1a1a', fg='#00d9ff',
-             font=('Arial', 12, 'bold'), pady=10).pack()
-    
-    inputs_content = tk.Frame(inputs_card, bg='#1a1a1a')
-    inputs_content.pack(fill="x", padx=15, pady=(0, 15))
-    
-    # Create two columns
-    left_col = tk.Frame(inputs_content, bg='#1a1a1a')
-    left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
-    
-    right_col = tk.Frame(inputs_content, bg='#1a1a1a')
-    right_col.pack(side='right', fill='both', expand=True, padx=(10, 0))
-    
-    home_away_str = "🏠 Home" if next_game_inputs['Home_Away'] == 1 else "✈️ Away"
     def_rating = float(next_game_inputs['Opponent_Def_Rating'])
-    def_indicator = "🛡️ Elite" if def_rating < 108 else ("💪 Strong" if def_rating < 112 else ("📊 Average" if def_rating < 115 else "🎯 Weak"))
+    def_tier = "Elite" if def_rating < 108 else ("Strong" if def_rating < 112 else ("Average" if def_rating < 115 else "Weak"))
+    def_color = COLORS['danger'] if def_rating < 110 else (COLORS['warning'] if def_rating < 114 else COLORS['success'])
     
-    left_inputs = [
-        ("Projected Minutes:", f"{next_game_inputs['Proj_Minutes']:.1f}"),
-        ("Season Avg PTS:", f"{float(next_game_inputs['Season_Avg_PTS']):.1f}"),
-        ("Last 5 Games PTS:", f"{float(next_game_inputs['Last_5_PTS']):.1f}"),
-        ("Last 10 Games PTS:", f"{float(next_game_inputs['Last_10_PTS']):.1f}"),
-        ("Recent vs Season:", f"{float(next_game_inputs['Recent_vs_Season']):+.1f}")
-    ]
+    create_stat_row(context_card, "Defense Rating", f"{def_rating:.1f} • {def_tier}", def_color)
+    create_stat_row(context_card, "Projected Minutes", f"{next_game_inputs['Proj_Minutes']:.0f}")
+    create_stat_row(context_card, "Rest Days", f"{next_game_inputs['Rest_Days']}")
+    create_stat_row(context_card, "Extra Possessions", f"{float(next_game_inputs['Expected_Extra_Poss']):+.1f}")
     
-    right_inputs = [
-        ("Location:", home_away_str),
-        ("Rest Days:", f"{next_game_inputs['Rest_Days']} day(s)"),
-        ("Opp Def Rating:", f"{def_rating:.1f} {def_indicator}"),
-        ("Extra Possessions:", f"{float(next_game_inputs['Expected_Extra_Poss']):+.1f}"),
-        ("Zone Matchup:", f"{float(next_game_inputs['Zone_Matchup_Score']):+.2f}")
-    ]
+    # ===== FEATURE IMPORTANCE CARD =====
+    importance_card = create_card(content_frame, "MODEL WEIGHTS")
     
-    for label, value in left_inputs:
-        row = tk.Frame(left_col, bg='#1a1a1a')
-        row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), anchor='w').pack(side='left')
-        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
-    
-    for label, value in right_inputs:
-        row = tk.Frame(right_col, bg='#1a1a1a')
-        row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg='#1a1a1a', fg='#cccccc', font=('Arial', 10), anchor='w').pack(side='left')
-        tk.Label(row, text=value, bg='#1a1a1a', fg='#ffffff', font=('Arial', 10, 'bold'), anchor='e').pack(side='right')
-    
-    # ===== FEATURE IMPORTANCE =====
-    importance_card = tk.Frame(main_frame, bg='#1a1a1a', relief=tk.RAISED, borderwidth=1,
-                               highlightbackground='#333333', highlightthickness=1)
-    importance_card.pack(fill="x", pady=10)
-    
-    tk.Label(importance_card, text="📊 FEATURE IMPORTANCE", bg='#1a1a1a', fg='#00d9ff',
-             font=('Arial', 12, 'bold'), pady=10).pack()
-    
-    importance_content = tk.Frame(importance_card, bg='#1a1a1a')
-    importance_content.pack(fill="x", padx=15, pady=(0, 15))
-    
-    for name, imp in importance_pairs:
-        row = tk.Frame(importance_content, bg='#1a1a1a')
-        row.pack(fill="x", pady=2)
+    for name, imp in importance_pairs[:6]:  # Top 6 features only
+        row = tk.Frame(importance_card, bg=COLORS['bg_card'])
+        row.pack(fill="x", pady=6)
         
-        tk.Label(row, text=name, bg='#1a1a1a', fg='#ffffff', font=('Arial', 9), 
-                 width=20, anchor='w').pack(side='left')
+        # Clean feature name
+        clean_name = name.replace('_', ' ').title()
+        tk.Label(row, text=clean_name, bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                 font=('Segoe UI', 10), width=18, anchor='w').pack(side='left')
         
-        # Progress bar frame
-        bar_frame = tk.Frame(row, bg='#333333', height=16)
-        bar_frame.pack(side='left', fill='x', expand=True, padx=5)
-        bar_frame.pack_propagate(False)
+        # Progress bar - modern style
+        bar_outer = tk.Frame(row, bg=COLORS['bg_elevated'], height=4)
+        bar_outer.pack(side='left', fill='x', expand=True, padx=(8, 12))
+        bar_outer.pack_propagate(False)
         
-        # Filled portion
-        bar_width = imp  # imp is already 0-1
-        filled = tk.Frame(bar_frame, bg='#00d9ff')
-        filled.place(relx=0, rely=0, relwidth=bar_width, relheight=1)
+        bar_inner = tk.Frame(bar_outer, bg=COLORS['accent'], height=4)
+        bar_inner.place(relx=0, rely=0, relwidth=imp, relheight=1)
         
-        tk.Label(row, text=f"{imp*100:.1f}%", bg='#1a1a1a', fg='#ffffff', 
-                 font=('Arial', 9, 'bold'), width=6, anchor='e').pack(side='right')
+        tk.Label(row, text=f"{imp*100:.0f}%", bg=COLORS['bg_card'], fg=COLORS['text_tertiary'],
+                 font=('Segoe UI', 10), width=4, anchor='e').pack(side='right')
     
-    # ===== CLOSE BUTTON =====
-    close_btn = tk.Button(main_frame, text="Close", command=root.destroy,
-                          bg='#e74c3c', fg='white', font=('Arial', 11, 'bold'),
-                          padx=30, pady=8, relief=tk.FLAT, cursor='hand2')
-    close_btn.pack(pady=20)
+    # ===== FOOTER =====
+    footer = tk.Frame(content_frame, bg=COLORS['bg_primary'])
+    footer.pack(fill="x", pady=(24, 0))
     
-    # Center window on screen
+    # Close button - minimal style
+    close_btn = tk.Button(footer, text="Close", command=root.destroy,
+                          bg=COLORS['bg_elevated'], fg=COLORS['text_secondary'],
+                          font=('Segoe UI', 10), padx=24, pady=10,
+                          relief=tk.FLAT, cursor='hand2', bd=0,
+                          activebackground=COLORS['bg_hover'],
+                          activeforeground=COLORS['text_primary'])
+    close_btn.pack()
+    
+    # Center window
     root.update_idletasks()
-    x = (root.winfo_screenwidth() // 2) - (900 // 2)
-    y = (root.winfo_screenheight() // 2) - (850 // 2)
-    root.geometry(f"700x850+{x}+{y}")
+    x = (root.winfo_screenwidth() // 2) - (800 // 2)
+    y = (root.winfo_screenheight() // 2) - (900 // 2)
+    root.geometry(f"800x900+{x}+{y}")
     
     root.mainloop()
 
