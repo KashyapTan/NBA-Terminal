@@ -20,7 +20,7 @@ except ImportError as e:
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playergamelog, leaguedashteamstats, leaguedashteamshotlocations, playerdashboardbyshootingsplits
 import time
-import get_matchup_info
+import helper.get_matchup_info as get_matchup_info
 
 # --- Configuration ---
 TARGET_PLAYER = input("Enter the player to predict: ")  # Player to predict

@@ -8,7 +8,7 @@ import os
 import pandas as pd
 from nba_api.stats.static import teams
 from nba_api.stats.endpoints import boxscoretraditionalv2, boxscoretraditionalv3
-from c import clear_charts_folder
+from archive.c import clear_charts_folder
 
 class NBAStatsGUI:
     # Modern color palette matching p.py
