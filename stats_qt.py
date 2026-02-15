@@ -678,7 +678,7 @@ class NBAStatsPyQt(QMainWindow):
             season = data['season']
             
             # --- Season Header ---
-            header_lbl = QLabel(season)
+            header_lbl = QLabel(f"NBA Terminal ● {season}")
             header_lbl.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 24px; font-weight: bold; margin-top: 10px;")
             self.results_area.addWidget(header_lbl)
             
@@ -701,9 +701,9 @@ class NBAStatsPyQt(QMainWindow):
                 
                 hits_hbox = QHBoxLayout()
                 hits_hbox.setSpacing(24)
-                hits_hbox.addWidget(HitRateCard("Points Hit Rates", data['game_log'], 'PTS'), 1)
-                hits_hbox.addWidget(HitRateCard("Rebounds Hit Rates", data['game_log'], 'REB'), 1)
-                hits_hbox.addWidget(HitRateCard("Assists Hit Rates", data['game_log'], 'AST'), 1)
+                hits_hbox.addWidget(HitRateCard("Points Rates", data['game_log'], 'PTS'), 1)
+                hits_hbox.addWidget(HitRateCard("Rebounds Rates", data['game_log'], 'REB'), 1)
+                hits_hbox.addWidget(HitRateCard("Assists Rates", data['game_log'], 'AST'), 1)
                 self.results_area.addLayout(hits_hbox)
                 
                 # Add breathing room after Hit Rates
