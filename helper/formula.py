@@ -9,8 +9,21 @@ import numpy as np
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playergamelog
 
+VALID_SEASON_TYPES = {
+    "regular season": "Regular Season",
+    "playoffs": "Playoffs",
+}
 
-def get_player_season_stats(player_name, season):
+
+def _normalize_season_type(season_type):
+    normalized = VALID_SEASON_TYPES.get(str(season_type).strip().lower())
+    if normalized:
+        return normalized
+    valid_values = ", ".join(sorted(set(VALID_SEASON_TYPES.values())))
+    raise ValueError(f"Invalid season type '{season_type}'. Use one of: {valid_values}.")
+
+
+def get_player_season_stats(player_name, season, season_type='Regular Season'):
     """
     Get a player's average stats and standard deviations for a season.
     
@@ -20,6 +33,8 @@ def get_player_season_stats(player_name, season):
         Full name of the player (e.g., "LeBron James")
     season : str
         NBA season in format "YYYY-YY" (e.g., "2023-24")
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     
     Returns:
     --------
@@ -44,19 +59,20 @@ def get_player_season_stats(player_name, season):
         raise ValueError(f"Multiple players found for '{player_name}': {player_list}")
     
     player_id = player_list[0]['id']
+    season_type = _normalize_season_type(season_type)
     
     # Get game log for the season
     gamelog = playergamelog.PlayerGameLog(
         player_id=player_id,
         season=season,
-        season_type_all_star='Regular Season'
+        season_type_all_star=season_type
     )
     
     # Convert to dataframe
     df = gamelog.get_data_frames()[0]
     
     if df.empty:
-        raise ValueError(f"No games found for {player_name} in {season} season")
+        raise ValueError(f"No games found for {player_name} in {season} ({season_type})")
     
     # Calculate stats
     stats = {
@@ -82,7 +98,7 @@ def get_player_season_stats(player_name, season):
     return stats
 
 
-def get_player_vs_team_stats(player_name, season, opponent_team):
+def get_player_vs_team_stats(player_name, season, opponent_team, season_type='Regular Season'):
     """
     Get a player's average stats and standard deviations vs a specific team.
     
@@ -94,6 +110,8 @@ def get_player_vs_team_stats(player_name, season, opponent_team):
         NBA season in format "YYYY-YY" (e.g., "2023-24")
     opponent_team : str
         Team name, nickname, or abbreviation (e.g., "Lakers", "LAL", "Los Angeles Lakers")
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     
     Returns:
     --------
@@ -118,6 +136,7 @@ def get_player_vs_team_stats(player_name, season, opponent_team):
         raise ValueError(f"Multiple players found for '{player_name}': {player_list}")
     
     player_id = player_list[0]['id']
+    season_type = _normalize_season_type(season_type)
     
     # Find opponent team - try multiple search methods
     team_list = None
@@ -155,20 +174,20 @@ def get_player_vs_team_stats(player_name, season, opponent_team):
     gamelog = playergamelog.PlayerGameLog(
         player_id=player_id,
         season=season,
-        season_type_all_star='Regular Season'
+        season_type_all_star=season_type
     )
     
     # Convert to dataframe
     df = gamelog.get_data_frames()[0]
     
     if df.empty:
-        raise ValueError(f"No games found for {player_name} in {season} season")
+        raise ValueError(f"No games found for {player_name} in {season} ({season_type})")
     
     # Filter for games vs opponent team (MATCHUP column contains "vs OPP" or "@ OPP")
     df_vs_team = df[df['MATCHUP'].str.contains(opponent_abbrev, case=False, na=False)]
     
     if df_vs_team.empty:
-        raise ValueError(f"No games found for {player_name} vs {opponent_team} in {season} season")
+        raise ValueError(f"No games found for {player_name} vs {opponent_team} in {season} ({season_type})")
     
     # Calculate stats
     stats = {
@@ -193,10 +212,10 @@ def get_player_vs_team_stats(player_name, season, opponent_team):
     
     return stats
 
-def print_player_season_stats(player, season):
+def print_player_season_stats(player, season, season_type='Regular Season'):
     try:
-        stats = get_player_season_stats(player, season)
-        print(f"Stats for {player} in {season} season:")
+        stats = get_player_season_stats(player, season, season_type=season_type)
+        print(f"Stats for {player} in {season} ({season_type}):")
         print(f"Games Played: {stats['games_played']}")
         print(f"Points: {stats['averages']['points']:.1f} ± {stats['std_devs']['points']:.1f} | CV: {100 * (stats['std_devs']['points']/stats['averages']['points']) if stats['averages']['points'] > 0 else 0:.2f}")
         print(f"Rebounds: {stats['averages']['rebounds']:.1f} ± {stats['std_devs']['rebounds']:.1f} | CV: {100 * (stats['std_devs']['rebounds']/stats['averages']['rebounds']) if stats['averages']['rebounds'] > 0 else 0:.2f}")
@@ -207,10 +226,10 @@ def print_player_season_stats(player, season):
     except ValueError as e:
         print(f"Error: {e}")
 
-def print_player_vs_team_stats(player, season, opponent):
+def print_player_vs_team_stats(player, season, opponent, season_type='Regular Season'):
     try:
-        stats = get_player_vs_team_stats(player, season, opponent)
-        print(f"Stats for {player} vs {opponent} in {season} season:")
+        stats = get_player_vs_team_stats(player, season, opponent, season_type=season_type)
+        print(f"Stats for {player} vs {opponent} in {season} ({season_type}):")
         print(f"Games Played: {stats['games_played']}")
         print(f"Points: {stats['averages']['points']:.1f} ± {stats['std_devs']['points']:.1f} | CV: {100 * (stats['std_devs']['points']/stats['averages']['points']) if stats['averages']['points'] > 0 else 0:.2f}")
         print(f"Rebounds: {stats['averages']['rebounds']:.1f} ± {stats['std_devs']['rebounds']:.1f} | CV: {100 * (stats['std_devs']['rebounds']/stats['averages']['rebounds']) if stats['averages']['rebounds'] > 0 else 0:.2f}")

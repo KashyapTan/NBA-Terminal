@@ -204,6 +204,49 @@ class NBAStatsGUI:
                  bg=self.COLORS['bg_elevated'], fg=self.COLORS['text_secondary'], font=('Segoe UI', 9), 
                  padx=16, pady=6, relief=tk.FLAT, cursor='hand2', bd=0,
                  activebackground=self.COLORS['bg_hover'], activeforeground=self.COLORS['text_primary']).pack(side='left')
+
+        season_type_frame = tk.Frame(season_inner, bg=self.COLORS['bg_card'])
+        season_type_frame.pack(fill="x", pady=(14, 0))
+        tk.Label(
+            season_type_frame,
+            text="DATASET TYPE",
+            bg=self.COLORS['bg_card'],
+            fg=self.COLORS['text_tertiary'],
+            font=('Segoe UI', 9)
+        ).pack(anchor='w')
+        season_type_options = tk.Frame(season_type_frame, bg=self.COLORS['bg_card'])
+        season_type_options.pack(anchor='w', pady=(8, 0))
+        self.season_type_var = tk.StringVar(value='Regular Season')
+        tk.Radiobutton(
+            season_type_options,
+            text="Regular Season",
+            value="Regular Season",
+            variable=self.season_type_var,
+            bg=self.COLORS['bg_card'],
+            fg=self.COLORS['text_primary'],
+            selectcolor=self.COLORS['bg_elevated'],
+            activebackground=self.COLORS['bg_card'],
+            activeforeground=self.COLORS['text_primary'],
+            highlightthickness=0,
+            bd=0,
+            font=('Segoe UI', 10),
+            cursor='hand2'
+        ).pack(side='left', padx=(0, 20))
+        tk.Radiobutton(
+            season_type_options,
+            text="Playoffs",
+            value="Playoffs",
+            variable=self.season_type_var,
+            bg=self.COLORS['bg_card'],
+            fg=self.COLORS['text_primary'],
+            selectcolor=self.COLORS['bg_elevated'],
+            activebackground=self.COLORS['bg_card'],
+            activeforeground=self.COLORS['text_primary'],
+            highlightthickness=0,
+            bd=0,
+            font=('Segoe UI', 10),
+            cursor='hand2'
+        ).pack(side='left')
         
         # Action Buttons - Modern style
         button_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
@@ -988,6 +1031,7 @@ class NBAStatsGUI:
         
         # Get selected seasons
         selected_seasons = [season for season, var in self.season_vars.items() if var.get()]
+        season_type = self.season_type_var.get()
         
         if not selected_seasons:
             messagebox.showerror("Error", "Please select at least one season")
@@ -998,13 +1042,13 @@ class NBAStatsGUI:
         self.clear_results()
         
         # Run in separate thread to prevent GUI freezing
-        thread = threading.Thread(target=self.fetch_stats_thread, args=(player, team, selected_seasons))
+        thread = threading.Thread(target=self.fetch_stats_thread, args=(player, team, selected_seasons, season_type))
         thread.daemon = True
         thread.start()
         
-    def fetch_stats_thread(self, player, team, seasons):
+    def fetch_stats_thread(self, player, team, seasons, season_type):
         try:
-            self.update_status("Fetching data from NBA API...")
+            self.update_status(f"Fetching {season_type} data from NBA API...")
             
             all_data = []
             
@@ -1012,30 +1056,31 @@ class NBAStatsGUI:
             for season in reversed(seasons):
                 season_data = {
                     'season': season,
+                    'season_type': season_type,
                     'season_stats': None,
                     'vs_team_stats': None
                 }
                 
                 # Season statistics
-                self.update_status(f"Fetching {player} season stats for {season}...")
+                self.update_status(f"Fetching {player} season stats for {season} ({season_type})...")
                 try:
-                    stats = get_player_season_stats(player, season)
+                    stats = get_player_season_stats(player, season, season_type=season_type)
                     season_data['season_stats'] = stats
                 except Exception as e:
                     season_data['season_error'] = str(e)
                 
                 # VS Team statistics
-                self.update_status(f"Fetching {player} vs {team} stats for {season}...")
+                self.update_status(f"Fetching {player} vs {team} stats for {season} ({season_type})...")
                 try:
-                    stats = get_player_vs_team_stats(player, season, team)
+                    stats = get_player_vs_team_stats(player, season, team, season_type=season_type)
                     season_data['vs_team_stats'] = stats
                 except Exception as e:
                     season_data['vs_team_error'] = str(e)
                 
                 # Get game log
-                self.update_status(f"Fetching game log for {season}...")
+                self.update_status(f"Fetching game log for {season} ({season_type})...")
                 try:
-                    game_log_df = get_player_game_log(player, season)
+                    game_log_df = get_player_game_log(player, season, season_type=season_type)
                     season_data['game_log'] = game_log_df
                     
                     # Find team abbreviation using the same logic as formula.py and percentile.py
@@ -1077,6 +1122,7 @@ class NBAStatsGUI:
         
         for data in all_data:
             season = data['season']
+            season_type = data.get('season_type', 'Regular Season')
             
             # Season header - Modern style
             header_frame = tk.Frame(self.results_frame, bg=self.COLORS['bg_primary'])
@@ -1084,14 +1130,14 @@ class NBAStatsGUI:
             
             tk.Label(header_frame, text="SEASON", bg=self.COLORS['bg_primary'], 
                     fg=self.COLORS['text_tertiary'], font=('Segoe UI', 9)).pack(anchor='w')
-            tk.Label(header_frame, text=season, bg=self.COLORS['bg_primary'], 
+            tk.Label(header_frame, text=f"{season} • {season_type}", bg=self.COLORS['bg_primary'], 
                     fg=self.COLORS['text_primary'], font=('Segoe UI', 20, 'bold')).pack(anchor='w', pady=(2, 0))
             current_row += 1
             
             # Season stats card
             if data.get('season_stats'):
                 self.create_stat_card(self.results_frame, 
-                                     f"{player} - {season} Overall Stats",
+                                     f"{player} - {season} ({season_type}) Overall Stats",
                                      data['season_stats'], 
                                      current_row, 0, colspan=3)
             elif data.get('season_error'):
@@ -1104,7 +1150,7 @@ class NBAStatsGUI:
             # VS Team stats card
             if data.get('vs_team_stats'):
                 self.create_stat_card(self.results_frame, 
-                                     f"{player} vs {team} - {season}",
+                                     f"{player} vs {team} - {season} ({season_type})",
                                      data['vs_team_stats'], 
                                      current_row, 3, colspan=3)
             elif data.get('vs_team_error'):
@@ -1116,8 +1162,7 @@ class NBAStatsGUI:
             
             current_row += 1
             
-            # Rolling stats cards - ONLY for current season (2025-26)
-            if season == '2025-26' and data.get('game_log') is not None:
+            if data.get('game_log') is not None:
                 self.create_rolling_stats_card(self.results_frame,
                                               f"{player} - Recent Game Trends (L5/L10/L15)",
                                               data['game_log'],
@@ -1143,7 +1188,7 @@ class NBAStatsGUI:
             if data.get('game_log') is not None:
                 self.create_game_log_display(self.results_frame,
                                             data['game_log'],
-                                            f"{player} - {season} Game Log (All Games)",
+                                            f"{player} - {season} ({season_type}) Game Log (All Games)",
                                             current_row, 0, colspan=6)
                 current_row += 1
             elif data.get('game_log_error'):
@@ -1158,7 +1203,7 @@ class NBAStatsGUI:
             if data.get('vs_team_log') is not None:
                 self.create_game_log_display(self.results_frame,
                                             data['vs_team_log'],
-                                            f"{player} vs {team} - {season} Game Log",
+                                            f"{player} vs {team} - {season} ({season_type}) Game Log",
                                             current_row, 0, colspan=6)
                 current_row += 1
             else:
@@ -1166,7 +1211,7 @@ class NBAStatsGUI:
                 if data.get('team_not_found'):
                     message = f"Could not find team '{team}'. Please try using the team's full name, nickname, or 3-letter abbreviation."
                 else:
-                    message = f"No games found for {player} vs {team} in {season} season"
+                    message = f"No games found for {player} vs {team} in {season} ({season_type})"
                 
                 msg_card = tk.Frame(self.results_frame, bg=self.COLORS['bg_card'])
                 msg_card.grid(row=current_row, column=0, columnspan=6, padx=8, pady=8, sticky="ew")
@@ -1191,7 +1236,8 @@ class NBAStatsGUI:
             separator.grid(row=current_row, column=0, columnspan=6, sticky="ew", pady=24)
             current_row += 1
         
-        self.update_status(f"Statistics loaded successfully for {len(all_data)} season(s)!")
+        loaded_type = all_data[0].get('season_type', 'Regular Season') if all_data else 'Regular Season'
+        self.update_status(f"Statistics loaded successfully for {len(all_data)} season(s) [{loaded_type}]!")
         
     def enable_fetch_button(self):
         self.fetch_btn.config(state='normal', text='Fetch Statistics', bg=self.COLORS['accent'])

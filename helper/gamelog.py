@@ -9,8 +9,21 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import playergamelog
 import pandas as pd
 
+VALID_SEASON_TYPES = {
+    "regular season": "Regular Season",
+    "playoffs": "Playoffs",
+}
 
-def get_player_game_log(player_name, season):
+
+def _normalize_season_type(season_type):
+    normalized = VALID_SEASON_TYPES.get(str(season_type).strip().lower())
+    if normalized:
+        return normalized
+    valid_values = ", ".join(sorted(set(VALID_SEASON_TYPES.values())))
+    raise ValueError(f"Invalid season type '{season_type}'. Use one of: {valid_values}.")
+
+
+def get_player_game_log(player_name, season, season_type='Regular Season'):
     """
     Get a player's complete game log for a season.
     
@@ -20,6 +33,8 @@ def get_player_game_log(player_name, season):
         Full name of the player (e.g., "LeBron James")
     season : str
         NBA season in format "YYYY-YY" (e.g., "2023-24")
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     
     Returns:
     --------
@@ -46,24 +61,25 @@ def get_player_game_log(player_name, season):
         raise ValueError(f"Multiple players found for '{player_name}': {player_list}")
     
     player_id = player_list[0]['id']
+    season_type = _normalize_season_type(season_type)
     
     # Get game log for the season
     gamelog = playergamelog.PlayerGameLog(
         player_id=player_id,
         season=season,
-        season_type_all_star='Regular Season'
+        season_type_all_star=season_type
     )
     
     # Convert to dataframe
     df = gamelog.get_data_frames()[0]
     
     if df.empty:
-        raise ValueError(f"No games found for {player_name} in {season} season")
+        raise ValueError(f"No games found for {player_name} in {season} ({season_type})")
     
     return df
 
 
-def print_player_game_log(player_name, season, last_n_games=None):
+def print_player_game_log(player_name, season, last_n_games=None, season_type='Regular Season'):
     """
     Print a formatted game log for a player.
     
@@ -81,13 +97,13 @@ def print_player_game_log(player_name, season, last_n_games=None):
     >>> print_player_game_log("LeBron James", "2023-24", last_n_games=10)
     """
     try:
-        df = get_player_game_log(player_name, season)
+        df = get_player_game_log(player_name, season, season_type=season_type)
         
         if last_n_games:
             df = df.head(last_n_games)
         
         print(f"\n{'='*100}")
-        print(f"{player_name} - {season} Game Log")
+        print(f"{player_name} - {season} ({season_type}) Game Log")
         print(f"{'='*100}")
         print(f"Total Games: {len(df)}\n")
         
@@ -146,7 +162,7 @@ def print_player_game_log(player_name, season, last_n_games=None):
         print(f"Error: {e}")
 
 
-def get_game_log_summary(player_name, season):
+def get_game_log_summary(player_name, season, season_type='Regular Season'):
     """
     Get a summary dictionary of the game log for easy access.
     
@@ -168,7 +184,7 @@ def get_game_log_summary(player_name, season):
         - 'home_games': Number of home games
         - 'away_games': Number of away games
     """
-    df = get_player_game_log(player_name, season)
+    df = get_player_game_log(player_name, season, season_type=season_type)
     
     summary = {
         'dataframe': df,

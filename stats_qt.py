@@ -4,7 +4,7 @@ import threading
 import pandas as pd
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QLabel, QLineEdit, QPushButton, QCheckBox, QScrollArea, 
+    QLabel, QLineEdit, QPushButton, QCheckBox, QRadioButton, QScrollArea, 
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView, 
     QMessageBox, QDialog, QGridLayout, QProgressBar
 )
@@ -432,30 +432,31 @@ class FetchWorker(QThread):
     finished = pyqtSignal(list)
     error = pyqtSignal(str)
 
-    def __init__(self, player, team, seasons, parent_abbrev_func):
+    def __init__(self, player, team, seasons, season_type, parent_abbrev_func):
         super().__init__()
         self.player = player
         self.team = team
         self.seasons = seasons
+        self.season_type = season_type
         self.find_team_abbrev = parent_abbrev_func
 
     def run(self):
         try:
             all_data = []
             for season in reversed(self.seasons):
-                season_data = {'season': season}
+                season_data = {'season': season, 'season_type': self.season_type}
                 
-                self.status_update.emit(f"Fetching {self.player} stats for {season}...")
-                try: season_data['season_stats'] = get_player_season_stats(self.player, season)
+                self.status_update.emit(f"Fetching {self.player} stats for {season} ({self.season_type})...")
+                try: season_data['season_stats'] = get_player_season_stats(self.player, season, season_type=self.season_type)
                 except Exception as e: season_data['season_error'] = str(e)
                 
-                self.status_update.emit(f"Fetching vs {self.team} for {season}...")
-                try: season_data['vs_team_stats'] = get_player_vs_team_stats(self.player, season, self.team)
+                self.status_update.emit(f"Fetching vs {self.team} for {season} ({self.season_type})...")
+                try: season_data['vs_team_stats'] = get_player_vs_team_stats(self.player, season, self.team, season_type=self.season_type)
                 except Exception as e: season_data['vs_team_error'] = str(e)
                 
-                self.status_update.emit(f"Fetching game log for {season}...")
+                self.status_update.emit(f"Fetching game log for {season} ({self.season_type})...")
                 try:
-                    df = get_player_game_log(self.player, season)
+                    df = get_player_game_log(self.player, season, season_type=self.season_type)
                     season_data['game_log'] = df
                     # Use provided helper function
                     team_abbrev = self.find_team_abbrev(self.team)
@@ -579,6 +580,24 @@ class NBAStatsPyQt(QMainWindow):
         btns_hbox.addWidget(desel_all)
         btns_hbox.addStretch()
         season_vbox.addLayout(btns_hbox)
+
+        season_type_row = QHBoxLayout()
+        season_type_label = QLabel("DATASET TYPE")
+        season_type_label.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 10px; font-weight: bold; border: none;")
+        season_type_row.addWidget(season_type_label)
+        season_type_row.addSpacing(10)
+
+        self.regular_season_radio = QRadioButton("Regular Season")
+        self.playoffs_radio = QRadioButton("Playoffs")
+        self.regular_season_radio.setChecked(True)
+        for radio in [self.regular_season_radio, self.playoffs_radio]:
+            radio.setStyleSheet(
+                f"color: {COLORS['text_primary']}; border: none;"
+                f"font-size: 12px; spacing: 6px;"
+            )
+            season_type_row.addWidget(radio)
+        season_type_row.addStretch()
+        season_vbox.addLayout(season_type_row)
         self.content_layout.addWidget(season_card)
         
         # 5. Buttons Row
@@ -649,6 +668,7 @@ class NBAStatsPyQt(QMainWindow):
         player = self.player_input.text().strip()
         team = self.team_input.text().strip()
         seasons = [s for s, cb in self.season_checks.items() if cb.isChecked()]
+        season_type = "Playoffs" if self.playoffs_radio.isChecked() else "Regular Season"
         
         if not player or not team or not seasons:
             QMessageBox.critical(self, "Input Error", "Please provide a Player, Opponent Team, and at least one Season.")
@@ -660,7 +680,7 @@ class NBAStatsPyQt(QMainWindow):
         self.clear_results()
         
         # Setup Background Worker
-        self.worker = FetchWorker(player, team, seasons, self.find_team_abbreviation)
+        self.worker = FetchWorker(player, team, seasons, season_type, self.find_team_abbreviation)
         self.worker.status_update.connect(lambda msg: self.status_lbl.setText(msg))
         self.worker.finished.connect(self.on_fetch_finished)
         self.worker.error.connect(lambda e: QMessageBox.critical(self, "API Error", e))
@@ -669,16 +689,18 @@ class NBAStatsPyQt(QMainWindow):
     def on_fetch_finished(self, all_data):
         self.fetch_btn.setEnabled(True)
         self.fetch_btn.setText("Fetch Statistics")
-        self.status_lbl.setText(f"Loaded {len(all_data)} season(s).")
+        selected_type = all_data[0].get('season_type', 'Regular Season') if all_data else 'Regular Season'
+        self.status_lbl.setText(f"Loaded {len(all_data)} season(s) for {selected_type}.")
         
         player = self.player_input.text().strip()
         team = self.team_input.text().strip()
         
         for data in all_data:
             season = data['season']
+            season_type = data.get('season_type', 'Regular Season')
             
             # --- Season Header ---
-            header_lbl = QLabel(f"NBA Terminal ● {season}")
+            header_lbl = QLabel(f"NBA Terminal ● {season} ● {season_type}")
             header_lbl.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 24px; font-weight: bold; margin-top: 10px;")
             self.results_area.addWidget(header_lbl)
             
@@ -686,14 +708,13 @@ class NBAStatsPyQt(QMainWindow):
             stats_hbox = QHBoxLayout()
             stats_hbox.setSpacing(24)
             if data.get('season_stats'):
-                stats_hbox.addWidget(StatCard(f"{player} Overall - {season}", data['season_stats']), 1)
+                stats_hbox.addWidget(StatCard(f"{player} Overall - {season} ({season_type})", data['season_stats']), 1)
             if data.get('vs_team_stats'):
-                stats_hbox.addWidget(StatCard(f"{player} vs {team} - {season}", data['vs_team_stats']), 1)
+                stats_hbox.addWidget(StatCard(f"{player} vs {team} - {season} ({season_type})", data['vs_team_stats']), 1)
             self.results_area.addLayout(stats_hbox)
             
             # --- Advanced Trends (L5/L10/L15 & Hit Rates) ---
-            # Only for current season to mirror original app logic
-            if season == '2025-26' and data.get('game_log') is not None:
+            if data.get('game_log') is not None:
                 self.results_area.addWidget(RollingStatsCard("Rolling Trends", data['game_log']))
                 
                 # Add extra breathing room before Hit Rates
@@ -711,7 +732,7 @@ class NBAStatsPyQt(QMainWindow):
             
             # --- Game Log Table ---
             if data.get('game_log') is not None:
-                log_title = QLabel(f"{player} - {season} Game Log")
+                log_title = QLabel(f"{player} - {season} ({season_type}) Game Log")
                 log_title.setStyleSheet("color: white; font-weight: bold; font-size: 14px; margin-top: 10px;")
                 self.results_area.addWidget(log_title)
                 
@@ -721,7 +742,7 @@ class NBAStatsPyQt(QMainWindow):
             
             # --- vs Opponent Log Table ---
             if data.get('vs_team_log') is not None:
-                vs_title = QLabel(f"{player} vs {team} - {season} Game Log")
+                vs_title = QLabel(f"{player} vs {team} - {season} ({season_type}) Game Log")
                 vs_title.setStyleSheet("color: white; font-weight: bold; font-size: 14px; margin-top: 10px;")
                 self.results_area.addWidget(vs_title)
                 

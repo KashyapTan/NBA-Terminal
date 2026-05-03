@@ -10,8 +10,21 @@ import matplotlib.pyplot as plt
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playergamelog
 
+VALID_SEASON_TYPES = {
+    "regular season": "Regular Season",
+    "playoffs": "Playoffs",
+}
 
-def get_player_percentiles_season(player_name, season):
+
+def _normalize_season_type(season_type):
+    normalized = VALID_SEASON_TYPES.get(str(season_type).strip().lower())
+    if normalized:
+        return normalized
+    valid_values = ", ".join(sorted(set(VALID_SEASON_TYPES.values())))
+    raise ValueError(f"Invalid season type '{season_type}'. Use one of: {valid_values}.")
+
+
+def get_player_percentiles_season(player_name, season, season_type='Regular Season'):
     """
     Get percentile statistics for a player's season performance.
     
@@ -21,6 +34,8 @@ def get_player_percentiles_season(player_name, season):
         Full name of the player (e.g., "LeBron James")
     season : str
         NBA season in format "YYYY-YY" (e.g., "2023-24")
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     
     Returns:
     --------
@@ -43,19 +58,20 @@ def get_player_percentiles_season(player_name, season):
         raise ValueError(f"Multiple players found for '{player_name}': {player_list}")
     
     player_id = player_list[0]['id']
+    season_type = _normalize_season_type(season_type)
     
     # Get game log for the season
     gamelog = playergamelog.PlayerGameLog(
         player_id=player_id,
         season=season,
-        season_type_all_star='Regular Season'
+        season_type_all_star=season_type
     )
     
     # Convert to dataframe
     df = gamelog.get_data_frames()[0]
     
     if df.empty:
-        raise ValueError(f"No games found for {player_name} in {season} season")
+        raise ValueError(f"No games found for {player_name} in {season} ({season_type})")
     
     # Calculate percentiles for each stat
     stats = ['PTS', 'REB', 'AST', 'BLK', 'STL']
@@ -66,6 +82,7 @@ def get_player_percentiles_season(player_name, season):
         'raw_data': {},
         'player_name': player_name,
         'season': season,
+        'season_type': season_type,
         'games_played': len(df)
     }
     
@@ -82,7 +99,7 @@ def get_player_percentiles_season(player_name, season):
     return result
 
 
-def plot_player_percentiles_season(player_name, season, save_path=None):
+def plot_player_percentiles_season(player_name, season, save_path=None, season_type='Regular Season'):
     """
     Create box plots showing percentiles and actual game values for a player's season.
     
@@ -92,6 +109,8 @@ def plot_player_percentiles_season(player_name, season, save_path=None):
         Full name of the player
     season : str
         NBA season in format "YYYY-YY"
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     save_path : str, optional
         Path to save the figure. If None, displays the plot.
     
@@ -105,11 +124,11 @@ def plot_player_percentiles_season(player_name, season, save_path=None):
     >>> plot_player_percentiles_season("Stephen Curry", "2023-24")
     """
     # Get percentile data
-    data = get_player_percentiles_season(player_name, season)
+    data = get_player_percentiles_season(player_name, season, season_type=season_type)
     
     # Create subplots for each stat
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    fig.suptitle(f'{player_name} - {season} Season Statistics\n(Box plots with game-by-game data)', 
+    fig.suptitle(f'{player_name} - {season} {season_type} Statistics\n(Box plots with game-by-game data)', 
                  fontsize=16, fontweight='bold')
     
     stat_names = ['points', 'rebounds', 'assists', 'blocks', 'steals']
@@ -172,7 +191,7 @@ def plot_player_percentiles_season(player_name, season, save_path=None):
     return data
 
 
-def get_player_percentiles_vs_team(player_name, season, opponent_team):
+def get_player_percentiles_vs_team(player_name, season, opponent_team, season_type='Regular Season'):
     """
     Get percentile statistics for a player's performance vs a specific team.
     
@@ -184,6 +203,8 @@ def get_player_percentiles_vs_team(player_name, season, opponent_team):
         NBA season in format "YYYY-YY" (e.g., "2023-24")
     opponent_team : str
         Team name, nickname, or abbreviation (e.g., "Lakers", "LAL")
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     
     Returns:
     --------
@@ -205,6 +226,7 @@ def get_player_percentiles_vs_team(player_name, season, opponent_team):
         raise ValueError(f"Multiple players found for '{player_name}': {player_list}")
     
     player_id = player_list[0]['id']
+    season_type = _normalize_season_type(season_type)
     
     # Find opponent team
     team_list = None
@@ -236,20 +258,20 @@ def get_player_percentiles_vs_team(player_name, season, opponent_team):
     gamelog = playergamelog.PlayerGameLog(
         player_id=player_id,
         season=season,
-        season_type_all_star='Regular Season'
+        season_type_all_star=season_type
     )
     
     # Convert to dataframe
     df = gamelog.get_data_frames()[0]
     
     if df.empty:
-        raise ValueError(f"No games found for {player_name} in {season} season")
+        raise ValueError(f"No games found for {player_name} in {season} ({season_type})")
     
     # Filter for games vs opponent team
     df_vs_team = df[df['MATCHUP'].str.contains(opponent_abbrev, case=False, na=False)]
     
     if df_vs_team.empty:
-        raise ValueError(f"No games found for {player_name} vs {opponent_team} in {season} season")
+        raise ValueError(f"No games found for {player_name} vs {opponent_team} in {season} ({season_type})")
     
     # Calculate percentiles for each stat
     stats = ['PTS', 'REB', 'AST', 'BLK', 'STL']
@@ -260,6 +282,7 @@ def get_player_percentiles_vs_team(player_name, season, opponent_team):
         'raw_data': {},
         'player_name': player_name,
         'season': season,
+        'season_type': season_type,
         'opponent': opponent_full_name,
         'games_played': len(df_vs_team)
     }
@@ -277,7 +300,7 @@ def get_player_percentiles_vs_team(player_name, season, opponent_team):
     return result
 
 
-def plot_player_percentiles_vs_team(player_name, season, opponent_team, save_path=None):
+def plot_player_percentiles_vs_team(player_name, season, opponent_team, save_path=None, season_type='Regular Season'):
     """
     Create box plots showing percentiles and actual game values for a player vs a team.
     
@@ -289,6 +312,8 @@ def plot_player_percentiles_vs_team(player_name, season, opponent_team, save_pat
         NBA season in format "YYYY-YY"
     opponent_team : str
         Team name, nickname, or abbreviation
+    season_type : str, optional
+        Data scope to fetch. Supported values: "Regular Season", "Playoffs".
     save_path : str, optional
         Path to save the figure. If None, displays the plot.
     
@@ -302,11 +327,11 @@ def plot_player_percentiles_vs_team(player_name, season, opponent_team, save_pat
     >>> plot_player_percentiles_vs_team("LeBron James", "2023-24", "Warriors")
     """
     # Get percentile data
-    data = get_player_percentiles_vs_team(player_name, season, opponent_team)
+    data = get_player_percentiles_vs_team(player_name, season, opponent_team, season_type=season_type)
     
     # Create subplots for each stat
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    fig.suptitle(f'{player_name} vs {data["opponent"]} - {season} Season\n'
+    fig.suptitle(f'{player_name} vs {data["opponent"]} - {season} {season_type}\n'
                  f'(Box plots with game-by-game data - {data["games_played"]} games)', 
                  fontsize=16, fontweight='bold')
     
@@ -370,14 +395,18 @@ def plot_player_percentiles_vs_team(player_name, season, opponent_team, save_pat
     
     return data
 
-def print_player_percentile(player, season):
+def print_player_percentile(player, season, season_type='Regular Season'):
     try:
         # print(f"\nAnalyzing {player} - {season} Season:")
         # print("-" * 70)
         
         # Save plot to file instead of showing
-        data = plot_player_percentiles_season(player, season, 
-                                              save_path=f"charts/{player.replace(' ', '_').lower()}_{season}.png")
+        data = plot_player_percentiles_season(
+            player,
+            season,
+            save_path=f"charts/{player.replace(' ', '_').lower()}_{season}.png",
+            season_type=season_type
+        )
         
         # print(f"\nGames Played: {data['games_played']}")
         # print("\nPercentile Statistics:")
@@ -392,14 +421,19 @@ def print_player_percentile(player, season):
     except Exception as e:
         print(f"Error: {e}")
 
-def print_player_percentile_vs_team(player, season, opponent):
+def print_player_percentile_vs_team(player, season, opponent, season_type='Regular Season'):
     try:
         # print(f"\n\nAnalyzing {player} vs {opponent} - {season}:")
         # print("-" * 70)
         
         # Save plot to file
-        data = plot_player_percentiles_vs_team(player, season, opponent,
-                                               save_path=f"charts/{player.replace(' ', '_').lower()}_vs_{opponent.replace(' ', '_').lower()}_{season}.png")
+        data = plot_player_percentiles_vs_team(
+            player,
+            season,
+            opponent,
+            save_path=f"charts/{player.replace(' ', '_').lower()}_vs_{opponent.replace(' ', '_').lower()}_{season}.png",
+            season_type=season_type
+        )
         
         # print(f"\nGames Played: {data['games_played']}")
         # print("\nPercentile Statistics vs Warriors:")
