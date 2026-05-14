@@ -1,6 +1,7 @@
 import os
 import shutil
 
+
 def clear_charts_folder():
     charts_dir = os.path.join(os.path.dirname(__file__), 'charts')
     if os.path.exists(charts_dir):
@@ -10,4 +11,6 @@ def clear_charts_folder():
     else:
         os.makedirs(charts_dir)
         print(f"Created charts folder: {charts_dir}")
-clear_charts_folder()
+
+if __name__ == "__main__":
+    clear_charts_folder()

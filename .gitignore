@@ -1,3 +1,8 @@
 __pycache__/
 charts/
 nba_stats_cache.pkl
+.coverage
+.pytest-tmp/
+.venv/
+code_review/
+archive/

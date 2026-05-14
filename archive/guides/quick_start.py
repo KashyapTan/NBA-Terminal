@@ -4,10 +4,7 @@ Quick Start Guide - NBA Percentile Analysis
 This script shows the simplest way to use the percentile functions.
 """
 
-from percentile import (
-    plot_player_percentiles_season,
-    plot_player_percentiles_vs_team
-)
+from percentile import plot_player_percentiles_season, plot_player_percentiles_vs_team
 
 
 def main():
@@ -27,11 +24,11 @@ def main():
         save_path="luka_season_analysis.png"
     )
     
-    print(f"\n✓ Analysis complete!")
+    print("\n✓ Analysis complete!")
     print(f"  Games played: {data['games_played']}")
     print(f"  Median points: {data['percentiles']['points']['50th']:.1f}")
     print(f"  Best game: {data['percentiles']['points']['100th']:.0f} points")
-    print(f"  Plot saved as: luka_season_analysis.png")
+    print("  Plot saved as: luka_season_analysis.png")
     
     # Example 2: Analyze vs a specific team
     print("\n\n2. Opponent Analysis:")
@@ -47,10 +44,10 @@ def main():
         save_path="edwards_vs_lakers.png"
     )
     
-    print(f"\n✓ Analysis complete!")
+    print("\n✓ Analysis complete!")
     print(f"  Games vs {opponent}: {data['games_played']}")
     print(f"  Median points: {data['percentiles']['points']['50th']:.1f}")
-    print(f"  Plot saved as: edwards_vs_lakers.png")
+    print("  Plot saved as: edwards_vs_lakers.png")
     
     print("\n" + "=" * 60)
     print("Done! Check the PNG files for visual box plots.")
