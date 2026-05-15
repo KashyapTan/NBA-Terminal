@@ -27,13 +27,17 @@ COLORS = {
 
 def _load_terminal_font() -> str:
     """Load the bundled UI font and return its Qt family name."""
+    for family in ("Segoe UI", "Arial", "Tahoma"):
+        if family in QFontDatabase.families():
+            return family
+
     font_resource = resources.files("nba_terminal").joinpath("assets", "fonts", "DejaVuSans.ttf")
     with resources.as_file(font_resource) as font_path:
         if not font_path.exists():
-            return "Arial"
+            return "Segoe UI"
         font_id = QFontDatabase.addApplicationFont(str(font_path))
     families = QFontDatabase.applicationFontFamilies(font_id) if font_id >= 0 else []
-    return families[0] if families else "Arial"
+    return families[0] if families else "Segoe UI"
 
 
 def apply_app_theme(app: QApplication) -> None:
@@ -82,38 +86,73 @@ def app_stylesheet() -> str:
             color: {COLORS["text_primary"]};
             border: 1px solid {COLORS["border"]};
             border-radius: 4px;
-            padding: 9px;
-            font-size: 13px;
+            padding: 10px;
+            font-size: 14px;
         }}
         QLineEdit:focus, QComboBox:focus {{
             border: 1px solid {COLORS["accent"]};
         }}
+        QCheckBox, QRadioButton {{
+            color: {COLORS["text_secondary"]};
+            spacing: 6px;
+            font-size: 13px;
+        }}
         QPushButton {{
             background-color: {COLORS["bg_elevated"]};
-            color: {COLORS["text_primary"]};
-            border: 1px solid {COLORS["border"]};
-            border-radius: 5px;
-            padding: 9px 14px;
-            font-weight: 600;
+            color: {COLORS["text_secondary"]};
+            border: none;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 13px;
         }}
         QPushButton:hover {{
             background-color: {COLORS["bg_hover"]};
+            color: {COLORS["text_primary"]};
         }}
         QPushButton:disabled {{
             color: {COLORS["text_tertiary"]};
             background-color: {COLORS["divider"]};
         }}
         QTableWidget {{
-            background-color: {COLORS["bg_card"]};
+            background-color: {COLORS["bg_primary"]};
             color: {COLORS["text_primary"]};
-            border: 1px solid {COLORS["border"]};
+            border: none;
             gridline-color: {COLORS["divider"]};
+            alternate-background-color: {COLORS["bg_elevated"]};
         }}
         QHeaderView::section {{
             background-color: {COLORS["bg_elevated"]};
             color: {COLORS["text_secondary"]};
             border: none;
-            padding: 6px;
+            padding: 6px 8px;
             font-weight: 700;
+        }}
+        QListWidget, QTreeWidget, QTextEdit {{
+            background-color: {COLORS["bg_card"]};
+            color: {COLORS["text_primary"]};
+            border: 1px solid {COLORS["border"]};
+            padding: 6px;
+        }}
+        QListWidget::item, QTreeWidget::item {{
+            padding: 8px;
+        }}
+        QListWidget::item:selected, QTreeWidget::item:selected {{
+            background-color: {COLORS["bg_hover"]};
+            color: {COLORS["text_primary"]};
+        }}
+        QTabWidget::pane {{
+            border: 1px solid {COLORS["divider"]};
+            background: {COLORS["bg_primary"]};
+        }}
+        QTabBar::tab {{
+            background: {COLORS["bg_elevated"]};
+            color: {COLORS["text_secondary"]};
+            padding: 10px 14px;
+            margin-right: 2px;
+        }}
+        QTabBar::tab:selected {{
+            background: {COLORS["accent"]};
+            color: {COLORS["text_primary"]};
         }}
     """
