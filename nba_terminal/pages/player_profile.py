@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QRadioButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -37,6 +38,9 @@ from nba_terminal.ui.common import (
 )
 
 SEASONS = ("2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
+TABLE_HEADER_HEIGHT = 34
+TABLE_ROW_HEIGHT = 30
+TABLE_CHROME_HEIGHT = 8
 KPI_METRICS = (
     ("PTS", "Base", "PTS", "number"),
     ("REB", "Base", "REB", "number"),
@@ -295,17 +299,17 @@ class PlayerProfilePage(QWidget):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(16)
 
-        header = QLabel(self._season_header(item))
-        header.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 22px; font-weight: 800;")
-        layout.addWidget(header)
-
         if "error" in item:
+            header = QLabel(self._season_header(item))
+            header.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 22px; font-weight: 800;")
+            layout.addWidget(header)
             layout.addWidget(self._warnings_card([str(item["error"])], title="LOAD FAILED"))
             layout.addStretch()
             return page
 
+        layout.addWidget(self._profile_header_card(item))
         self._add_kpi_grid(layout, item)
-        layout.addWidget(self._dashboard_tabs(item))
+        self._add_metric_group_grid(layout, item)
 
         detail_row = QHBoxLayout()
         detail_row.setSpacing(14)
@@ -313,7 +317,7 @@ class PlayerProfilePage(QWidget):
         detail_row.addWidget(self._hit_rates_card(item), 2)
         layout.addLayout(detail_row)
 
-        layout.addWidget(self._shooting_tabs(item))
+        layout.addWidget(self._shooting_splits_card(item))
         warnings = item.get("warnings") or []
         if warnings:
             layout.addWidget(self._warnings_card(warnings))
@@ -326,22 +330,29 @@ class PlayerProfilePage(QWidget):
         grid.setVerticalSpacing(12)
         for index, metric in enumerate(KPI_METRICS):
             grid.addWidget(self._kpi_card(item, *metric), index // 4, index % 4)
+        for column in range(4):
+            grid.setColumnStretch(column, 1)
         layout.addLayout(grid)
 
     def _kpi_card(self, item: dict[str, Any], label: str, measure: str, column: str, value_type: str) -> QWidget:
         frame = card()
+        frame.setMinimumHeight(108)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 14, 18, 14)
         layout.setSpacing(6)
 
         record = item["measures"].get(measure, {})
         rank = self._rank_text(record, column)
-        value = self._format_value(record.get(column), value_type)
+        raw_value = record.get(column)
+        value = self._format_value(raw_value, value_type)
 
         title = QLabel(label)
         title.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 11px; font-weight: 800;")
         metric = QLabel(value)
-        metric.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 26px; font-weight: 900;")
+        metric.setStyleSheet(
+            f"color: {self._metric_color(column, raw_value)}; font-size: 26px; font-weight: 900;"
+        )
         rank_label = QLabel(rank or "Rank -")
         rank_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 11px;")
         layout.addWidget(title)
@@ -349,25 +360,87 @@ class PlayerProfilePage(QWidget):
         layout.addWidget(rank_label)
         return frame
 
-    def _dashboard_tabs(self, item: dict[str, Any]) -> QTabWidget:
-        tabs = QTabWidget()
-        tabs.setDocumentMode(True)
-        for label, metrics in METRIC_GROUPS.items():
-            rows = []
-            for name, measure, column, value_type in metrics:
-                record = item["measures"].get(measure, {})
-                if column not in record or record.get(column) == "":
-                    continue
-                rows.append(
-                    [
-                        name,
-                        self._format_value(record.get(column), value_type),
-                        self._rank_text(record, column) or "-",
-                        measure,
-                    ]
-                )
-            tabs.addTab(self._table_page(("Metric", "Value", "Rank", "Source"), rows, 380), label)
-        return tabs
+    def _profile_header_card(self, item: dict[str, Any]) -> QWidget:
+        frame = card()
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(18)
+
+        title_block = QVBoxLayout()
+        title_block.setSpacing(4)
+        title = QLabel(str(item.get("player", "")))
+        title.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 24px; font-weight: 900;")
+        subtitle = QLabel(f"{item['season']} {item['season_type']}")
+        subtitle.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 13px;")
+        title_block.addWidget(title)
+        title_block.addWidget(subtitle)
+        layout.addLayout(title_block, 1)
+
+        base = item["measures"].get("Base", {})
+        badges = [
+            ("TEAM", str(item.get("team") or "-")),
+            ("GP", self._format_value(base.get("GP"), "integer")),
+            ("RECORD", self._record_text(base)),
+            ("AGE", self._format_value(base.get("AGE"), "number")),
+        ]
+        badge_row = QHBoxLayout()
+        badge_row.setSpacing(8)
+        for label, value in badges:
+            badge_row.addWidget(self._badge(label, value))
+        layout.addLayout(badge_row)
+        return frame
+
+    def _add_metric_group_grid(self, layout: QVBoxLayout, item: dict[str, Any]) -> None:
+        section = QLabel("Season Dashboard")
+        section.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 16px; font-weight: 900;")
+        layout.addWidget(section)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(14)
+        for index, (label, metrics) in enumerate(METRIC_GROUPS.items()):
+            card_widget = self._metric_group_card(label, self._metric_group_rows(item, metrics))
+            grid.addWidget(card_widget, index // 2, index % 2)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
+
+    def _metric_group_card(self, title: str, rows: list[list[Any]]) -> QWidget:
+        frame = card()
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(18, 16, 18, 18)
+        layout.setSpacing(10)
+
+        heading = QHBoxLayout()
+        heading.addWidget(eyebrow_label(title.upper()))
+        heading.addStretch()
+        count = QLabel(f"{len(rows)} stats")
+        count.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 11px; border: none;")
+        heading.addWidget(count)
+        layout.addLayout(heading)
+        layout.addWidget(self._table(("Metric", "Value", "Rank"), rows, max_height=520, min_height=150))
+        return frame
+
+    def _metric_group_rows(
+        self,
+        item: dict[str, Any],
+        metrics: tuple[tuple[str, str, str, str], ...],
+    ) -> list[list[Any]]:
+        rows = []
+        for name, measure, column, value_type in metrics:
+            record = item["measures"].get(measure, {})
+            if column not in record or record.get(column) == "":
+                continue
+            rows.append(
+                [
+                    name,
+                    self._format_value(record.get(column), value_type),
+                    self._rank_text(record, column) or "-",
+                ]
+            )
+        return rows
 
     def _game_summary_card(self, item: dict[str, Any]) -> QWidget:
         rows = []
@@ -383,7 +456,7 @@ class PlayerProfilePage(QWidget):
                 ]
             )
         headers = ("Stat", "Season", "L5", "L10", "L20", "Std", "CV")
-        return self._table_card("GAME-LOG PROFILE", headers, rows, 470)
+        return self._table_card("GAME-LOG PROFILE", headers, rows, max_height=520, min_height=250)
 
     def _hit_rates_card(self, item: dict[str, Any]) -> QWidget:
         rows = []
@@ -396,7 +469,18 @@ class PlayerProfilePage(QWidget):
                 ]
             )
         headers = ("Market", "Season", "L5", "L10", "L20")
-        return self._table_card("HIT RATES", headers, rows, 470)
+        return self._table_card("HIT RATES", headers, rows, max_height=520, min_height=250)
+
+    def _shooting_splits_card(self, item: dict[str, Any]) -> QWidget:
+        frame = card()
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(18, 16, 18, 18)
+        layout.setSpacing(10)
+        layout.addWidget(eyebrow_label("SHOOTING SPLITS"))
+        tabs = self._shooting_tabs(item)
+        tabs.setMinimumHeight(390)
+        layout.addWidget(tabs)
+        return frame
 
     def _shooting_tabs(self, item: dict[str, Any]) -> QTabWidget:
         tabs = QTabWidget()
@@ -420,43 +504,82 @@ class PlayerProfilePage(QWidget):
                         self._format_value(record.get("PCT_UAST_FGM"), "pct"),
                     ]
                 )
-            tabs.addTab(self._table_page(headers, rows, 360), label)
+            tabs.addTab(self._table_page(headers, rows, max_height=340, min_height=260), label)
         if not splits:
-            tabs.addTab(self._table_page(("Status",), [["Shooting splits unavailable"]], 180), "Shooting Splits")
+            tabs.addTab(
+                self._table_page(("Status",), [["Shooting splits unavailable"]], max_height=180, min_height=120),
+                "Shooting Splits",
+            )
         return tabs
 
-    def _table_card(self, title: str, headers: tuple[str, ...], rows: list[list[Any]], height: int) -> QWidget:
+    def _table_card(
+        self,
+        title: str,
+        headers: tuple[str, ...],
+        rows: list[list[Any]],
+        max_height: int,
+        min_height: int,
+    ) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 16, 18, 18)
         layout.setSpacing(10)
         layout.addWidget(eyebrow_label(title))
-        layout.addWidget(self._table(headers, rows, height))
+        layout.addWidget(self._table(headers, rows, max_height=max_height, min_height=min_height))
         return frame
 
-    def _table_page(self, headers: tuple[str, ...], rows: list[list[Any]], height: int) -> QWidget:
+    def _table_page(
+        self,
+        headers: tuple[str, ...],
+        rows: list[list[Any]],
+        max_height: int,
+        min_height: int,
+    ) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(self._table(headers, rows, height))
+        layout.addWidget(self._table(headers, rows, max_height=max_height, min_height=min_height))
         return page
 
-    def _table(self, headers: tuple[str, ...], rows: list[list[Any]], height: int) -> QTableWidget:
+    def _table(
+        self,
+        headers: tuple[str, ...],
+        rows: list[list[Any]],
+        max_height: int,
+        min_height: int = 126,
+    ) -> QTableWidget:
         table = QTableWidget()
         style_terminal_table(table, bordered=True)
+        display_rows = rows or [["No data", *("-" for _ in headers[1:])]]
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
-        table.setRowCount(len(rows))
-        for row_index, row in enumerate(rows):
+        table.setRowCount(len(display_rows))
+        table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
+        table.horizontalHeader().setFixedHeight(TABLE_HEADER_HEIGHT)
+        table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        for row_index, row in enumerate(display_rows):
             for column_index, value in enumerate(row):
                 item = QTableWidgetItem(str(value))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                alignment = Qt.AlignmentFlag.AlignVCenter
+                alignment |= Qt.AlignmentFlag.AlignLeft if column_index == 0 else Qt.AlignmentFlag.AlignRight
+                item.setTextAlignment(alignment)
                 item.setForeground(QColor(COLORS["text_primary"]))
                 table.setItem(row_index, column_index, item)
         header = table.horizontalHeader()
-        for index in range(table.columnCount()):
-            header.setSectionResizeMode(index, QHeaderView.ResizeMode.Stretch)
-        table.setMinimumHeight(height)
+        if table.columnCount() == 1:
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        elif table.columnCount() <= 5:
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            for index in range(1, table.columnCount()):
+                header.setSectionResizeMode(index, QHeaderView.ResizeMode.Fixed)
+                table.setColumnWidth(index, 86)
+        else:
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            for index in range(1, table.columnCount()):
+                header.setSectionResizeMode(index, QHeaderView.ResizeMode.Fixed)
+                table.setColumnWidth(index, 70)
+        row_height = TABLE_HEADER_HEIGHT + (len(display_rows) * TABLE_ROW_HEIGHT) + TABLE_CHROME_HEIGHT
+        table.setFixedHeight(max(min_height, min(max_height, row_height)))
         return table
 
     def _warnings_card(self, warnings: list[str], title: str = "DATA WARNINGS") -> QWidget:
@@ -476,6 +599,37 @@ class PlayerProfilePage(QWidget):
     def _season_header(item: dict[str, Any]) -> str:
         team = f" | {item['team']}" if item.get("team") else ""
         return f"{item['player']}{team} | {item['season']} {item['season_type']}"
+
+    @staticmethod
+    def _badge(label: str, value: str) -> QLabel:
+        badge = QLabel(f"{label}  {value}")
+        badge.setStyleSheet(
+            "QLabel {"
+            f"background-color: {COLORS['bg_elevated']};"
+            f"color: {COLORS['text_secondary']};"
+            f"border: 1px solid {COLORS['border']};"
+            "border-radius: 6px; padding: 7px 10px; font-size: 11px; font-weight: 800;"
+            "}"
+        )
+        return badge
+
+    @staticmethod
+    def _record_text(base: dict[str, Any]) -> str:
+        wins = base.get("W")
+        losses = base.get("L")
+        if wins in {None, ""} or losses in {None, ""}:
+            return "-"
+        return f"{safe_float(wins):.0f}-{safe_float(losses):.0f}"
+
+    @staticmethod
+    def _metric_color(column: str, value: Any) -> str:
+        if column == "NET_RATING":
+            return COLORS["success"] if safe_float(value) >= 0 else COLORS["danger"]
+        if column in {"TS_PCT", "PIE"}:
+            return COLORS["success"]
+        if column == "USG_PCT":
+            return COLORS["accent"]
+        return COLORS["text_primary"]
 
     @staticmethod
     def _rank_text(record: dict[str, Any], column: str) -> str:
