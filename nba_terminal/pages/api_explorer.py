@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from nba_terminal.services.api_catalog import CATEGORY_ORDER, EndpointInfo, build_endpoint_infos
-from nba_terminal.ui.common import eyebrow_label, title_label
+from nba_terminal.ui.common import eyebrow_label, style_secondary_button, title_label
 
 
 class ApiExplorerPage(QWidget):
@@ -29,8 +29,8 @@ class ApiExplorerPage(QWidget):
         self.endpoint_infos = build_endpoint_infos()
         self.category_counts = self._build_category_counts()
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(14)
+        layout.setContentsMargins(24, 24, 40, 24)
+        layout.setSpacing(16)
         layout.addWidget(eyebrow_label("NBA API"))
         layout.addWidget(title_label("Stats Explorer"))
 
@@ -51,6 +51,8 @@ class ApiExplorerPage(QWidget):
         buttons = QHBoxLayout()
         expand = QPushButton("Expand All")
         collapse = QPushButton("Collapse All")
+        style_secondary_button(expand)
+        style_secondary_button(collapse)
         expand.clicked.connect(lambda: self.dataset_tree.expandAll())
         collapse.clicked.connect(lambda: self.dataset_tree.collapseAll())
         buttons.addWidget(expand)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
-    QHBoxLayout,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -21,7 +21,7 @@ from nba_terminal.analytics import (
 )
 from nba_terminal.services.nba_fetchers import fetch_team_defense_stats
 from nba_terminal.theme import COLORS
-from nba_terminal.ui.common import card, eyebrow_label, populate_table, scroll_page, title_label
+from nba_terminal.ui.common import card, eyebrow_label, populate_table, scroll_page, style_primary_button, title_label
 
 
 class TeamDefenseWorker(QThread):
@@ -55,15 +55,21 @@ class TeamDefensePage(QWidget):
         layout.addWidget(eyebrow_label("TEAM DEFENSE"))
         layout.addWidget(title_label("Shot Zone Defense"))
 
-        controls = QHBoxLayout()
+        controls_card = card(radius=12)
+        controls = QGridLayout(controls_card)
+        controls.setContentsMargins(25, 20, 25, 20)
+        controls.setHorizontalSpacing(14)
         self.season_input = QLineEdit("2025-26")
         self.load_button = QPushButton("Load Defense")
+        style_primary_button(self.load_button)
         self.load_button.clicked.connect(self.start_fetch)
-        controls.addWidget(QLabel("Season"))
-        controls.addWidget(self.season_input)
-        controls.addWidget(self.load_button)
-        controls.addStretch()
-        layout.addLayout(controls)
+        controls.addWidget(eyebrow_label("SEASON"), 0, 0)
+        controls.addWidget(QLabel(""), 0, 1)
+        controls.addWidget(self.season_input, 1, 0)
+        controls.addWidget(self.load_button, 1, 1)
+        controls.setColumnStretch(0, 1)
+        controls.setColumnStretch(1, 0)
+        layout.addWidget(controls_card)
 
         self.status = QLabel("Ready")
         self.status.setStyleSheet(f"color: {COLORS['text_tertiary']};")

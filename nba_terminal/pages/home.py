@@ -42,8 +42,8 @@ class HomePage(QWidget):
     def _module_card(self, name: str, source: str, detail: str) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
-        layout.setSpacing(8)
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(10)
 
         source_label = QLabel(source)
         source_label.setStyleSheet(
@@ -53,7 +53,7 @@ class HomePage(QWidget):
 
         name_label = QLabel(name)
         name_label.setStyleSheet(
-            f"color: {COLORS['text_primary']}; font-size: 18px; font-weight: 800;"
+            f"color: {COLORS['text_primary']}; font-size: 18px; font-weight: bold;"
         )
         layout.addWidget(name_label)
 

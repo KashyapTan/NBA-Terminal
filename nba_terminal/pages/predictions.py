@@ -7,7 +7,7 @@ from typing import Any
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
@@ -22,7 +22,14 @@ from PyQt6.QtWidgets import (
 
 from nba_terminal.services.projections import project_points
 from nba_terminal.theme import COLORS
-from nba_terminal.ui.common import card, eyebrow_label, scroll_page, title_label
+from nba_terminal.ui.common import (
+    card,
+    eyebrow_label,
+    scroll_page,
+    style_primary_button,
+    style_terminal_table,
+    title_label,
+)
 
 
 class ProjectionWorker(QThread):
@@ -58,7 +65,7 @@ class PredictionsPage(QWidget):
         root.addWidget(scroll)
 
         self.results = QVBoxLayout()
-        self.results.setSpacing(16)
+        self.results.setSpacing(20)
 
         layout.addWidget(eyebrow_label("POINTS PREDICTOR"))
         layout.addWidget(title_label("Player Projection"))
@@ -71,9 +78,9 @@ class PredictionsPage(QWidget):
         layout.addStretch()
 
     def _build_controls(self, layout: QVBoxLayout) -> None:
-        controls = card()
+        controls = card(radius=12)
         outer = QVBoxLayout(controls)
-        outer.setContentsMargins(18, 16, 18, 16)
+        outer.setContentsMargins(25, 25, 25, 25)
         outer.setSpacing(14)
 
         grid = QGridLayout()
@@ -99,6 +106,7 @@ class PredictionsPage(QWidget):
 
         self.run_button = QPushButton("Project Points")
         self.run_button.setMinimumWidth(150)
+        style_primary_button(self.run_button)
         self.run_button.clicked.connect(self.start_projection)
         grid.addWidget(QLabel(""), 2, 4)
         grid.addWidget(self.run_button, 3, 4)
@@ -109,7 +117,7 @@ class PredictionsPage(QWidget):
 
         note = QLabel("Weighted v1 model: season form, recent form, minutes, opponent defense, pace, rest, and venue.")
         note.setWordWrap(True)
-        note.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 12px;")
+        note.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 12px; border: none;")
         outer.addWidget(note)
         layout.addWidget(controls)
 
@@ -173,15 +181,16 @@ class PredictionsPage(QWidget):
 
     def _hero_card(self, data: dict[str, Any]) -> QWidget:
         context = data["context"]
-        frame = card()
+        frame = QFrame()
+        frame.setStyleSheet("QFrame { border: none; background: transparent; } QLabel { border: none; }")
         layout = QHBoxLayout(frame)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(0, 8, 0, 0)
         layout.setSpacing(28)
 
         left = QVBoxLayout()
         left.addWidget(eyebrow_label(data["player_name"].upper()))
         value = QLabel(f"{float(data['projection']):.1f}")
-        value.setStyleSheet(f"color: {COLORS['accent']}; font-size: 70px; font-weight: 900;")
+        value.setStyleSheet(f"color: {COLORS['accent']}; font-size: 84px; font-weight: bold;")
         left.addWidget(value)
         label = QLabel("Projected Points")
         label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 14px; font-weight: 700;")
@@ -206,13 +215,13 @@ class PredictionsPage(QWidget):
         return frame
 
     def _metric_tile(self, name: str, value: Any, suffix: str) -> QWidget:
-        frame = card()
+        frame = card(radius=12)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setContentsMargins(20, 15, 20, 15)
         layout.setSpacing(7)
         layout.addWidget(eyebrow_label(name.upper()))
         body = QLabel(f"{float(value):.2f} {suffix}")
-        body.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 22px; font-weight: 900;")
+        body.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 32px; font-weight: bold;")
         layout.addWidget(body)
         return frame
 
@@ -225,9 +234,9 @@ class PredictionsPage(QWidget):
             ("Opp Pace", f"{float(context['pace']):.1f}"),
             ("League Pace", f"{float(context['league_pace']):.1f}"),
         ]
-        frame = card()
+        frame = card(radius=12)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(20, 20, 20, 20)
         layout.addWidget(eyebrow_label("MATCHUP CONTEXT"))
         table = self._base_table()
         self._fill_table(table, ("Field", "Value"), rows)
@@ -237,9 +246,9 @@ class PredictionsPage(QWidget):
         return frame
 
     def _factors_card(self, data: dict[str, Any]) -> QWidget:
-        frame = card()
+        frame = card(radius=12)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(25, 25, 25, 25)
         layout.addWidget(eyebrow_label("PROJECTION FACTORS"))
         table = self._base_table()
         self._fill_table(table, ("Factor", "Input", "Impact"), self._factor_rows(data))
@@ -250,9 +259,9 @@ class PredictionsPage(QWidget):
 
     def _formula_card(self, data: dict[str, Any]) -> QWidget:
         baseline = self._baseline(data)
-        frame = card()
+        frame = card(radius=12)
         layout = QGridLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(20, 20, 20, 20)
         layout.setHorizontalSpacing(18)
         layout.setVerticalSpacing(8)
         layout.addWidget(eyebrow_label("MODEL FORMULA"), 0, 0, 1, 2)
@@ -301,19 +310,7 @@ class PredictionsPage(QWidget):
 
     def _base_table(self) -> QTableWidget:
         table = QTableWidget()
-        table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setAlternatingRowColors(True)
-        table.setWordWrap(False)
-        table.setStyleSheet(
-            "QTableWidget {"
-            f"background-color: {COLORS['bg_card']}; color: {COLORS['text_primary']};"
-            f"alternate-background-color: {COLORS['bg_elevated']};"
-            f"border: 1px solid {COLORS['border']}; gridline-color: {COLORS['divider']};"
-            "}"
-            "QTableWidget::item { padding: 4px; }"
-        )
+        style_terminal_table(table)
         return table
 
     def _fill_table(

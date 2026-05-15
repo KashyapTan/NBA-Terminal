@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QLabel, QPushButton, QTableWidget, QVBoxLayout, QWid
 from nba_terminal.analytics import format_signed, sort_confident_bets
 from nba_terminal.services.slate import scan_slate_edges
 from nba_terminal.theme import COLORS
-from nba_terminal.ui.common import eyebrow_label, populate_table, scroll_page, title_label
+from nba_terminal.ui.common import card, eyebrow_label, populate_table, scroll_page, style_primary_button, title_label
 
 
 class SlateScannerWorker(QThread):
@@ -39,9 +39,17 @@ class SlateScannerPage(QWidget):
         layout.addWidget(eyebrow_label("SLATE SCANNER"))
         layout.addWidget(title_label("Model Edge Board"))
 
+        controls = card(radius=12)
+        controls_layout = QVBoxLayout(controls)
+        controls_layout.setContentsMargins(25, 20, 25, 20)
+        controls_layout.setSpacing(8)
+        controls_layout.addWidget(eyebrow_label("TODAY SLATE"))
         self.scan_button = QPushButton("Run Today Scan")
+        self.scan_button.setFixedWidth(180)
+        style_primary_button(self.scan_button)
         self.scan_button.clicked.connect(self.start_scan)
-        layout.addWidget(self.scan_button)
+        controls_layout.addWidget(self.scan_button)
+        layout.addWidget(controls)
 
         self.status = QLabel("Ready")
         self.status.setStyleSheet(f"color: {COLORS['text_tertiary']};")

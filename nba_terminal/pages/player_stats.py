@@ -8,9 +8,9 @@ import pandas as pd
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
     QButtonGroup,
     QCheckBox,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
 
 from nba_terminal.analytics import format_percentage
 from nba_terminal.services.player_data import (
+    HIT_THRESHOLDS,
     fetch_player_game_log,
     filter_vs_team,
     hit_rates,
@@ -35,7 +36,15 @@ from nba_terminal.services.player_data import (
     visible_game_log_columns,
 )
 from nba_terminal.theme import COLORS
-from nba_terminal.ui.common import card, eyebrow_label, scroll_page, title_label
+from nba_terminal.ui.common import (
+    card,
+    eyebrow_label,
+    scroll_page,
+    style_primary_button,
+    style_secondary_button,
+    style_terminal_table,
+    title_label,
+)
 
 SEASONS = ("2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
 STAT_LABELS = {
@@ -46,6 +55,86 @@ STAT_LABELS = {
     "blocks": "BLK",
     "3pt": "3PM",
 }
+ROLLING_STAT_LABELS = {
+    "points": "PTS",
+    "rebounds": "REB",
+    "assists": "AST",
+    "steals": "STL",
+    "blocks": "BLK",
+    "3pt": "3PM",
+}
+GAME_LOG_HEADERS = {
+    "GAME_DATE": "DATE",
+    "MATCHUP": "MATCHUP",
+    "WL": "W/L",
+    "FG_PCT": "FG%",
+    "FG3M": "3PM",
+    "FG3A": "3PA",
+    "FG3_PCT": "3P%",
+    "FT_PCT": "FT%",
+    "TS_PCT": "TS%",
+    "PLUS_MINUS": "+/-",
+}
+GAME_LOG_COLUMN_WEIGHTS = {
+    "GAME_DATE": 78,
+    "MATCHUP": 92,
+    "WL": 30,
+    "MIN": 34,
+    "PTS": 36,
+    "REB": 36,
+    "AST": 36,
+    "STL": 34,
+    "BLK": 34,
+    "PRA": 38,
+    "PR": 34,
+    "PA": 34,
+    "RA": 34,
+    "FGM": 36,
+    "FGA": 36,
+    "FG_PCT": 48,
+    "FG3M": 40,
+    "FG3A": 40,
+    "FG3_PCT": 50,
+    "FTM": 36,
+    "FTA": 36,
+    "FT_PCT": 48,
+    "TS_PCT": 48,
+    "PLUS_MINUS": 42,
+}
+
+
+class CompactGameLogTable(QTableWidget):
+    """Game-log table that fits all stat columns into the visible card width."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._game_log_columns: list[str] = []
+
+    def set_game_log_columns(self, columns: list[str]) -> None:
+        self._game_log_columns = columns
+        self._fit_columns_to_viewport()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._fit_columns_to_viewport()
+
+    def _fit_columns_to_viewport(self) -> None:
+        if not self._game_log_columns:
+            return
+        available_width = max(1, self.viewport().width() - 2)
+        weights = [GAME_LOG_COLUMN_WEIGHTS.get(column, 36) for column in self._game_log_columns]
+        total_weight = sum(weights)
+        widths = [max(24, int(available_width * weight / total_weight)) for weight in weights]
+        remainder = available_width - sum(widths)
+        if widths and remainder > 0:
+            widths[-1] += remainder
+
+        header = self.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(24)
+        for index, width in enumerate(widths):
+            header.setSectionResizeMode(index, QHeaderView.ResizeMode.Fixed)
+            self.setColumnWidth(index, width)
 
 
 class PlayerStatsWorker(QThread):
@@ -108,19 +197,6 @@ class PlayerStatsPage(QWidget):
         self.results_tabs = QTabWidget()
         self.results_tabs.setDocumentMode(True)
         self.results_tabs.setVisible(False)
-        self.results_tabs.setStyleSheet(
-            "QTabWidget::pane {"
-            f"border: 1px solid {COLORS['border']};"
-            f"background: {COLORS['bg_primary']};"
-            "}"
-            "QTabBar::tab {"
-            f"background: {COLORS['bg_elevated']}; color: {COLORS['text_secondary']};"
-            "padding: 9px 14px; margin-right: 2px;"
-            "}"
-            "QTabBar::tab:selected {"
-            f"background: {COLORS['accent']}; color: {COLORS['text_primary']};"
-            "}"
-        )
         layout.addWidget(self.results_tabs)
         layout.addStretch()
 
@@ -128,7 +204,7 @@ class PlayerStatsPage(QWidget):
         controls = card()
         inner = QVBoxLayout(controls)
         inner.setContentsMargins(18, 16, 18, 16)
-        inner.setSpacing(14)
+        inner.setSpacing(12)
 
         top = QGridLayout()
         top.setHorizontalSpacing(12)
@@ -136,16 +212,23 @@ class PlayerStatsPage(QWidget):
         self.opponent_input = QLineEdit("76ers")
         self.fetch_button = QPushButton("Fetch Statistics")
         self.fetch_button.setMinimumWidth(150)
+        style_primary_button(self.fetch_button)
         self.fetch_button.clicked.connect(self.start_fetch)
+        self.clear_button = QPushButton("Clear Results")
+        self.clear_button.setMinimumWidth(130)
+        style_secondary_button(self.clear_button)
+        self.clear_button.clicked.connect(self.clear_results)
         top.addWidget(eyebrow_label("PLAYER"), 0, 0)
         top.addWidget(eyebrow_label("OPPONENT"), 0, 1)
         top.addWidget(QLabel(""), 0, 2)
         top.addWidget(self.player_input, 1, 0)
         top.addWidget(self.opponent_input, 1, 1)
         top.addWidget(self.fetch_button, 1, 2)
+        top.addWidget(self.clear_button, 1, 3)
         top.setColumnStretch(0, 3)
         top.setColumnStretch(1, 2)
         top.setColumnStretch(2, 0)
+        top.setColumnStretch(3, 0)
         inner.addLayout(top)
 
         season_row = QHBoxLayout()
@@ -154,7 +237,6 @@ class PlayerStatsPage(QWidget):
         for season in SEASONS:
             check = QCheckBox(season)
             check.setChecked(season in {"2024-25", "2025-26"})
-            check.setStyleSheet(f"color: {COLORS['text_secondary']};")
             self.season_checks[season] = check
             season_row.addWidget(check)
         season_row.addSpacing(18)
@@ -164,7 +246,6 @@ class PlayerStatsPage(QWidget):
         self.playoffs_radio = QRadioButton("Playoffs")
         self.regular_radio.setChecked(True)
         for radio in (self.regular_radio, self.playoffs_radio):
-            radio.setStyleSheet(f"color: {COLORS['text_secondary']};")
             self.season_type_group.addButton(radio)
             season_row.addWidget(radio)
         season_row.addStretch()
@@ -216,11 +297,14 @@ class PlayerStatsPage(QWidget):
         cards.addWidget(self._stat_card("Vs Opponent", item["vs_stats"]), 1)
         layout.addLayout(cards)
 
-        trend_row = QHBoxLayout()
-        trend_row.setSpacing(14)
-        trend_row.addWidget(self._rolling_card(item["rolling"]), 1)
-        trend_row.addWidget(self._hit_rate_card(item["hit_rates"]), 2)
-        layout.addLayout(trend_row)
+        layout.addWidget(self._rolling_card(item["rolling"]))
+
+        hit_row = QHBoxLayout()
+        hit_row.setSpacing(24)
+        hit_row.addWidget(self._hit_rate_card("Points Rates", item["hit_rates"].get("PTS", {}), "PTS"), 1)
+        hit_row.addWidget(self._hit_rate_card("Rebounds Rates", item["hit_rates"].get("REB", {}), "REB"), 1)
+        hit_row.addWidget(self._hit_rate_card("Assists Rates", item["hit_rates"].get("AST", {}), "AST"), 1)
+        layout.addLayout(hit_row)
 
         layout.addWidget(self._section_title("Game Log"))
         layout.addWidget(self._game_log_table(item["game_log"]))
@@ -238,20 +322,22 @@ class PlayerStatsPage(QWidget):
     def _stat_card(self, title: str, stats: dict[str, Any]) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(20, 15, 20, 15)
         layout.setSpacing(12)
         layout.addWidget(eyebrow_label(title.upper()))
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
+        grid.setContentsMargins(0, 5, 0, 5)
+        grid.setHorizontalSpacing(20)
         grid.setVerticalSpacing(8)
-        headers = ("Stat", "Avg", "Std", "CV")
+        headers = ("Stat", "Avg", "Std", "CV%")
         for row, text in enumerate(headers):
             label = QLabel(text)
             label.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 11px;")
             grid.addWidget(label, row, 0)
 
         for column, (key, label_text) in enumerate(STAT_LABELS.items(), start=1):
+            grid.setColumnStretch(column, 1)
             avg = float(stats["averages"].get(key, 0.0))
             std = float(stats["std_devs"].get(key, 0.0))
             cv = std / avg if avg > 0 else 0.0
@@ -259,60 +345,129 @@ class PlayerStatsPage(QWidget):
             for row, value in enumerate(values):
                 label = QLabel(value)
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                color = COLORS["text_primary"] if row in {0, 1} else COLORS["text_secondary"]
-                label.setStyleSheet(f"color: {color}; font-weight: {'800' if row in {0, 1} else '500'};")
+                color = COLORS["text_primary"]
+                if row == 0:
+                    color = COLORS["text_secondary"]
+                elif row == 2:
+                    color = COLORS["text_tertiary"]
+                elif row == 3:
+                    color = self._cv_color(cv)
+                label.setStyleSheet(
+                    f"color: {color}; font-size: {'14' if row == 1 else '12'}px;"
+                    f"font-weight: {'bold' if row in {0, 1} else 'normal'};"
+                )
                 grid.addWidget(label, row, column)
         layout.addLayout(grid)
 
-        footer = QLabel(f"Games: {stats['games_played']}")
-        footer.setStyleSheet(f"color: {COLORS['text_secondary']};")
-        layout.addWidget(footer)
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setStyleSheet(f"background-color: {COLORS['divider']}; max-height: 1px; border: none;")
+        layout.addWidget(line)
+
+        footer = QHBoxLayout()
+        games_label = QLabel("Games Played")
+        games_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 12px;")
+        games_value = QLabel(str(stats["games_played"]))
+        games_value.setStyleSheet(f"color: {COLORS['text_primary']}; font-weight: bold; font-size: 12px;")
+        footer.addWidget(games_label)
+        footer.addStretch()
+        footer.addWidget(games_value)
+        layout.addLayout(footer)
         return frame
 
     def _rolling_card(self, rolling: dict[int, dict[str, Any]]) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(24, 20, 24, 20)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.addWidget(eyebrow_label("ROLLING TRENDS"))
         table = self._base_table()
-        rows = [
-            [
-                f"L{window}",
-                f"{stats['averages'].get('points', 0.0):.1f}",
-                f"{stats['averages'].get('rebounds', 0.0):.1f}",
-                f"{stats['averages'].get('assists', 0.0):.1f}",
-                f"{stats['averages'].get('3pt', 0.0):.1f}",
-            ]
-            for window, stats in rolling.items()
-        ]
-        self._fill_table(table, ("Window", "PTS", "REB", "AST", "3PM"), rows)
+        rows = []
+        stat_keys = tuple(ROLLING_STAT_LABELS)
+        for window in (5, 10, 15):
+            stats = rolling.get(window)
+            if not stats:
+                rows.append([f"L{window}", *("-" for _ in stat_keys)])
+                rows.append(["CV%", *("-" for _ in stat_keys)])
+                continue
+            rows.append(
+                [
+                    f"L{window}",
+                    *(f"{float(stats['averages'].get(stat, 0.0)):.1f}" for stat in stat_keys),
+                ]
+            )
+            rows.append(
+                [
+                    "CV%",
+                    *(
+                        format_percentage(
+                            float(stats["std_devs"].get(stat, 0.0))
+                            / float(stats["averages"].get(stat, 0.0))
+                            if float(stats["averages"].get(stat, 0.0)) > 0
+                            else 0.0
+                        )
+                        for stat in stat_keys
+                    ),
+                ]
+            )
+        self._fill_table(table, ("Games", *ROLLING_STAT_LABELS.values()), rows)
+        for row_index in range(table.rowCount()):
+            label_item = table.item(row_index, 0)
+            if label_item is None:
+                continue
+            if label_item.text() == "CV%":
+                label_item.setForeground(QColor(COLORS["text_tertiary"]))
+                for column_index, stat in enumerate(stat_keys, start=1):
+                    window = (5, 10, 15)[row_index // 2]
+                    stats = rolling.get(window)
+                    if not stats:
+                        continue
+                    avg = float(stats["averages"].get(stat, 0.0))
+                    std = float(stats["std_devs"].get(stat, 0.0))
+                    cv = std / avg if avg > 0 else 0.0
+                    item = table.item(row_index, column_index)
+                    if item is not None:
+                        item.setForeground(QColor(self._cv_color(cv)))
+            else:
+                label_item.setForeground(QColor(COLORS["text_primary"]))
         table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        table.setFixedHeight(140)
+        table.setFixedHeight(235)
         layout.addWidget(table)
         return frame
 
-    def _hit_rate_card(self, rates: dict[str, dict[int, dict[int, float]]]) -> QWidget:
+    def _hit_rate_card(self, title: str, rates: dict[int, dict[int, float]], stat: str) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(24, 20, 24, 20)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        layout.addWidget(eyebrow_label("HIT RATES"))
-        table = self._base_table()
-        rows = []
-        for stat, windows in rates.items():
-            for window, thresholds in windows.items():
-                compact = "   ".join(f"{threshold}+ {rate:.0f}%" for threshold, rate in thresholds.items())
-                rows.append([stat, f"L{window}", compact])
-        self._fill_table(table, ("Stat", "Window", "Rates"), rows)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        table.setFixedHeight(190)
-        layout.addWidget(table)
+        layout.setSpacing(12)
+        layout.addWidget(eyebrow_label(title.upper()))
+        thresholds = HIT_THRESHOLDS[stat]
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 8, 0, 8)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(12)
+
+        grid.addWidget(self._hit_rate_label("GAMES", COLORS["text_secondary"], bold=True), 0, 0)
+        for column, threshold in enumerate(thresholds, start=1):
+            grid.addWidget(self._hit_rate_label(f"{threshold}+", COLORS["text_secondary"], bold=True), 0, column)
+            grid.setColumnStretch(column, 1)
+
+        for row, window in enumerate((5, 10, 15), start=1):
+            grid.addWidget(self._hit_rate_label(f"L{window}", COLORS["text_primary"], bold=True), row, 0)
+            for column, threshold in enumerate(thresholds, start=1):
+                rate = float(rates.get(window, {}).get(threshold, 0.0))
+                grid.addWidget(
+                    self._hit_rate_label(f"{rate:.0f}%", self._hit_rate_color(rate), bold=True),
+                    row,
+                    column,
+                )
+        layout.addLayout(grid)
         return frame
 
     def _game_log_table(self, frame: pd.DataFrame, minimum_height: int = 430) -> QTableWidget:
-        table = self._base_table()
+        table = CompactGameLogTable()
+        style_terminal_table(table)
         columns = visible_game_log_columns(frame)
         rows = []
         for _, row in frame.iterrows():
@@ -328,33 +483,15 @@ class PlayerStatsPage(QWidget):
                 else:
                     values.append(value)
             rows.append(values)
-        self._fill_table(table, tuple(columns), rows)
-        header = table.horizontalHeader()
-        for index, column in enumerate(columns):
-            mode = (
-                QHeaderView.ResizeMode.ResizeToContents
-                if column in {"GAME_DATE", "MATCHUP"}
-                else QHeaderView.ResizeMode.Interactive
-            )
-            header.setSectionResizeMode(index, mode)
+        self._fill_table(table, tuple(self._game_log_header(column) for column in columns), rows)
+        table.set_game_log_columns(columns)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         table.setMinimumHeight(minimum_height)
         return table
 
     def _base_table(self) -> QTableWidget:
         table = QTableWidget()
-        table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setAlternatingRowColors(True)
-        table.setWordWrap(False)
-        table.setStyleSheet(
-            "QTableWidget {"
-            f"background-color: {COLORS['bg_card']}; color: {COLORS['text_primary']};"
-            f"alternate-background-color: {COLORS['bg_elevated']};"
-            f"border: 1px solid {COLORS['border']}; gridline-color: {COLORS['divider']};"
-            "}"
-            "QTableWidget::item { padding: 4px; }"
-        )
+        style_terminal_table(table)
         return table
 
     def _fill_table(self, table: QTableWidget, headers: tuple[str, ...], rows: list[list[Any]]) -> None:
@@ -371,8 +508,42 @@ class PlayerStatsPage(QWidget):
         for index in range(table.columnCount()):
             header.setSectionResizeMode(index, QHeaderView.ResizeMode.Stretch)
 
+    def clear_results(self) -> None:
+        self._clear_results()
+        self.results_tabs.setVisible(False)
+        self.status.setText("Results cleared.")
+
     def _clear_results(self) -> None:
         while self.results_tabs.count():
             widget = self.results_tabs.widget(0)
             self.results_tabs.removeTab(0)
             widget.deleteLater()
+
+    @staticmethod
+    def _hit_rate_label(text: str, color: str, *, bold: bool = False) -> QLabel:
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(
+            f"color: {color}; font-size: 12px; font-weight: {'bold' if bold else 'normal'}; border: none;"
+        )
+        return label
+
+    @staticmethod
+    def _game_log_header(column: str) -> str:
+        return GAME_LOG_HEADERS.get(column, column)
+
+    @staticmethod
+    def _cv_color(cv: float) -> str:
+        if cv < 0.30:
+            return COLORS["success"]
+        if cv < 0.50:
+            return COLORS["warning"]
+        return COLORS["danger"]
+
+    @staticmethod
+    def _hit_rate_color(rate: float) -> str:
+        if rate >= 80:
+            return COLORS["success"]
+        if rate >= 50:
+            return COLORS["warning"]
+        return COLORS["danger"]

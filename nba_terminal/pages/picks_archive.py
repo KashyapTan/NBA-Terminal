@@ -27,7 +27,7 @@ class PicksArchivePage(QWidget):
         self.files = list_pick_files(self.picks_dir)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(28, 28, 28, 28)
+        root.setContentsMargins(24, 24, 40, 24)
         root.setSpacing(16)
         root.addWidget(eyebrow_label("PICKS ARCHIVE"))
         root.addWidget(title_label("Historical Picks"))
@@ -35,9 +35,6 @@ class PicksArchivePage(QWidget):
         split = QHBoxLayout()
         self.file_list = QListWidget()
         self.file_list.setMinimumWidth(260)
-        self.file_list.setStyleSheet(
-            f"background-color: {COLORS['bg_card']}; border: 1px solid {COLORS['border']};"
-        )
         self.file_list.currentItemChanged.connect(self.display_pick)
         split.addWidget(self.file_list, 1)
 
