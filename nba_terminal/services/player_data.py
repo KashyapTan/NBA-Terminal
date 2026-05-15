@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from nba_api.stats.endpoints import playergamelog
+from nba_api.stats.endpoints import leaguedashplayerstats, playerdashboardbyshootingsplits, playergamelog
 from nba_api.stats.static import players, teams
 
 STAT_COLUMNS = {
@@ -21,6 +21,48 @@ HIT_THRESHOLDS = {
     "PTS": (10, 12, 15, 18, 20, 25, 30),
     "REB": (4, 5, 6, 7, 8, 9, 10, 11, 12),
     "AST": (4, 5, 6, 7, 8, 9, 10, 11, 12),
+    "PRA": (20, 25, 30, 35, 40, 45, 50, 55),
+    "PR": (15, 20, 25, 30, 35, 40, 45),
+    "PA": (15, 20, 25, 30, 35, 40, 45),
+    "RA": (10, 15, 20, 25, 30, 35),
+    "FG3M": (1, 2, 3, 4, 5, 6),
+}
+
+PLAYER_PROFILE_MEASURES = ("Base", "Advanced", "Misc", "Scoring", "Usage", "Defense")
+PLAYER_PROFILE_WINDOWS = (5, 10, 20)
+PLAYER_PROFILE_HIT_STATS = ("PTS", "REB", "AST", "PRA", "PR", "PA", "RA", "FG3M")
+PLAYER_PROFILE_GAME_STATS = (
+    ("MIN", "MIN", "number"),
+    ("PTS", "PTS", "number"),
+    ("REB", "REB", "number"),
+    ("AST", "AST", "number"),
+    ("PRA", "PRA", "number"),
+    ("PR", "PTS+REB", "number"),
+    ("PA", "PTS+AST", "number"),
+    ("RA", "REB+AST", "number"),
+    ("STL", "STL", "number"),
+    ("BLK", "BLK", "number"),
+    ("STOCKS", "STL+BLK", "number"),
+    ("TOV", "TOV", "number"),
+    ("FG3M", "3PM", "number"),
+    ("FG3A", "3PA", "number"),
+    ("FG_PCT", "FG%", "pct"),
+    ("FG3_PCT", "3P%", "pct"),
+    ("FT_PCT", "FT%", "pct"),
+    ("EFG_PCT", "eFG%", "pct"),
+    ("TS_PCT", "TS%", "pct"),
+    ("FG3A_RATE", "3PAr", "pct"),
+    ("FTA_RATE", "FTr", "pct"),
+    ("PTS_PER_FGA", "PTS/FGA", "number"),
+    ("PLUS_MINUS", "+/-", "number"),
+)
+SHOOTING_SPLIT_TABLES = {
+    "Overall": "overall_player_dashboard",
+    "Shot Area": "shot_area_player_dashboard",
+    "Distance 5ft": "shot5_ft_player_dashboard",
+    "Distance 8ft": "shot8_ft_player_dashboard",
+    "Assisted": "assited_shot_player_dashboard",
+    "Shot Type Summary": "shot_type_summary_player_dashboard",
 }
 
 
@@ -85,7 +127,26 @@ def fetch_player_game_log(
 def add_derived_columns(frame: pd.DataFrame) -> pd.DataFrame:
     """Add terminal-friendly derived box-score columns."""
     enriched = frame.copy()
-    for column in ("PTS", "REB", "AST", "FGA", "FTA"):
+    numeric_columns = (
+        "MIN",
+        "PTS",
+        "REB",
+        "AST",
+        "STL",
+        "BLK",
+        "TOV",
+        "FGM",
+        "FGA",
+        "FG3M",
+        "FG3A",
+        "FTM",
+        "FTA",
+        "OREB",
+        "DREB",
+        "PF",
+        "PLUS_MINUS",
+    )
+    for column in numeric_columns:
         if column in enriched:
             enriched[column] = pd.to_numeric(enriched[column], errors="coerce").fillna(0)
     if {"PTS", "REB", "AST"}.issubset(enriched.columns):
@@ -93,6 +154,16 @@ def add_derived_columns(frame: pd.DataFrame) -> pd.DataFrame:
         enriched["PR"] = enriched["PTS"] + enriched["REB"]
         enriched["PA"] = enriched["PTS"] + enriched["AST"]
         enriched["RA"] = enriched["REB"] + enriched["AST"]
+    if {"STL", "BLK"}.issubset(enriched.columns):
+        enriched["STOCKS"] = enriched["STL"] + enriched["BLK"]
+    if {"FGM", "FG3M", "FGA"}.issubset(enriched.columns):
+        denominator = enriched["FGA"].where(enriched["FGA"] > 0, 1)
+        enriched["EFG_PCT"] = (enriched["FGM"] + (0.5 * enriched["FG3M"])) / denominator
+        enriched["FG3A_RATE"] = enriched["FG3A"] / denominator if "FG3A" in enriched.columns else 0
+        enriched["PTS_PER_FGA"] = enriched["PTS"] / denominator if "PTS" in enriched.columns else 0
+    if {"FTA", "FGA"}.issubset(enriched.columns):
+        denominator = enriched["FGA"].where(enriched["FGA"] > 0, 1)
+        enriched["FTA_RATE"] = enriched["FTA"] / denominator
     if {"PTS", "FGA", "FTA"}.issubset(enriched.columns):
         denominator = 2 * (enriched["FGA"] + (0.44 * enriched["FTA"]))
         enriched["TS_PCT"] = enriched["PTS"].where(denominator > 0, 0) / denominator.where(denominator > 0, 1)
@@ -175,3 +246,176 @@ def visible_game_log_columns(frame: pd.DataFrame) -> list[str]:
         "PLUS_MINUS",
     ]
     return [column for column in preferred if column in frame.columns]
+
+
+def fetch_player_stat_profile(player_name: str, season: str, season_type: str) -> dict[str, Any]:
+    """Fetch all-around player profile data for one season."""
+    player_id = find_player_id(player_name)
+    warnings: list[str] = []
+
+    game_log = fetch_player_game_log(player_name, season, season_type)
+    if game_log.empty:
+        warnings.append("No game-log rows returned for this player, season, and season type.")
+
+    measures = {}
+    for measure in PLAYER_PROFILE_MEASURES:
+        try:
+            row, warning = _fetch_league_dashboard_row(player_id, player_name, season, season_type, measure)
+            measures[measure] = row
+            if warning:
+                warnings.append(f"{measure}: {warning}")
+        except Exception as exc:
+            measures[measure] = {}
+            warnings.append(f"{measure} dashboard unavailable: {exc}")
+
+    shooting_splits = {}
+    try:
+        shooting_splits = fetch_player_shooting_splits(player_id, season, season_type)
+    except Exception as exc:
+        warnings.append(f"Shooting splits unavailable: {exc}")
+
+    base = measures.get("Base", {})
+    resolved_name = str(base.get("PLAYER_NAME") or player_name)
+    team = str(base.get("TEAM_ABBREVIATION") or "")
+    return {
+        "player": resolved_name,
+        "player_id": player_id,
+        "team": team,
+        "season": season,
+        "season_type": season_type,
+        "game_log": game_log,
+        "measures": measures,
+        "game_summary": summarize_profile_game_stats(game_log),
+        "hit_rate_rows": profile_hit_rate_rows(game_log),
+        "shooting_splits": shooting_splits,
+        "warnings": warnings,
+    }
+
+
+def fetch_player_shooting_splits(player_id: int, season: str, season_type: str) -> dict[str, list[dict[str, Any]]]:
+    """Fetch player shooting split tables from the shooting dashboard endpoint."""
+    endpoint = playerdashboardbyshootingsplits.PlayerDashboardByShootingSplits(
+        player_id=player_id,
+        season=season,
+        season_type_playoffs=season_type,
+        per_mode_detailed="Totals",
+        timeout=60,
+    )
+    split_tables = {}
+    for label, attribute in SHOOTING_SPLIT_TABLES.items():
+        frame = getattr(endpoint, attribute).get_data_frame()
+        split_tables[label] = _records_from_frame(frame)
+    return split_tables
+
+
+def summarize_profile_game_stats(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    """Summarize game-log stats, volatility, and recent form windows."""
+    rows = []
+    for column, label, value_type in PLAYER_PROFILE_GAME_STATS:
+        if column not in frame:
+            continue
+        values = pd.to_numeric(frame[column], errors="coerce").dropna()
+        if values.empty:
+            average = std = cv = 0.0
+        else:
+            average = float(values.mean())
+            std = float(values.std()) if len(values) > 1 else 0.0
+            cv = std / average if average > 0 else 0.0
+        row: dict[str, Any] = {
+            "column": column,
+            "label": label,
+            "type": value_type,
+            "avg": average,
+            "std": std,
+            "cv": cv,
+        }
+        for window in PLAYER_PROFILE_WINDOWS:
+            recent = values.head(window)
+            row[f"last_{window}"] = float(recent.mean()) if not recent.empty else 0.0
+        rows.append(row)
+    return rows
+
+
+def profile_hit_rate_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    """Build hit-rate rows for betting-facing player stat thresholds."""
+    rows = []
+    for stat in PLAYER_PROFILE_HIT_STATS:
+        if stat not in frame:
+            continue
+        values = pd.to_numeric(frame[stat], errors="coerce").fillna(0)
+        for threshold in HIT_THRESHOLDS.get(stat, ()):
+            row: dict[str, Any] = {"market": f"{_market_label(stat)} {threshold}+"}
+            row["season"] = _hit_rate_for_values(values, threshold)
+            for window in PLAYER_PROFILE_WINDOWS:
+                recent = values.head(window)
+                row[f"last_{window}"] = _hit_rate_for_values(recent, threshold)
+            rows.append(row)
+    return rows
+
+
+def _fetch_league_dashboard_row(
+    player_id: int,
+    player_name: str,
+    season: str,
+    season_type: str,
+    measure: str,
+) -> tuple[dict[str, Any], str | None]:
+    endpoint = leaguedashplayerstats.LeagueDashPlayerStats(
+        season=season,
+        season_type_all_star=season_type,
+        measure_type_detailed_defense=measure,
+        per_mode_detailed="PerGame",
+        timeout=60,
+    )
+    frame = endpoint.get_data_frames()[0]
+    return _select_player_row(frame, player_id, player_name)
+
+
+def _select_player_row(frame: pd.DataFrame, player_id: int, player_name: str) -> tuple[dict[str, Any], str | None]:
+    if frame.empty:
+        return {}, "league dashboard returned no rows."
+
+    matches = pd.DataFrame()
+    if "PLAYER_ID" in frame:
+        player_ids = pd.to_numeric(frame["PLAYER_ID"], errors="coerce")
+        matches = frame[player_ids == player_id]
+    if matches.empty and "PLAYER_NAME" in frame:
+        lowered = player_name.strip().lower()
+        matches = frame[frame["PLAYER_NAME"].astype(str).str.lower() == lowered]
+    if matches.empty:
+        return {}, "player was not present in the league dashboard response."
+
+    warning = None
+    if len(matches) > 1 and "GP" in matches:
+        warning = "multiple rows matched; using the row with the most games played."
+        matches = matches.assign(_GP_SORT=pd.to_numeric(matches["GP"], errors="coerce").fillna(0))
+        matches = matches.sort_values("_GP_SORT", ascending=False).drop(columns=["_GP_SORT"])
+    return _clean_record(matches.iloc[0]), warning
+
+
+def _records_from_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    if frame.empty:
+        return []
+    return [_clean_record(row) for _, row in frame.iterrows()]
+
+
+def _clean_record(row: pd.Series) -> dict[str, Any]:
+    record = {}
+    for key, value in row.items():
+        if pd.isna(value):
+            record[str(key)] = ""
+        elif hasattr(value, "item"):
+            record[str(key)] = value.item()
+        else:
+            record[str(key)] = value
+    return record
+
+
+def _hit_rate_for_values(values: pd.Series, threshold: int) -> float:
+    if values.empty:
+        return 0.0
+    return float((values >= threshold).mean() * 100)
+
+
+def _market_label(stat: str) -> str:
+    return "3PM" if stat == "FG3M" else stat

@@ -23,6 +23,7 @@ from nba_terminal.pages.api_explorer import ApiExplorerPage
 from nba_terminal.pages.consistency import ConsistencyPage
 from nba_terminal.pages.home import HomePage
 from nba_terminal.pages.picks_archive import PicksArchivePage
+from nba_terminal.pages.player_profile import PlayerProfilePage
 from nba_terminal.pages.player_stats import PlayerStatsPage
 from nba_terminal.pages.predictions import PredictionsPage
 from nba_terminal.pages.slate_scanner import SlateScannerPage
@@ -89,7 +90,8 @@ class NBATerminal(QMainWindow):
     def _add_pages(self) -> None:
         pages: tuple[tuple[str, PageFactory], ...] = (
             ("Dashboard", HomePage),
-            ("Player Analytics", PlayerStatsPage),
+            ("Player Profile", PlayerProfilePage),
+            ("Player Game Logs", PlayerStatsPage),
             ("Points Predictor", PredictionsPage),
             ("Team Defense", TeamDefensePage),
             ("Consistency", ConsistencyPage),
