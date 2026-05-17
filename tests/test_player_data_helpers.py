@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from nba_terminal.services import player_data
 from nba_terminal.services.player_data import add_derived_columns, profile_hit_rate_rows, summarize_profile_game_stats
 
 
@@ -66,3 +67,40 @@ def test_player_profile_hit_rate_rows_include_combo_markets():
     assert rates["PTS 20+"]["season"] == 50
     assert rates["PRA 20+"]["season"] == 50
     assert rates["3PM 2+"]["season"] == 50
+
+
+def test_player_profile_cache_round_trip_and_clear(monkeypatch, tmp_path):
+    monkeypatch.setenv("NBA_TERMINAL_CACHE_DIR", str(tmp_path))
+    profile = {
+        "player": "Test Player",
+        "player_id": 1,
+        "team": "TST",
+        "season": "2025-26",
+        "season_type": "Regular Season",
+        "cache_hit": False,
+        "game_log": pd.DataFrame(
+            [
+                {
+                    "GAME_DATE": pd.Timestamp("2026-01-02"),
+                    "PTS": 20,
+                    "REB": 8,
+                }
+            ]
+        ),
+        "measures": {"Base": {"PTS": 20.0}},
+        "game_summary": [{"column": "PTS", "avg": 20.0}],
+        "hit_rate_rows": [{"market": "PTS 20+", "season": 100.0}],
+        "shooting_splits": {"Overall": [{"FGM": 8}]},
+        "warnings": [],
+    }
+
+    player_data._write_player_profile_cache(1, "2025-26", "Regular Season", profile)
+    cached = player_data._load_player_profile_cache(1, "2025-26", "Regular Season")
+
+    assert cached is not None
+    assert cached["player"] == "Test Player"
+    assert cached["cache_hit"] is False
+    assert cached["game_log"].loc[0, "PTS"] == 20
+    assert pd.api.types.is_datetime64_any_dtype(cached["game_log"]["GAME_DATE"])
+    assert player_data.clear_player_profile_cache() == 1
+    assert player_data._load_player_profile_cache(1, "2025-26", "Regular Season") is None

@@ -25,7 +25,11 @@ from PyQt6.QtWidgets import (
 )
 
 from nba_terminal.analytics import format_percentage, safe_float
-from nba_terminal.services.player_data import PLAYER_PROFILE_WINDOWS, fetch_player_stat_profile
+from nba_terminal.services.player_data import (
+    PLAYER_PROFILE_WINDOWS,
+    clear_player_profile_cache,
+    fetch_player_stat_profile,
+)
 from nba_terminal.theme import COLORS
 from nba_terminal.ui.common import (
     card,
@@ -41,6 +45,22 @@ SEASONS = ("2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
 TABLE_HEADER_HEIGHT = 34
 TABLE_ROW_HEIGHT = 30
 TABLE_CHROME_HEIGHT = 8
+DASHBOARD_GROUP_COLORS = {
+    "Production": "accent",
+    "Shooting": "success",
+    "Advanced": "warning",
+    "Scoring Mix": "accent_soft",
+    "Team Share": "accent",
+    "Misc & Defense": "danger",
+}
+SHOOTING_SPLIT_COLORS = {
+    "Assisted": "accent",
+    "Distance 5ft": "success",
+    "Distance 8ft": "success",
+    "Overall": "accent_soft",
+    "Shot Area": "warning",
+    "Shot Type Summary": "danger",
+}
 KPI_METRICS = (
     ("PTS", "Base", "PTS", "number"),
     ("REB", "Base", "REB", "number"),
@@ -221,6 +241,10 @@ class PlayerProfilePage(QWidget):
         self.fetch_button.setMinimumWidth(170)
         style_primary_button(self.fetch_button)
         self.fetch_button.clicked.connect(self.start_fetch)
+        self.clear_cache_button = QPushButton("Clear Cache")
+        self.clear_cache_button.setMinimumWidth(120)
+        style_secondary_button(self.clear_cache_button)
+        self.clear_cache_button.clicked.connect(self.clear_cache)
         self.clear_button = QPushButton("Clear Results")
         self.clear_button.setMinimumWidth(130)
         style_secondary_button(self.clear_button)
@@ -230,7 +254,8 @@ class PlayerProfilePage(QWidget):
         top.addWidget(QLabel(""), 0, 1)
         top.addWidget(self.player_input, 1, 0)
         top.addWidget(self.fetch_button, 1, 1)
-        top.addWidget(self.clear_button, 1, 2)
+        top.addWidget(self.clear_cache_button, 1, 2)
+        top.addWidget(self.clear_button, 1, 3)
         top.setColumnStretch(0, 1)
         inner.addLayout(top)
 
@@ -275,12 +300,21 @@ class PlayerProfilePage(QWidget):
         self.fetch_button.setEnabled(True)
         loaded = sum(1 for item in seasons if "error" not in item)
         failed = len(seasons) - loaded
-        suffix = f" | {failed} failed" if failed else ""
-        self.status.setText(f"Loaded {loaded} season profile(s){suffix}.")
+        cache_hits = sum(1 for item in seasons if item.get("cache_hit"))
+        status_parts = [f"Loaded {loaded} season profile(s)"]
+        if cache_hits:
+            status_parts.append(f"{cache_hits} from cache")
+        if failed:
+            status_parts.append(f"{failed} failed")
+        self.status.setText(" | ".join(status_parts) + ".")
         self._clear_results()
         for item in seasons:
             self.results_tabs.addTab(self._season_page(item), str(item["season"]))
         self.results_tabs.setVisible(bool(seasons))
+
+    def clear_cache(self) -> None:
+        removed = clear_player_profile_cache()
+        self.status.setText(f"Cleared {removed} cached player profile(s).")
 
     def clear_results(self) -> None:
         self._clear_results()
@@ -407,20 +441,39 @@ class PlayerProfilePage(QWidget):
         layout.addLayout(grid)
 
     def _metric_group_card(self, title: str, rows: list[list[Any]]) -> QWidget:
+        color = COLORS[DASHBOARD_GROUP_COLORS.get(title, "accent")]
         frame = card()
+        frame.setStyleSheet(
+            "QFrame {"
+            f"background-color: {COLORS['bg_card']};"
+            f"border: 1px solid {COLORS['border']};"
+            f"border-left: 3px solid {color};"
+            "border-radius: 8px;"
+            "}"
+            "QLabel { border: none; }"
+        )
         frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 16, 18, 18)
         layout.setSpacing(10)
 
         heading = QHBoxLayout()
-        heading.addWidget(eyebrow_label(title.upper()))
+        heading.addWidget(self._dashboard_heading(title, color))
         heading.addStretch()
         count = QLabel(f"{len(rows)} stats")
         count.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 11px; border: none;")
         heading.addWidget(count)
         layout.addLayout(heading)
-        layout.addWidget(self._table(("Metric", "Value", "Rank"), rows, max_height=520, min_height=150))
+        layout.addWidget(
+            self._table(
+                ("Metric", "Value", "Rank"),
+                rows,
+                max_height=520,
+                min_height=150,
+                accent_color=color,
+                color_ranks=True,
+            )
+        )
         return frame
 
     def _metric_group_rows(
@@ -456,7 +509,15 @@ class PlayerProfilePage(QWidget):
                 ]
             )
         headers = ("Stat", "Season", "L5", "L10", "L20", "Std", "CV")
-        return self._table_card("GAME-LOG PROFILE", headers, rows, max_height=520, min_height=250)
+        return self._table_card(
+            "GAME-LOG PROFILE",
+            headers,
+            rows,
+            max_height=520,
+            min_height=250,
+            accent_color=COLORS["accent"],
+            color_cv=True,
+        )
 
     def _hit_rates_card(self, item: dict[str, Any]) -> QWidget:
         rows = []
@@ -469,48 +530,101 @@ class PlayerProfilePage(QWidget):
                 ]
             )
         headers = ("Market", "Season", "L5", "L10", "L20")
-        return self._table_card("HIT RATES", headers, rows, max_height=520, min_height=250)
+        return self._table_card(
+            "HIT RATES",
+            headers,
+            rows,
+            max_height=520,
+            min_height=250,
+            accent_color=COLORS["success"],
+            color_rates=True,
+        )
 
     def _shooting_splits_card(self, item: dict[str, Any]) -> QWidget:
         frame = card()
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 16, 18, 18)
-        layout.setSpacing(10)
-        layout.addWidget(eyebrow_label("SHOOTING SPLITS"))
-        tabs = self._shooting_tabs(item)
-        tabs.setMinimumHeight(390)
-        layout.addWidget(tabs)
-        return frame
+        layout.setSpacing(14)
 
-    def _shooting_tabs(self, item: dict[str, Any]) -> QTabWidget:
-        tabs = QTabWidget()
-        tabs.setDocumentMode(True)
+        heading = QHBoxLayout()
+        heading.addWidget(self._dashboard_heading("SHOOTING SPLITS", COLORS["success"]))
+        heading.addStretch()
+        layout.addLayout(heading)
+
         splits = item.get("shooting_splits") or {}
         headers = ("Split", "FGM", "FGA", "FG%", "3PM", "3PA", "3P%", "eFG%", "Ast FGM", "Unast FGM")
-        for label, records in splits.items():
-            rows = []
-            for record in self._shot_records(label, records):
-                rows.append(
-                    [
-                        self._split_name(record),
-                        self._format_value(record.get("FGM"), "number"),
-                        self._format_value(record.get("FGA"), "number"),
-                        self._format_value(record.get("FG_PCT"), "pct"),
-                        self._format_value(record.get("FG3M"), "number"),
-                        self._format_value(record.get("FG3A"), "number"),
-                        self._format_value(record.get("FG3_PCT"), "pct"),
-                        self._format_value(record.get("EFG_PCT"), "pct"),
-                        self._format_value(record.get("PCT_AST_FGM"), "pct"),
-                        self._format_value(record.get("PCT_UAST_FGM"), "pct"),
-                    ]
-                )
-            tabs.addTab(self._table_page(headers, rows, max_height=340, min_height=260), label)
         if not splits:
-            tabs.addTab(
-                self._table_page(("Status",), [["Shooting splits unavailable"]], max_height=180, min_height=120),
-                "Shooting Splits",
+            table = self._table(("Status",), [["Shooting splits unavailable"]], max_height=180, min_height=120)
+            layout.addWidget(table)
+            return frame
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(14)
+        for index, (label, records) in enumerate(splits.items()):
+            grid.addWidget(
+                self._shooting_split_card(label, headers, self._shooting_split_rows(label, records)),
+                index,
+                0,
             )
-        return tabs
+        grid.setColumnStretch(0, 1)
+        layout.addLayout(grid)
+        return frame
+
+    def _shooting_split_card(self, title: str, headers: tuple[str, ...], rows: list[list[Any]]) -> QWidget:
+        color = COLORS[SHOOTING_SPLIT_COLORS.get(title, "success")]
+        frame = card()
+        frame.setStyleSheet(
+            "QFrame {"
+            f"background-color: {COLORS['bg_primary']};"
+            f"border: 1px solid {COLORS['border']};"
+            f"border-left: 3px solid {color};"
+            "border-radius: 8px;"
+            "}"
+            "QLabel { border: none; }"
+        )
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(16, 14, 16, 16)
+        layout.setSpacing(10)
+
+        heading = QHBoxLayout()
+        heading.addWidget(self._dashboard_heading(title, color))
+        heading.addStretch()
+        count = QLabel(f"{len(rows)} splits")
+        count.setStyleSheet(f"color: {COLORS['text_tertiary']}; font-size: 11px; border: none;")
+        heading.addWidget(count)
+        layout.addLayout(heading)
+        layout.addWidget(
+            self._table(
+                headers,
+                rows,
+                max_height=520,
+                min_height=150,
+                accent_color=color,
+                color_shooting=True,
+            )
+        )
+        return frame
+
+    def _shooting_split_rows(self, label: str, records: list[dict[str, Any]]) -> list[list[Any]]:
+        rows = []
+        for record in self._shot_records(label, records):
+            rows.append(
+                [
+                    self._split_name(record),
+                    self._format_value(record.get("FGM"), "number"),
+                    self._format_value(record.get("FGA"), "number"),
+                    self._format_value(record.get("FG_PCT"), "pct"),
+                    self._format_value(record.get("FG3M"), "number"),
+                    self._format_value(record.get("FG3A"), "number"),
+                    self._format_value(record.get("FG3_PCT"), "pct"),
+                    self._format_value(record.get("EFG_PCT"), "pct"),
+                    self._format_value(record.get("PCT_AST_FGM"), "pct"),
+                    self._format_value(record.get("PCT_UAST_FGM"), "pct"),
+                ]
+            )
+        return rows
 
     def _table_card(
         self,
@@ -519,13 +633,36 @@ class PlayerProfilePage(QWidget):
         rows: list[list[Any]],
         max_height: int,
         min_height: int,
+        accent_color: str | None = None,
+        color_rates: bool = False,
+        color_cv: bool = False,
     ) -> QWidget:
         frame = card()
+        if accent_color is not None:
+            frame.setStyleSheet(
+                "QFrame {"
+                f"background-color: {COLORS['bg_card']};"
+                f"border: 1px solid {COLORS['border']};"
+                f"border-left: 3px solid {accent_color};"
+                "border-radius: 8px;"
+                "}"
+                "QLabel { border: none; }"
+            )
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 16, 18, 18)
         layout.setSpacing(10)
-        layout.addWidget(eyebrow_label(title))
-        layout.addWidget(self._table(headers, rows, max_height=max_height, min_height=min_height))
+        layout.addWidget(self._dashboard_heading(title, accent_color) if accent_color else eyebrow_label(title))
+        layout.addWidget(
+            self._table(
+                headers,
+                rows,
+                max_height=max_height,
+                min_height=min_height,
+                accent_color=accent_color,
+                color_rates=color_rates,
+                color_cv=color_cv,
+            )
+        )
         return frame
 
     def _table_page(
@@ -547,6 +684,11 @@ class PlayerProfilePage(QWidget):
         rows: list[list[Any]],
         max_height: int,
         min_height: int = 126,
+        accent_color: str | None = None,
+        color_ranks: bool = False,
+        color_rates: bool = False,
+        color_cv: bool = False,
+        color_shooting: bool = False,
     ) -> QTableWidget:
         table = QTableWidget()
         style_terminal_table(table, bordered=True)
@@ -563,11 +705,40 @@ class PlayerProfilePage(QWidget):
                 alignment = Qt.AlignmentFlag.AlignVCenter
                 alignment |= Qt.AlignmentFlag.AlignLeft if column_index == 0 else Qt.AlignmentFlag.AlignRight
                 item.setTextAlignment(alignment)
-                item.setForeground(QColor(COLORS["text_primary"]))
+                item.setForeground(
+                    QColor(
+                        self._cell_color(
+                            headers[column_index],
+                            str(value),
+                            column_index,
+                            accent_color,
+                            color_ranks,
+                            color_rates,
+                            color_cv,
+                            color_shooting,
+                        )
+                    )
+                )
                 table.setItem(row_index, column_index, item)
         header = table.horizontalHeader()
         if table.columnCount() == 1:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        elif color_shooting:
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            widths = {
+                "FGM": 74,
+                "FGA": 74,
+                "FG%": 76,
+                "3PM": 74,
+                "3PA": 74,
+                "3P%": 76,
+                "eFG%": 76,
+                "Ast FGM": 88,
+                "Unast FGM": 104,
+            }
+            for index, header_label in enumerate(headers[1:], start=1):
+                header.setSectionResizeMode(index, QHeaderView.ResizeMode.Fixed)
+                table.setColumnWidth(index, widths.get(header_label, 76))
         elif table.columnCount() <= 5:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
             for index in range(1, table.columnCount()):
@@ -614,6 +785,12 @@ class PlayerProfilePage(QWidget):
         return badge
 
     @staticmethod
+    def _dashboard_heading(text: str, color: str) -> QLabel:
+        label = QLabel(text.upper())
+        label.setStyleSheet(f"color: {color}; font-size: 11px; font-weight: 900; border: none;")
+        return label
+
+    @staticmethod
     def _record_text(base: dict[str, Any]) -> str:
         wins = base.get("W")
         losses = base.get("L")
@@ -630,6 +807,125 @@ class PlayerProfilePage(QWidget):
         if column == "USG_PCT":
             return COLORS["accent"]
         return COLORS["text_primary"]
+
+    @staticmethod
+    def _cell_color(
+        header: str,
+        value: str,
+        column_index: int,
+        accent_color: str | None,
+        color_ranks: bool,
+        color_rates: bool,
+        color_cv: bool,
+        color_shooting: bool,
+    ) -> str:
+        if value in {"-", "No data"}:
+            return COLORS["text_tertiary"]
+        if color_ranks and header == "Rank":
+            return PlayerProfilePage._rank_color(value)
+        if color_rates and header in {"Season", "L5", "L10", "L20"}:
+            return PlayerProfilePage._rate_color(value)
+        if color_cv and header == "CV":
+            return PlayerProfilePage._cv_color(value)
+        if color_shooting:
+            return PlayerProfilePage._shooting_cell_color(header, value, accent_color)
+        if header == "Value" and accent_color is not None:
+            return PlayerProfilePage._value_color(value, accent_color)
+        if color_cv and accent_color is not None and header in {"Season", "L5", "L10", "L20"}:
+            return accent_color
+        if accent_color is None:
+            return COLORS["text_primary"]
+        if column_index == 0:
+            return COLORS["text_primary"]
+        return COLORS["text_secondary"]
+
+    @staticmethod
+    def _rank_color(value: str) -> str:
+        rank_text = value.replace("Rank", "").strip()
+        rank = safe_float(rank_text, default=0.0)
+        if rank <= 0:
+            return COLORS["text_tertiary"]
+        if rank <= 50:
+            return COLORS["success"]
+        if rank <= 150:
+            return COLORS["accent"]
+        if rank <= 300:
+            return COLORS["warning"]
+        return COLORS["danger"]
+
+    @staticmethod
+    def _value_color(value: str, accent_color: str) -> str:
+        if value.startswith("+"):
+            return COLORS["success"]
+        if value.startswith("-"):
+            return COLORS["danger"]
+        return accent_color
+
+    @staticmethod
+    def _rate_color(value: str) -> str:
+        rate = safe_float(value.rstrip("%"), default=-1.0)
+        if rate < 0:
+            return COLORS["text_tertiary"]
+        if rate >= 75:
+            return COLORS["success"]
+        if rate >= 50:
+            return COLORS["accent"]
+        if rate >= 25:
+            return COLORS["warning"]
+        return COLORS["danger"]
+
+    @staticmethod
+    def _cv_color(value: str) -> str:
+        cv = safe_float(value.rstrip("%"), default=-1.0)
+        if cv < 0:
+            return COLORS["text_tertiary"]
+        if cv < 30:
+            return COLORS["success"]
+        if cv < 50:
+            return COLORS["accent"]
+        if cv < 75:
+            return COLORS["warning"]
+        return COLORS["danger"]
+
+    @staticmethod
+    def _shooting_cell_color(header: str, value: str, accent_color: str | None) -> str:
+        if header == "Split":
+            return COLORS["text_primary"]
+        if header in {"FGM", "FGA", "3PM", "3PA"}:
+            return accent_color or COLORS["accent"]
+        if header in {"FG%", "eFG%"}:
+            return PlayerProfilePage._field_goal_pct_color(value)
+        if header == "3P%":
+            return PlayerProfilePage._three_point_pct_color(value)
+        if header in {"Ast FGM", "Unast FGM"}:
+            return PlayerProfilePage._rate_color(value)
+        return COLORS["text_secondary"]
+
+    @staticmethod
+    def _field_goal_pct_color(value: str) -> str:
+        pct = safe_float(value.rstrip("%"), default=-1.0)
+        if pct < 0:
+            return COLORS["text_tertiary"]
+        if pct >= 60:
+            return COLORS["success"]
+        if pct >= 50:
+            return COLORS["accent"]
+        if pct >= 40:
+            return COLORS["warning"]
+        return COLORS["danger"]
+
+    @staticmethod
+    def _three_point_pct_color(value: str) -> str:
+        pct = safe_float(value.rstrip("%"), default=-1.0)
+        if pct < 0:
+            return COLORS["text_tertiary"]
+        if pct >= 38:
+            return COLORS["success"]
+        if pct >= 34:
+            return COLORS["accent"]
+        if pct >= 30:
+            return COLORS["warning"]
+        return COLORS["danger"]
 
     @staticmethod
     def _rank_text(record: dict[str, Any], column: str) -> str:
