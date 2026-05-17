@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import os
+import re
+from datetime import date, datetime, timezone
+from io import StringIO
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -30,6 +36,7 @@ HIT_THRESHOLDS = {
 
 PLAYER_PROFILE_MEASURES = ("Base", "Advanced", "Misc", "Scoring", "Usage", "Defense")
 PLAYER_PROFILE_WINDOWS = (5, 10, 20)
+PLAYER_PROFILE_CACHE_VERSION = 1
 PLAYER_PROFILE_HIT_STATS = ("PTS", "REB", "AST", "PRA", "PR", "PA", "RA", "FG3M")
 PLAYER_PROFILE_GAME_STATS = (
     ("MIN", "MIN", "number"),
@@ -248,9 +255,21 @@ def visible_game_log_columns(frame: pd.DataFrame) -> list[str]:
     return [column for column in preferred if column in frame.columns]
 
 
-def fetch_player_stat_profile(player_name: str, season: str, season_type: str) -> dict[str, Any]:
+def fetch_player_stat_profile(
+    player_name: str,
+    season: str,
+    season_type: str,
+    *,
+    use_cache: bool = True,
+) -> dict[str, Any]:
     """Fetch all-around player profile data for one season."""
     player_id = find_player_id(player_name)
+    if use_cache:
+        cached = _load_player_profile_cache(player_id, season, season_type)
+        if cached is not None:
+            cached["cache_hit"] = True
+            return cached
+
     warnings: list[str] = []
 
     game_log = fetch_player_game_log(player_name, season, season_type)
@@ -277,12 +296,13 @@ def fetch_player_stat_profile(player_name: str, season: str, season_type: str) -
     base = measures.get("Base", {})
     resolved_name = str(base.get("PLAYER_NAME") or player_name)
     team = str(base.get("TEAM_ABBREVIATION") or "")
-    return {
+    profile = {
         "player": resolved_name,
         "player_id": player_id,
         "team": team,
         "season": season,
         "season_type": season_type,
+        "cache_hit": False,
         "game_log": game_log,
         "measures": measures,
         "game_summary": summarize_profile_game_stats(game_log),
@@ -290,6 +310,23 @@ def fetch_player_stat_profile(player_name: str, season: str, season_type: str) -
         "shooting_splits": shooting_splits,
         "warnings": warnings,
     }
+    if use_cache:
+        _write_player_profile_cache(player_id, season, season_type, profile)
+    return profile
+
+
+def clear_player_profile_cache() -> int:
+    """Delete cached player profile payloads and return the number of files removed."""
+    cache_dir = _player_profile_cache_dir()
+    if not cache_dir.exists():
+        return 0
+    removed = 0
+    for path in cache_dir.glob("*.json"):
+        if not path.is_file():
+            continue
+        path.unlink()
+        removed += 1
+    return removed
 
 
 def fetch_player_shooting_splits(player_id: int, season: str, season_type: str) -> dict[str, list[dict[str, Any]]]:
@@ -351,6 +388,76 @@ def profile_hit_rate_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
                 row[f"last_{window}"] = _hit_rate_for_values(recent, threshold)
             rows.append(row)
     return rows
+
+
+def _player_profile_cache_dir() -> Path:
+    root = os.environ.get("NBA_TERMINAL_CACHE_DIR")
+    if root:
+        return Path(root) / "player_profiles"
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return Path(local_app_data) / "NBA Terminal" / "cache" / "player_profiles"
+    return Path.home() / ".nba_terminal" / "cache" / "player_profiles"
+
+
+def _player_profile_cache_path(player_id: int, season: str, season_type: str) -> Path:
+    key = _cache_slug(f"{player_id}_{season}_{season_type}_{date.today().isoformat()}")
+    return _player_profile_cache_dir() / f"{key}.json"
+
+
+def _cache_slug(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+    return slug or "player_profile"
+
+
+def _load_player_profile_cache(player_id: int, season: str, season_type: str) -> dict[str, Any] | None:
+    path = _player_profile_cache_path(player_id, season, season_type)
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if payload.get("version") != PLAYER_PROFILE_CACHE_VERSION:
+            return None
+        return _profile_from_cache_payload(payload["profile"])
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _write_player_profile_cache(player_id: int, season: str, season_type: str, profile: dict[str, Any]) -> None:
+    path = _player_profile_cache_path(player_id, season, season_type)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": PLAYER_PROFILE_CACHE_VERSION,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+            "profile": _profile_to_cache_payload(profile),
+        }
+        temp_path = path.with_suffix(".tmp")
+        with temp_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        temp_path.replace(path)
+    except OSError:
+        return
+
+
+def _profile_to_cache_payload(profile: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(profile)
+    game_log = payload.get("game_log")
+    if isinstance(game_log, pd.DataFrame):
+        payload["game_log"] = game_log.to_json(orient="split", date_format="iso")
+    payload["cache_hit"] = False
+    return payload
+
+
+def _profile_from_cache_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    profile = dict(payload)
+    game_log = profile.get("game_log")
+    if isinstance(game_log, str):
+        profile["game_log"] = pd.read_json(StringIO(game_log), orient="split")
+        if "GAME_DATE" in profile["game_log"]:
+            profile["game_log"]["GAME_DATE"] = pd.to_datetime(profile["game_log"]["GAME_DATE"], errors="coerce")
+    return profile
 
 
 def _fetch_league_dashboard_row(
