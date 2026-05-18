@@ -170,6 +170,12 @@ METRIC_GROUPS = {
         ("Def Win Shares", "Defense", "DEF_WS", "number"),
     ),
 }
+METRIC_GROUP_GRID_SPACING = 16
+METRIC_GROUP_TABLE_ROWS = max(len(metrics) for metrics in METRIC_GROUPS.values())
+METRIC_GROUP_TABLE_HEIGHT = (
+    TABLE_HEADER_HEIGHT + (METRIC_GROUP_TABLE_ROWS * TABLE_ROW_HEIGHT) + TABLE_CHROME_HEIGHT
+)
+METRIC_GROUP_CARD_HEIGHT = METRIC_GROUP_TABLE_HEIGHT + 88
 
 
 class PlayerProfileWorker(QThread):
@@ -431,8 +437,9 @@ class PlayerProfilePage(QWidget):
         layout.addWidget(section)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(14)
-        grid.setVerticalSpacing(14)
+        grid.setContentsMargins(0, 2, 0, 4)
+        grid.setHorizontalSpacing(METRIC_GROUP_GRID_SPACING)
+        grid.setVerticalSpacing(METRIC_GROUP_GRID_SPACING)
         for index, (label, metrics) in enumerate(METRIC_GROUPS.items()):
             card_widget = self._metric_group_card(label, self._metric_group_rows(item, metrics))
             grid.addWidget(card_widget, index // 2, index % 2)
@@ -453,6 +460,8 @@ class PlayerProfilePage(QWidget):
             "QLabel { border: none; }"
         )
         frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        frame.setFixedHeight(METRIC_GROUP_CARD_HEIGHT)
+        frame.setMinimumWidth(0)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(18, 16, 18, 18)
         layout.setSpacing(10)
@@ -468,8 +477,8 @@ class PlayerProfilePage(QWidget):
             self._table(
                 ("Metric", "Value", "Rank"),
                 rows,
-                max_height=520,
-                min_height=150,
+                max_height=METRIC_GROUP_TABLE_HEIGHT,
+                min_height=METRIC_GROUP_TABLE_HEIGHT,
                 accent_color=color,
                 color_ranks=True,
             )
