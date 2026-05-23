@@ -51,6 +51,7 @@ archive/                  # old prototypes, experiments, and generated artifacts
 ## Tabs
 
 - Dashboard
+- Player Profile
 - Player Analytics
 - Points Predictor
 - Team Defense
