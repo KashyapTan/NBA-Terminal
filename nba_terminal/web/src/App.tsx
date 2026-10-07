@@ -198,7 +198,7 @@ function Dashboard() {
   const [search, setSearch] = useSearchParams();
   const requestedSeason = search.get("season");
   const season =
-    requestedSeason && meta?.seasons.includes(requestedSeason)
+    requestedSeason && /^\d{4}-\d{2}$/.test(requestedSeason)
       ? requestedSeason
       : meta?.current_season || "";
   const [upcoming, setUpcoming] = useState<UpcomingResponse | null>(null);
@@ -254,6 +254,9 @@ function Dashboard() {
               setSearch(event.target.value ? { season: event.target.value } : {})
             }
           >
+            {!meta.seasons.includes(season) && (
+              <option value={season}>{season} · unsupported history</option>
+            )}
             {meta.seasons.map((item) => (
               <option key={item} value={item}>
                 {item}
