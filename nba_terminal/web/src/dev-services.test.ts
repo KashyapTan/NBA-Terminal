@@ -32,4 +32,24 @@ describe("development service commands", () => {
       },
     ]);
   });
+
+  it("forwards CLI arguments to Vite without changing the FastAPI port", () => {
+    const services = getDevServices({
+      repoRoot: "/workspace/nba-terminal",
+      webRoot: "/workspace/nba-terminal/nba_terminal/web",
+      bunExecutable: "/usr/local/bin/bun",
+      viteArgs: ["--port", "4173", "--strictPort"],
+    });
+
+    expect(services[0].args).toContain("8000");
+    expect(services[1].args).toEqual([
+      "run",
+      "vite",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "4173",
+      "--strictPort",
+    ]);
+  });
 });

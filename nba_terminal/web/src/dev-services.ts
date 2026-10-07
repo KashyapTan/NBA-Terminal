@@ -9,10 +9,12 @@ export function getDevServices({
   repoRoot,
   webRoot,
   bunExecutable,
+  viteArgs = [],
 }: {
   repoRoot: string;
   webRoot: string;
   bunExecutable: string;
+  viteArgs?: string[];
 }): DevService[] {
   return [
     {
@@ -24,7 +26,7 @@ export function getDevServices({
     {
       name: "Vite",
       command: bunExecutable,
-      args: ["run", "vite", "--host", "127.0.0.1"],
+      args: ["run", "vite", "--host", "127.0.0.1", ...viteArgs],
       cwd: webRoot,
     },
   ];

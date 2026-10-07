@@ -8,6 +8,7 @@ const services = getDevServices({
   repoRoot,
   webRoot,
   bunExecutable: process.execPath,
+  viteArgs: process.argv.slice(2),
 });
 const children = [];
 let stopping = false;
