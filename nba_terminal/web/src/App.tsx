@@ -186,7 +186,7 @@ function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; 
       </span>
       <span className="game-status">
         <i className={`status-dot ${upcoming ? "scheduled" : "final"}`} />
-        {upcoming ? game.start_time || game.status : game.status}
+        {upcoming ? `${game.status}${game.start_time ? ` · ${game.start_time}` : ""}` : game.status}
         <span className="arrow">↗</span>
       </span>
     </Link>

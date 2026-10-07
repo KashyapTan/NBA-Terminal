@@ -145,14 +145,22 @@ describe("NBA Terminal screens", () => {
       if (url === "/api/upcoming")
         return {
           days: ["2025-11-02", "2025-11-03"],
-          games: [{ ...game, game_id: "scheduled", start_time: "7:00 PM ET", phase: "Scheduled" }],
+          games: [
+            {
+              ...game,
+              game_id: "scheduled",
+              status: "Scheduled",
+              start_time: "7:00 PM ET",
+              phase: "Pre Season",
+            },
+          ],
         };
       return url.endsWith("1995-96")
         ? { season: "1995-96", supported: false, games: [], phases: [] }
         : { season: "2024-25", supported: true, games: [], phases: [] };
     });
     expect(await screen.findByText("Cleveland Cavaliers")).toBeInTheDocument();
-    expect(screen.getByText("7:00 PM ET")).toBeInTheDocument();
+    expect(screen.getByText(/Scheduled · 7:00 PM ET/)).toBeInTheDocument();
     expect(screen.getByText("History is not available in this view")).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Season" }), "2024-25");
     expect(await screen.findByText("No completed games returned")).toBeInTheDocument();

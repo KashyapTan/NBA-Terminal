@@ -112,7 +112,7 @@ async def player_analysis(
     season: str = Query(..., min_length=7, max_length=7),
     phase: str = Query("Regular Season", max_length=30),
 ) -> dict[str, Any]:
-    if phase not in game_center.PHASES:
+    if phase not in game_center.GAME_PHASES:
         raise HTTPException(status_code=400, detail="Unsupported season phase.")
     return await _cached_call(
         f"player:{game_id}:{player_id}:{season}:{phase}", 3600,

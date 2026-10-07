@@ -23,7 +23,7 @@ Open <http://127.0.0.1:5173>. Vite proxies `/api` to the local FastAPI service a
 
 ## API, cache, and data limits
 
-`nba_terminal/services/game_center.py` owns NBA Stats endpoint calls and normalization. `/api/upcoming` queries the next two server-local calendar dates; `/api/games?season=YYYY-YY` combines preseason, regular-season, and playoff team game logs; `/api/games/{game_id}` returns the traditional box score; `/api/games/{game_id}/players/{player_id}?season=...&phase=...` returns the player's game line and available shot attempts. Requests run in a four-worker pool with a short admission limit and 12-second endpoint timeouts.
+`nba_terminal/services/game_center.py` owns NBA Stats endpoint calls and normalization. `/api/upcoming` queries the next two server-local calendar dates; `/api/games?season=YYYY-YY` combines preseason, regular-season, and playoff team game logs; `/api/games/{game_id}` returns the traditional box score; `/api/games/{game_id}/players/{player_id}?season=...&phase=...` returns the player's game line and available shot attempts. Scoreboard rows do not include a phase field, so upcoming phase labels use the known NBA Stats game-ID prefix; an unrecognized prefix is shown as unavailable. Requests run in a four-worker pool with a short admission limit and 12-second endpoint timeouts.
 
 Successful results use a bounded in-memory TTL cache: 2 minutes for schedule, 15 minutes for season feeds, and 60 minutes for box scores/player views. The cache is cleared when the server restarts; no data is written to disk. The browser shows loading, empty, unsupported-season, API failure, and shot-chart unavailable states separately.
 

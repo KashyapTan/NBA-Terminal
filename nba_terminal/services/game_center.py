@@ -11,6 +11,20 @@ from nba_api.stats.static import teams
 
 SUPPORTED_FROM = "1996-97"
 PHASES = ("Pre Season", "Regular Season", "Playoffs")
+GAME_ID_PHASES = {
+    "001": "Pre Season",
+    "002": "Regular Season",
+    "003": "All Star",
+    "004": "Playoffs",
+    "005": "Play In",
+    "006": "NBA Cup Final",
+}
+GAME_PHASES = (*PHASES, "All Star", "Play In", "NBA Cup Final")
+
+
+def phase_for_game_id(game_id: str) -> str:
+    """Read a known NBA game type from its Stats game-ID prefix."""
+    return GAME_ID_PHASES.get(str(game_id)[:3], "Phase unavailable")
 
 
 def current_season(today: date | None = None) -> str:
@@ -83,9 +97,9 @@ def fetch_upcoming_games(start: date | None = None) -> dict[str, Any]:
                 "game_id": str(row.get("GAME_ID", "")),
                 "date": game_date.isoformat(),
                 "start_time": str(row.get("GAME_STATUS_TEXT", "Scheduled")),
-                "status": str(row.get("GAME_STATUS_TEXT", "Scheduled")),
+                "status": "Scheduled",
                 "status_id": status_id,
-                "phase": "Scheduled",
+                "phase": phase_for_game_id(str(row.get("GAME_ID", ""))),
                 "home_team": home,
                 "away_team": away,
                 "home_score": None,
