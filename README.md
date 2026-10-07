@@ -13,13 +13,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-In another terminal, from the project root:
-
-```sh
-uv run python -m nba_terminal
-```
-
-Open <http://127.0.0.1:5173>. Vite proxies `/api` to the local FastAPI service at port 8000. For a production-style local run, build the client with `cd nba_terminal/web && bun run build`, then open <http://127.0.0.1:8000>. The API binds to localhost only. The retained desktop shell starts with `uv run nba-terminal-desktop`.
+`bun run dev` starts Vite and the FastAPI server together. Their logs and errors appear in the same terminal; press Ctrl+C to stop both. Open <http://127.0.0.1:5173>. Vite proxies `/api` to the local FastAPI service at port 8000. For a production-style local run, build the client with `cd nba_terminal/web && bun run build`, then open <http://127.0.0.1:8000>. Both development servers bind to localhost only. The retained desktop shell starts with `uv run nba-terminal-desktop`.
 
 ## API, cache, and data limits
 
