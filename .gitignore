@@ -4,5 +4,10 @@ nba_stats_cache.pkl
 .coverage
 .pytest-tmp/
 .venv/
+/nba_terminal/web/node_modules/
+/nba_terminal/web/dist/
+/nba_terminal/web/coverage/
+/nba_terminal/web/playwright-report/
+/nba_terminal/web/test-results/
 code_review/
 archive/

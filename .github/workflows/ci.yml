@@ -1,0 +1,75 @@
+name: NBA Terminal CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Python project and development dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Python tests with combined coverage gate
+        run: uv run coverage run -m pytest
+
+      - name: Enforce game center service coverage
+        run: uv run coverage report --include='nba_terminal/services/game_center.py' --fail-under=93
+
+      - name: Enforce FastAPI webapp coverage
+        run: uv run coverage report --include='nba_terminal/webapp.py' --fail-under=93
+
+      - name: Install frontend dependencies
+        working-directory: nba_terminal/web
+        run: bun install --frozen-lockfile
+
+      - name: Biome lint
+        working-directory: nba_terminal/web
+        run: bun run lint
+
+      - name: Biome format check
+        working-directory: nba_terminal/web
+        run: bun run format:check
+
+      - name: TypeScript check
+        working-directory: nba_terminal/web
+        run: bun run typecheck
+
+      - name: Vitest with line coverage gate
+        working-directory: nba_terminal/web
+        run: bun run coverage
+
+      - name: Build browser app
+        working-directory: nba_terminal/web
+        run: bun run build
+
+      - name: Install Playwright Chromium
+        working-directory: nba_terminal/web
+        run: bunx playwright install --with-deps chromium
+
+      - name: Browser end-to-end tests
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bun run e2e

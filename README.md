@@ -1,65 +1,55 @@
 # NBA Terminal
 
-NBA Terminal is a PyQt desktop app for NBA research, player stats, projection work, team defense views, consistency analysis, slate scanning, NBA API discovery, and historical picks.
+NBA Terminal is a responsive React web app for NBA game research. Its dashboard opens to the current season, lists today's and tomorrow's scheduled games, and links completed game feeds to box scores and player-in-game analysis. The web app is the primary entry point. Existing PyQt analytics remain available as a secondary desktop app while they are migrated.
 
-The supported app code lives under `nba_terminal/`. Old prototypes and exploratory scripts are archived under `archive/`.
+## Stack and startup
 
-## Run
+Python 3.10+, UV, FastAPI, Uvicorn, `nba_api`, pandas, Bun, React, Vite, and Biome. The React client source is in `nba_terminal/web/`.
 
-```powershell
+```sh
 uv sync --all-extras --dev
+cd nba_terminal/web
+bun install --frozen-lockfile
+bun run dev
+```
+
+In another terminal, from the project root:
+
+```sh
 uv run python -m nba_terminal
 ```
 
-Equivalent script entrypoint:
+Open <http://127.0.0.1:5173>. Vite proxies `/api` to the local FastAPI service at port 8000. For a production-style local run, build the client with `cd nba_terminal/web && bun run build`, then open <http://127.0.0.1:8000>. The API binds to localhost only. The retained desktop shell starts with `uv run nba-terminal-desktop`.
 
-```powershell
-uv run nba-terminal
-```
+## API, cache, and data limits
 
-## Dev Commands
+`nba_terminal/services/game_center.py` owns NBA Stats endpoint calls and normalization. `/api/upcoming` queries the next two server-local calendar dates; `/api/games?season=YYYY-YY` combines preseason, regular-season, and playoff team game logs; `/api/games/{game_id}` returns the traditional box score; `/api/games/{game_id}/players/{player_id}?season=...&phase=...` returns the player's game line and available shot attempts. Scoreboard rows do not include a phase field, so upcoming phase labels use the known NBA Stats game-ID prefix; an unrecognized prefix is shown as unavailable. Requests run in a four-worker pool with a short admission limit and 12-second endpoint timeouts.
 
-```powershell
+Successful results use a bounded in-memory TTL cache: 2 minutes for schedule, 15 minutes for season feeds, and 60 minutes for box scores/player views. The cache is cleared when the server restarts; no data is written to disk. The browser shows loading, empty, unsupported-season, API failure, and shot-chart unavailable states separately.
+
+The season menu covers 1996-97 through the current season. NBA Stats is an unofficial source; it can rate-limit, time out, return empty results, or change its schema. Historical phase coverage and schedule rows vary. `ShotChartDetail` coordinate coverage is not established across every season; shot charts plot only real `LOC_X`/`LOC_Y` values returned for that player and game, and never estimate missing locations.
+
+The existing desktop player projections, consistency analysis, defense boards, slate scanner, API explorer, and Picks Archive are not yet ported into web pages. Their implementations remain available in the optional desktop app. Files under `nba_terminal/data/picks/` are user data and were not changed.
+
+## Verification commands
+
+From the project root, backend checks use UV and enforce each new Python web/API module separately:
+
+```sh
 uv run ruff check .
-uv run coverage run -m pytest
-uv run coverage report
+uv run pytest tests
+uv run pytest --cov=nba_terminal.services.game_center --cov-report=term-missing --cov-fail-under=93 tests
+uv run pytest --cov=nba_terminal.webapp --cov-report=term-missing --cov-fail-under=93 tests
 ```
 
-Headless Qt startup smoke test:
+From `nba_terminal/web/`:
 
-```powershell
-$env:QT_QPA_PLATFORM='offscreen'; uv run python -c "from PyQt6.QtWidgets import QApplication; from nba_terminal.app import NBATerminal; from nba_terminal.theme import apply_app_theme; app=QApplication([]); apply_app_theme(app); window=NBATerminal(); print(window.stack.count())"
+```sh
+bun run test
+bun run coverage
+bun run lint
+bun run format:check
+bun run typecheck
+bun run build
+bun run e2e
 ```
-
-## Structure
-
-```text
-nba_terminal/
-  app.py                  # main PyQt shell and sidebar navigation
-  analytics.py            # pure ranking/formatting helpers
-  assets/fonts/           # bundled Qt UI font for reliable desktop/headless rendering
-  data/picks/             # historical pick notes used by Picks Archive
-  pages/                  # one module per terminal tab
-  services/               # NBA API and data services
-  ui/                     # shared Qt helpers
-  theme.py                # colors and app stylesheet
-tests/                    # unit and architecture tests
-code_review/              # review notes
-archive/                  # old prototypes, experiments, and generated artifacts
-```
-
-## Tabs
-
-- Dashboard
-- Player Profile
-- Player Analytics
-- Points Predictor
-- Team Defense
-- Consistency
-- Slate Scanner
-- Stats Explorer
-- Picks Archive
-
-## Notes
-
-NBA Stats endpoints are unofficial and can timeout, rate-limit, return empty frames, or drift schemas. New terminal features should keep API calls in `nba_terminal/services/`, run expensive work off the Qt UI thread, and show clear no-data/error states.
