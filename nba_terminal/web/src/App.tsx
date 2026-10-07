@@ -626,6 +626,7 @@ function PlayerDetails() {
       </>
     );
   const player = analysis.player;
+  const playerName = player.player_name || "Player";
   return (
     <>
       <div className="back-row">
@@ -638,7 +639,7 @@ function PlayerDetails() {
       </div>
       <section className="detail-heading player-heading">
         <div className="player-avatar">
-          {player.player_name
+          {playerName
             .split(" ")
             .map((part) => part[0])
             .slice(0, 2)
@@ -646,7 +647,7 @@ function PlayerDetails() {
         </div>
         <div>
           <div className="eyebrow">PLAYER GAME ANALYSIS</div>
-          <h1>{player.player_name}</h1>
+          <h1>{playerName}</h1>
           <p>
             {player.team?.name || "Team not provided"} · {season} season
           </p>
