@@ -12,6 +12,15 @@ const game = {
   home_score: 112,
   away_score: 106,
 };
+const upcomingGame = {
+  ...game,
+  game_id: "0012500001",
+  status: "Scheduled",
+  start_time: "7:30 PM ET",
+  phase: "Pre Season",
+  home_score: null,
+  away_score: null,
+};
 const player = {
   player_id: 7,
   player_name: "Jayson Tatum",
@@ -37,7 +46,7 @@ const player = {
   plus_minus: 11,
 };
 
-async function mockLeagueApi(page: Page, feedError = false) {
+async function mockLeagueApi(page: Page, feedError = false, unavailableChart = false) {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/meta")
@@ -49,7 +58,7 @@ async function mockLeagueApi(page: Page, feedError = false) {
         },
       });
     if (path === "/api/upcoming")
-      return route.fulfill({ json: { days: ["2025-11-02", "2025-11-03"], games: [] } });
+      return route.fulfill({ json: { days: ["2025-11-02", "2025-11-03"], games: [upcomingGame] } });
     if (path === "/api/games") {
       if (feedError)
         return route.fulfill({ status: 502, json: { detail: "Mock NBA service error" } });
@@ -79,8 +88,10 @@ async function mockLeagueApi(page: Page, feedError = false) {
           game_id: game.game_id,
           player,
           stats: player,
-          shots: [{ x: 10, y: 80, made: true, description: "Jump Shot", period: 1, distance: 12 }],
-          shot_chart_state: "available",
+          shots: unavailableChart
+            ? []
+            : [{ x: 10, y: 80, made: true, description: "Jump Shot", period: 1, distance: 12 }],
+          shot_chart_state: unavailableChart ? "unavailable" : "available",
         },
       });
     return route.fulfill({ status: 404, json: { detail: "No fixture for route" } });
@@ -93,10 +104,15 @@ test("fans drill from season feed through box score to a player's real shot char
   await mockLeagueApi(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Every game, in focus." })).toBeVisible();
+  await expect(page.getByText("1 scheduled")).toBeVisible();
+  await expect(page.getByText(/Scheduled · 7:30 PM ET/)).toBeVisible();
   await page.getByLabel("Season").selectOption("2024-25");
   await expect(page).toHaveURL(/season=2024-25/);
   await page.getByLabel("Season").selectOption("2025-26");
-  await page.getByRole("link", { name: "Open Cleveland Cavaliers at Boston Celtics" }).click();
+  await page
+    .locator(".feed-block")
+    .getByRole("link", { name: "Open Cleveland Cavaliers at Boston Celtics" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Cleveland Cavaliers at Boston Celtics" }),
   ).toBeVisible();
@@ -105,7 +121,17 @@ test("fans drill from season feed through box score to a player's real shot char
   await expect(
     page.getByRole("img", { name: "NBA shot locations plotted on a half-court" }),
   ).toBeVisible();
-  await expect(page.getByTitle("Jump Shot · 12 ft")).toBeAttached();
+  await expect(page.locator(".shot.made")).toHaveCount(1);
+  await expect(page.locator("svg title")).toContainText("Jump Shot");
+});
+
+test("shows an honest unavailable shot chart while retaining player stats", async ({ page }) => {
+  await mockLeagueApi(page, false, true);
+  await page.goto(`/game/${game.game_id}/player/7?season=2025-26`);
+  await expect(page.getByRole("heading", { name: "Jayson Tatum" })).toBeVisible();
+  await expect(page.getByText("Shot chart unavailable")).toBeVisible();
+  await expect(page.getByText(/No locations are estimated/)).toBeVisible();
+  await expect(page.getByText("28", { exact: true })).toBeVisible();
 });
 
 test("renders an honest API failure state", async ({ page }) => {
