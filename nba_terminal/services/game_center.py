@@ -68,6 +68,8 @@ def _date_string(value: Any) -> str:
 
 
 def _season_start(season: str) -> int:
+    if not isinstance(season, str):
+        raise ValueError("Season must use YYYY-YY format.")
     try:
         start, end = season.split("-")
         if len(start) != 4 or len(end) != 2 or int(end) != (int(start) + 1) % 100:
