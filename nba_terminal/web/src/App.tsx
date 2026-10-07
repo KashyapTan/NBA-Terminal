@@ -161,7 +161,7 @@ function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; 
     month: "short",
     day: "numeric",
   });
-  const phase = upcoming ? "Scheduled" : game.phase;
+  const phase = game.phase;
   return (
     <Link
       className={`game-card${upcoming ? " upcoming-card" : ""}`}
