@@ -13,6 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from nba_terminal.fantasy_api import router as fantasy_router
 from nba_terminal.services import game_center
 
 WEB_DIR = Path(__file__).with_name("web")
@@ -56,6 +57,10 @@ async def _cached_call(key: str, ttl: int, function: Callable[..., Any], *args: 
             if len(_cache) > 250:
                 _cache.pop(next(iter(_cache)))
     return result
+
+
+app.state.cached_nba_call = _cached_call
+app.include_router(fantasy_router)
 
 
 @app.get("/")
