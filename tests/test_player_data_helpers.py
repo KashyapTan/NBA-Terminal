@@ -69,6 +69,13 @@ def test_player_profile_hit_rate_rows_include_combo_markets():
     assert rates["3PM 2+"]["season"] == 50
 
 
+def test_player_game_log_minutes_parse_minute_clock_values():
+    frame = pd.DataFrame({"MIN": ["36:30", "18:15", "bad", None]})
+    enriched = add_derived_columns(frame)
+    assert enriched["MIN"].tolist() == pytest.approx([36.5, 18.25, 0, 0])
+    assert player_data._minutes_to_decimal(22.5) == 22.5
+
+
 def test_player_profile_cache_round_trip_and_clear(monkeypatch, tmp_path):
     monkeypatch.setenv("NBA_TERMINAL_CACHE_DIR", str(tmp_path))
     profile = {

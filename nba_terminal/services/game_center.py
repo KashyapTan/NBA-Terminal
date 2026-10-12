@@ -346,9 +346,13 @@ def fetch_player_game_analysis(
     chart_state = "unavailable"
     try:
         frame = shotchartdetail.ShotChartDetail(
-            team_id=0, player_id=player_id, game_id_nullable=game_id,
-            season_nullable=season, season_type_all_star=phase,
-            context_measure_simple="FGA", timeout=12,
+            team_id=0,
+            player_id=player_id,
+            game_id_nullable=game_id,
+            season_nullable=season,
+            season_type_all_star=phase,
+            context_measure_simple="FGA",
+            timeout=12,
         ).get_data_frames()[0]
         required = {"LOC_X", "LOC_Y", "SHOT_MADE_FLAG"}
         if required.issubset(frame.columns):
@@ -357,15 +361,53 @@ def fetch_player_game_analysis(
                 made = pd.to_numeric(row["SHOT_MADE_FLAG"], errors="coerce")
                 if pd.isna(x) or pd.isna(y) or pd.isna(made):
                     continue
-                shots.append({
-                    "x": float(x), "y": float(y), "made": bool(int(made)),
-                    "description": str(row.get("ACTION_TYPE", "")),
-                    "period": _serial(row.get("PERIOD")),
-                    "distance": _serial(row.get("SHOT_DISTANCE")),
-                })
+                period = pd.to_numeric(row.get("PERIOD"), errors="coerce")
+                minutes_remaining = pd.to_numeric(row.get("MINUTES_REMAINING"), errors="coerce")
+                seconds_remaining = pd.to_numeric(row.get("SECONDS_REMAINING"), errors="coerce")
+                shots.append(
+                    {
+                        "x": float(x),
+                        "y": float(y),
+                        "made": bool(int(made)),
+                        "description": str(row.get("ACTION_TYPE", "")),
+                        "period": int(period) if not pd.isna(period) else None,
+                        "distance": _serial(row.get("SHOT_DISTANCE")),
+                        "event_type": _serial(row.get("EVENT_TYPE")),
+                        "shot_type": _serial(row.get("SHOT_TYPE")),
+                        "minutes_remaining": int(minutes_remaining) if not pd.isna(minutes_remaining) else None,
+                        "seconds_remaining": int(seconds_remaining) if not pd.isna(seconds_remaining) else None,
+                        "zone": _serial(row.get("SHOT_ZONE_BASIC")),
+                    }
+                )
             chart_state = "available" if shots else "unavailable"
     except Exception:
         # Some game/season combinations do not expose shot locations. Box score remains useful.
         chart_state = "error"
-    return {"game_id": game_id, "player": player, "stats": player, "shots": shots,
-            "shot_chart_state": chart_state}
+    player_team_id = player.get("team_id")
+    team_rows = box.get("teams", [])
+    player_team_row = next((item for item in team_rows if item.get("team_id") == player_team_id), {})
+    opponent_team_row = next((item for item in team_rows if item.get("team_id") != player_team_id), {})
+    opponent_team = next(
+        (
+            item.get("team")
+            for item in box["players"]
+            if item.get("team_id") != player_team_id and item.get("team") is not None
+        ),
+        None,
+    )
+    return {
+        "game_id": game_id,
+        "player": player,
+        "stats": player,
+        "shots": shots,
+        "shot_chart_state": chart_state,
+        "game_context": {
+            "game_id": game_id,
+            "team": player.get("team"),
+            "opponent": opponent_team,
+            "team_score": player_team_row.get("pts"),
+            "opponent_score": opponent_team_row.get("pts"),
+            "season": season,
+            "phase": phase,
+        },
+    }

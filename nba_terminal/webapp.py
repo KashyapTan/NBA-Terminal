@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 
 from nba_terminal.fantasy_api import router as fantasy_router
 from nba_terminal.services import game_center
+from nba_terminal.services import player_analysis as player_analysis_service
 
 WEB_DIR = Path(__file__).with_name("web")
 WEB_DIST = WEB_DIR / "dist"
@@ -46,7 +47,10 @@ async def _cached_call(key: str, ttl: int, function: Callable[..., Any], *args: 
     finally:
         NBA_SLOTS.release()
     async with _cache_lock:
-        cache_result = not (isinstance(result, dict) and result.get("shot_chart_state") == "error")
+        transient_error_states = {"shot_chart_state", "advanced_stats_state", "history_state"}
+        cache_result = not (
+            isinstance(result, dict) and any(result.get(state) == "error" for state in transient_error_states)
+        )
         if cache_result:
             _cache[key] = (loop.time() + ttl, result)
         if len(_cache) > 250:
@@ -89,9 +93,11 @@ async def asset(filename: str) -> FileResponse:
 @app.get("/api/meta")
 async def metadata() -> dict[str, Any]:
     today = game_center.nba_today()
-    return {"current_season": game_center.current_season(today),
-            "seasons": game_center.available_seasons(today),
-            "supported_from": game_center.SUPPORTED_FROM}
+    return {
+        "current_season": game_center.current_season(today),
+        "seasons": game_center.available_seasons(today),
+        "supported_from": game_center.SUPPORTED_FROM,
+    }
 
 
 @app.get("/api/upcoming")
@@ -123,8 +129,13 @@ async def player_analysis(
     if phase not in game_center.GAME_PHASES:
         raise HTTPException(status_code=400, detail="Unsupported season phase.")
     return await _cached_call(
-        f"player:{game_id}:{player_id}:{season}:{phase}", 3600,
-        game_center.fetch_player_game_analysis, game_id, player_id, season, phase,
+        f"player:{game_id}:{player_id}:{season}:{phase}",
+        3600,
+        player_analysis_service.fetch_player_game_analysis,
+        game_id,
+        player_id,
+        season,
+        phase,
     )
 
 

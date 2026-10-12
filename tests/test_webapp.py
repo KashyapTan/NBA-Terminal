@@ -37,7 +37,7 @@ def test_metadata_and_api_routes_use_mocked_service_data(monkeypatch):
         lambda game_id, season=None: {"game_id": game_id, "players": [], "teams": []},
     )
     monkeypatch.setattr(
-        webapp.game_center,
+        webapp.player_analysis_service,
         "fetch_player_game_analysis",
         lambda *args: {"game_id": args[0], "player": {}, "stats": {}, "shots": [], "shot_chart_state": "unavailable"},
     )
@@ -77,7 +77,7 @@ def test_cache_reuses_successes_and_does_not_keep_shot_chart_errors(monkeypatch)
         attempts.append(1)
         return {"shot_chart_state": "error", "shots": []}
 
-    monkeypatch.setattr(webapp.game_center, "fetch_player_game_analysis", analysis)
+    monkeypatch.setattr(webapp.player_analysis_service, "fetch_player_game_analysis", analysis)
     path = "/api/games/0022400001/players/7?season=2025-26"
     request("GET", path)
     request("GET", path)
