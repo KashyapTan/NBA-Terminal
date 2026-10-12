@@ -430,7 +430,7 @@ describe("NBA Terminal screens", () => {
     let requests = 0;
     mount(`/game/${game.game_id}?season=2025-26`, (url) => {
       if (url === "/api/meta") return meta;
-      if (url === `/api/games/${game.game_id}`) {
+      if (url.startsWith(`/api/games/${game.game_id}?season=`)) {
         requests += 1;
         if (requests === 1) throw new Error("cached box score unavailable");
         return {
