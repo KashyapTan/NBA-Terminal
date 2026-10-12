@@ -135,7 +135,6 @@ def add_derived_columns(frame: pd.DataFrame) -> pd.DataFrame:
     """Add terminal-friendly derived box-score columns."""
     enriched = frame.copy()
     numeric_columns = (
-        "MIN",
         "PTS",
         "REB",
         "AST",
@@ -156,6 +155,8 @@ def add_derived_columns(frame: pd.DataFrame) -> pd.DataFrame:
     for column in numeric_columns:
         if column in enriched:
             enriched[column] = pd.to_numeric(enriched[column], errors="coerce").fillna(0)
+    if "MIN" in enriched:
+        enriched["MIN"] = enriched["MIN"].map(_minutes_to_decimal)
     if {"PTS", "REB", "AST"}.issubset(enriched.columns):
         enriched["PRA"] = enriched["PTS"] + enriched["REB"] + enriched["AST"]
         enriched["PR"] = enriched["PTS"] + enriched["REB"]
@@ -175,6 +176,21 @@ def add_derived_columns(frame: pd.DataFrame) -> pd.DataFrame:
         denominator = 2 * (enriched["FGA"] + (0.44 * enriched["FTA"]))
         enriched["TS_PCT"] = enriched["PTS"].where(denominator > 0, 0) / denominator.where(denominator > 0, 1)
     return enriched
+
+
+def _minutes_to_decimal(value: Any) -> float:
+    """Convert NBA game-log minute strings such as 34:21 to decimal minutes."""
+    if value is None or pd.isna(value):
+        return 0.0
+    text = str(value).strip()
+    if ":" in text:
+        minutes, seconds = text.split(":", maxsplit=1)
+        try:
+            return float(minutes) + (float(seconds) / 60)
+        except ValueError:
+            return 0.0
+    numeric = pd.to_numeric(value, errors="coerce")
+    return float(numeric) if not pd.isna(numeric) else 0.0
 
 
 def filter_vs_team(frame: pd.DataFrame, team_input: str) -> pd.DataFrame:

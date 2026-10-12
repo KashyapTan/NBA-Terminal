@@ -1,0 +1,1266 @@
+.player-analysis {
+  --player-ink: #f4f7fb;
+  --player-muted: #96a0b0;
+  --player-soft: #717e90;
+  --player-line: #283241;
+  --player-panel: #151b24;
+  --player-panel-raised: #1a2230;
+  --player-blue: #7691ff;
+  --player-green: #48d2a0;
+  --player-red: #ff7f8b;
+  color: var(--player-ink);
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.player-analysis-shell .main-area {
+  background: #0d1117;
+  color: #e9eef6;
+}
+
+.player-analysis-shell .topbar {
+  border-bottom-color: #273240;
+}
+
+.player-analysis-shell .crumb {
+  color: #7d8a9d;
+}
+
+.player-analysis-shell .crumb i {
+  color: #566376;
+}
+
+.player-analysis-shell .crumb b {
+  color: #d2dbe8;
+}
+
+.player-analysis-shell .season-chip {
+  background: #151c26;
+  border-color: #303b4a;
+  color: #c4cedd;
+}
+
+.player-analysis-shell .main-area > footer {
+  color: #778599;
+}
+
+.player-analysis__heading {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+}
+
+.player-analysis__back-row {
+  align-items: center;
+  color: #8793a5;
+  display: flex;
+  font-size: 10px;
+  gap: 12px;
+  margin-bottom: 19px;
+}
+
+.player-analysis__back-row a {
+  color: #abbcff;
+}
+
+.player-analysis__back-row a:hover {
+  color: #e2e9ff;
+}
+
+.player-analysis__back-row span {
+  border-left: 1px solid #374456;
+  padding-left: 11px;
+}
+
+.player-analysis__avatar {
+  align-items: center;
+  background: linear-gradient(145deg, #293856, #1d2c46);
+  border: 1px solid #405574;
+  border-radius: 15px;
+  color: #d8e3ff;
+  display: flex;
+  flex: 0 0 58px;
+  font:
+    700 18px / 1 Manrope,
+    sans-serif;
+  height: 58px;
+  justify-content: center;
+  letter-spacing: -0.06em;
+}
+
+.player-analysis__heading-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-analysis__eyebrow,
+.player-analysis__section-kicker {
+  color: var(--player-soft);
+  font:
+    600 10px / 1.4 "DM Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-analysis__heading h1 {
+  color: var(--player-ink);
+  font:
+    720 clamp(25px, 3.2vw, 37px) / 1.1 Manrope,
+    sans-serif;
+  letter-spacing: -0.05em;
+  margin: 6px 0 5px;
+}
+
+.player-analysis__heading p {
+  color: var(--player-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.player-analysis__team {
+  align-self: center;
+  border: 1px solid var(--player-line);
+  border-radius: 8px;
+  color: #cad4e4;
+  flex: 0 0 auto;
+  font:
+    600 11px / 1 "DM Mono",
+    ui-monospace,
+    monospace;
+  padding: 9px 10px;
+}
+
+.player-analysis__context {
+  align-items: center;
+  background: linear-gradient(110deg, #182231, #151b24 68%);
+  border: 1px solid #2b3a4e;
+  border-radius: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 11px;
+  padding: 13px 16px;
+}
+
+.player-analysis__context b {
+  color: #e7edf8;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.player-analysis__context span {
+  color: var(--player-muted);
+  font-size: 11px;
+}
+
+.player-analysis__context .is-final {
+  border-left: 1px solid #3b485a;
+  color: #d3dae6;
+  margin-left: 2px;
+  padding-left: 11px;
+}
+
+.player-analysis__context .player-analysis__result {
+  background: #1e392f;
+  border: 1px solid #315e4e;
+  border-radius: 4px;
+  color: #81d9b4;
+  font:
+    600 9px / 1 "DM Mono",
+    ui-monospace,
+    monospace;
+  padding: 4px 6px;
+}
+
+.player-analysis__section {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+}
+
+.player-analysis__section-heading {
+  align-items: end;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.player-analysis__section-heading h2 {
+  color: var(--player-ink);
+  font:
+    650 18px / 1.2 Manrope,
+    sans-serif;
+  letter-spacing: -0.035em;
+  margin: 5px 0 0;
+}
+
+.player-analysis__section-heading p {
+  color: var(--player-soft);
+  font:
+    10px / 1.4 "DM Mono",
+    ui-monospace,
+    monospace;
+  margin: 0;
+  text-align: right;
+}
+
+.player-analysis__metrics {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.player-analysis__metric {
+  background: var(--player-panel);
+  border: 1px solid var(--player-line);
+  border-radius: 9px;
+  min-width: 0;
+  padding: 12px 13px;
+}
+
+.player-analysis__metric span {
+  color: var(--player-muted);
+  display: block;
+  font-size: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-analysis__metric strong {
+  color: #f7f8fb;
+  display: block;
+  font:
+    650 18px / 1.1 Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.player-analysis__panel {
+  background: var(--player-panel);
+  border: 1px solid var(--player-line);
+  border-radius: 11px;
+  min-width: 0;
+}
+
+.player-analysis__advanced {
+  padding: 17px;
+}
+
+.player-analysis__advanced-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.player-analysis__advanced-cell {
+  background: var(--player-panel-raised);
+  border: 1px solid #252f3c;
+  border-radius: 7px;
+  min-width: 0;
+  padding: 10px 11px;
+}
+
+.player-analysis__advanced-cell span {
+  color: var(--player-muted);
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  margin-bottom: 7px;
+}
+
+.player-analysis__advanced-cell strong {
+  color: #e9eef7;
+  font:
+    620 14px / 1.1 Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-analysis__notice {
+  align-items: flex-start;
+  background: #1a202b;
+  border: 1px solid #343c4a;
+  border-radius: 8px;
+  color: var(--player-muted);
+  display: flex;
+  font-size: 11px;
+  gap: 10px;
+  line-height: 1.55;
+  padding: 12px 14px;
+}
+
+.player-analysis__notice strong {
+  color: #e3e9f4;
+  display: block;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.player-analysis__notice.is-error {
+  border-color: #67414a;
+}
+
+.player-analysis__notice-mark {
+  align-items: center;
+  border: 1px solid #566174;
+  border-radius: 50%;
+  color: #bdc8d9;
+  display: inline-flex;
+  flex: 0 0 18px;
+  font:
+    600 10px / 1 "DM Mono",
+    ui-monospace,
+    monospace;
+  height: 18px;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.player-analysis__history {
+  display: grid;
+  gap: 12px;
+}
+
+.player-analysis__history-top {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.player-analysis__history-controls {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.player-analysis__history-controls label {
+  color: var(--player-muted);
+  display: grid;
+  font:
+    600 9px / 1.4 "DM Mono",
+    ui-monospace,
+    monospace;
+  gap: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.player-analysis__history-controls select,
+.player-analysis__history-controls input {
+  background: #111720;
+  border: 1px solid #344051;
+  border-radius: 6px;
+  color: #e8edf6;
+  font:
+    500 11px / 1.2 "DM Sans",
+    -apple-system,
+    sans-serif;
+  height: 34px;
+  padding: 0 10px;
+  text-transform: none;
+}
+
+.player-analysis__history-controls input {
+  font-variant-numeric: tabular-nums;
+  width: 74px;
+}
+
+.player-analysis__hit-rate {
+  align-items: center;
+  background: #121923;
+  border: 1px solid #30415a;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  min-height: 50px;
+  padding: 8px 13px;
+}
+
+.player-analysis__hit-rate strong {
+  color: #a8bbff;
+  font:
+    680 20px / 1 Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-analysis__hit-rate span {
+  color: #acb7c8;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.player-analysis__comparison {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.player-analysis__comparison-card {
+  background: var(--player-panel);
+  border: 1px solid var(--player-line);
+  border-radius: 9px;
+  min-width: 0;
+  padding: 13px 15px;
+}
+
+.player-analysis__comparison-card span {
+  color: var(--player-muted);
+  display: block;
+  font-size: 10px;
+}
+
+.player-analysis__comparison-card strong {
+  color: #f0f3f9;
+  display: inline-block;
+  font:
+    650 19px / 1.2 Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  margin: 7px 0 3px;
+}
+
+.player-analysis__comparison-card small {
+  color: var(--player-soft);
+  display: block;
+  font-size: 10px;
+}
+
+.player-analysis__comparison-card .is-positive {
+  color: var(--player-green);
+}
+
+.player-analysis__comparison-card .is-negative {
+  color: #f2a3ab;
+}
+
+.player-analysis__formula {
+  color: var(--player-soft);
+  font-size: 10px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.player-analysis__visuals {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.player-analysis__trend,
+.player-analysis__distribution {
+  background: #131a24;
+  border: 1px solid var(--player-line);
+  border-radius: 9px;
+  padding: 11px 14px 9px;
+}
+
+.player-analysis__trend-label,
+.player-analysis__trend-dates {
+  align-items: center;
+  color: var(--player-muted);
+  display: flex;
+  font-size: 9px;
+  justify-content: space-between;
+}
+
+.player-analysis__distribution svg {
+  display: block;
+  height: 90px;
+  margin-top: 4px;
+  overflow: visible;
+  width: 100%;
+}
+
+.player-analysis__distribution-axis {
+  stroke: #435169;
+  stroke-width: 1;
+}
+
+.player-analysis__distribution-bar {
+  fill: #7793fa;
+  stroke: #a5b7ff;
+  stroke-width: 0.5;
+}
+
+.player-analysis__distribution-label {
+  fill: #8d9bb0;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 7px;
+  text-anchor: middle;
+}
+
+.player-analysis__trend-label b {
+  color: #d2dcf0;
+  font:
+    550 9px "DM Mono",
+    ui-monospace,
+    monospace;
+}
+
+.player-analysis__trend svg {
+  display: block;
+  height: 90px;
+  margin-top: 4px;
+  overflow: visible;
+  width: 100%;
+}
+
+.player-analysis__trend-grid {
+  stroke: #3b4960;
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+}
+
+.player-analysis__trend-line {
+  fill: none;
+  stroke: #83a0ff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.player-analysis__trend-point {
+  fill: #a8bbff;
+  stroke: #182337;
+  stroke-width: 1.5;
+}
+
+.player-analysis__trend-dates {
+  color: #78869a;
+  font-size: 8px;
+  margin-top: 2px;
+}
+
+.player-analysis__subsection-heading {
+  align-items: end;
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.player-analysis__subsection-heading h3 {
+  color: #e7ecf5;
+  font:
+    620 13px / 1.2 Manrope,
+    sans-serif;
+  margin: 4px 0 0;
+}
+
+.player-analysis__subsection-heading p {
+  color: var(--player-soft);
+  font-size: 9px;
+  margin: 0;
+  text-align: right;
+}
+
+.player-analysis__consistency-wrap {
+  max-height: none;
+  width: min(100%, 850px);
+}
+
+.player-analysis__consistency-table {
+  min-width: 760px;
+}
+
+.player-analysis__window-cell strong {
+  color: #dce5f4;
+  display: block;
+  font-size: 10px;
+}
+
+.player-analysis__window-cell small {
+  color: var(--player-soft);
+  display: block;
+  font-size: 8px;
+  margin-top: 3px;
+}
+
+.player-analysis__opponent-details {
+  border: 1px solid #303b4a;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.player-analysis__opponent-details summary {
+  color: #b8c6da;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 550;
+  padding: 2px 3px 4px;
+}
+
+.player-analysis__opponent-details .player-analysis__table-wrap {
+  margin-top: 9px;
+}
+
+.player-analysis__table-wrap {
+  border: 1px solid var(--player-line);
+  border-radius: 9px;
+  max-height: 430px;
+  overflow: auto;
+}
+
+.player-analysis__table {
+  border-collapse: collapse;
+  font-size: 10px;
+  min-width: 950px;
+  width: 100%;
+}
+
+.player-analysis__table th {
+  background: #1b2330;
+  color: #9ca8ba;
+  font:
+    600 9px / 1.2 "DM Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.04em;
+  position: sticky;
+  text-align: right;
+  text-transform: uppercase;
+  top: 0;
+  z-index: 1;
+}
+
+.player-analysis__table th:first-child,
+.player-analysis__table td:first-child {
+  left: 0;
+  position: sticky;
+  text-align: left;
+  z-index: 2;
+}
+
+.player-analysis__table th,
+.player-analysis__table td {
+  border-bottom: 1px solid #26303d;
+  padding: 9px 10px;
+  white-space: nowrap;
+}
+
+.player-analysis__table td {
+  color: #dbe2ed;
+  background: #141b25;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.player-analysis__table td:first-child,
+.player-analysis__table th:first-child {
+  background: #171e28;
+}
+
+.player-analysis__table tbody tr:nth-child(even) td {
+  background: #171f2a;
+}
+
+.player-analysis__table tbody tr:nth-child(even) td:first-child {
+  background: #1b2330;
+}
+
+.player-analysis__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.player-analysis__table .is-good {
+  color: var(--player-green);
+}
+
+.player-analysis__table .is-bad {
+  color: #f2a3ab;
+}
+
+.shot-chart {
+  background: radial-gradient(ellipse at 48% 40%, #1b2a3d 0, #151d28 45%, #141a23 78%);
+  border: 1px solid #2b3747;
+  border-radius: 13px;
+  box-shadow: 0 16px 40px #05090f26;
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px 21px 15px;
+}
+
+.shot-chart__header {
+  align-items: start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.shot-chart__eyebrow {
+  color: #8491a3;
+  font:
+    600 9px / 1.4 "DM Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.11em;
+}
+
+.shot-chart__header h3 {
+  color: #f0f4fa;
+  font:
+    650 17px / 1.2 Manrope,
+    sans-serif;
+  letter-spacing: -0.035em;
+  margin: 6px 0 5px;
+}
+
+.shot-chart__header p,
+.shot-chart__footer p {
+  color: #8a97a8;
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.shot-chart__totals {
+  color: #a6b2c2;
+  flex: 0 0 auto;
+  font-size: 10px;
+  padding-top: 1px;
+  text-align: right;
+}
+
+.shot-chart__totals strong {
+  color: #edf2fa;
+  display: block;
+  font:
+    650 18px / 1.15 Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.shot-chart__totals small {
+  color: #8290a3;
+  font:
+    500 10px "DM Sans",
+    sans-serif;
+}
+
+.shot-chart__totals span {
+  display: block;
+  margin-top: 4px;
+}
+
+.shot-chart__controls {
+  align-items: end;
+  border-bottom: 1px solid #293442;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 17px;
+  padding-bottom: 12px;
+}
+
+.shot-chart__controls label {
+  color: #9ca9ba;
+  display: grid;
+  font:
+    600 9px / 1.3 "DM Mono",
+    ui-monospace,
+    monospace;
+  gap: 5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.shot-chart__controls select,
+.shot-chart__view-button,
+.shot-chart__reset {
+  background: #111822;
+  border: 1px solid #344153;
+  border-radius: 6px;
+  color: #dce4ef;
+  font:
+    500 10px / 1 "DM Sans",
+    -apple-system,
+    sans-serif;
+  height: 31px;
+  padding: 0 10px;
+}
+
+.shot-chart__controls select {
+  min-width: 111px;
+}
+
+.shot-chart__filter {
+  border: 0;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+}
+
+.shot-chart__filter legend {
+  color: #9ca9ba;
+  font:
+    600 9px / 1.3 "DM Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.shot-chart__filter button {
+  background: #111822;
+  border: 1px solid #344153;
+  color: #a9b5c5;
+  cursor: pointer;
+  font-size: 10px;
+  height: 31px;
+  padding: 0 11px;
+}
+
+.shot-chart__filter button:first-of-type {
+  border-radius: 6px 0 0 6px;
+}
+
+.shot-chart__filter button:last-of-type {
+  border-radius: 0 6px 6px 0;
+}
+
+.shot-chart__filter button + button {
+  border-left: 0;
+}
+
+.shot-chart__filter button.is-selected {
+  background: #22314b;
+  border-color: #5a75b9;
+  color: #dce6ff;
+}
+
+.shot-chart__view-button[aria-pressed="true"] {
+  background: #22314b;
+  border-color: #5a75b9;
+  color: #dce6ff;
+}
+
+.shot-chart__view-button,
+.shot-chart__reset {
+  cursor: pointer;
+}
+
+.shot-chart__reset {
+  color: #9ba8ba;
+  margin-left: auto;
+}
+
+.shot-chart__controls button:hover,
+.shot-chart__controls select:hover,
+.player-analysis__history-controls select:hover {
+  border-color: #6682cb;
+}
+
+.shot-chart__camera-controls {
+  align-items: center;
+  color: #9ca9ba;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  min-height: 42px;
+}
+
+.shot-chart__camera-controls label {
+  align-items: center;
+  display: flex;
+  font:
+    500 9px "DM Mono",
+    ui-monospace,
+    monospace;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.shot-chart__camera-controls input {
+  accent-color: #8199fb;
+  width: 116px;
+}
+
+.shot-chart__camera-controls output {
+  color: #c4cfdf;
+  font-variant-numeric: tabular-nums;
+  width: 30px;
+}
+
+.shot-chart__camera-controls small {
+  color: #788699;
+  font-size: 9px;
+}
+
+.shot-chart__scene {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 342px;
+  overflow: hidden;
+  perspective: 1050px;
+  position: relative;
+}
+
+.shot-chart__stage {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 10px 7%;
+  transform-style: preserve-3d;
+  width: 100%;
+}
+
+.shot-chart__plane {
+  background: #142236;
+  border: 1px solid #6680ad;
+  border-radius: 3px;
+  box-shadow:
+    0 19px 30px #050a12a1,
+    0 1px 0 #a3b8df5c inset,
+    0 -15px 32px #101b2b88 inset;
+  max-width: 730px;
+  position: relative;
+  transform: rotateX(var(--court-tilt)) rotateZ(var(--court-rotation)) translateZ(0);
+  transform-origin: 50% 50%;
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 260ms ease;
+  width: 100%;
+}
+
+.shot-chart__plane::before {
+  background:
+    linear-gradient(90deg, #7196cf18 1px, transparent 1px),
+    linear-gradient(#7196cf18 1px, transparent 1px);
+  background-size: 5% 5%;
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.shot-chart__scene.is-flat .shot-chart__plane {
+  transform: none;
+  transition: none;
+}
+
+.shot-chart__court {
+  display: block;
+  height: auto;
+  overflow: visible;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.shot-chart__floor {
+  fill: #15263b;
+}
+
+.shot-chart__lines {
+  fill: none;
+  stroke: #b7c8e3;
+  stroke-opacity: 0.86;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.shot-chart__lines .shot-chart__dashed {
+  stroke-dasharray: 5 5;
+  stroke-opacity: 0.52;
+}
+
+.shot-chart__lines .shot-chart__center-mark {
+  stroke-dasharray: 3 4;
+  stroke-opacity: 0.42;
+}
+
+.shot-chart__hoop {
+  fill: none;
+  stroke: #d6e2f5;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.shot-chart__mark {
+  cursor: crosshair;
+  paint-order: stroke fill;
+  stroke: #e8efff;
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+
+.shot-chart__mark.is-made {
+  fill: #6fa9ff;
+  fill-opacity: 0.92;
+}
+
+.shot-chart__mark.is-missed {
+  fill: #fa7583;
+  fill-opacity: 0.24;
+  stroke: #ff8994;
+}
+
+.shot-chart__mark.is-active {
+  filter: drop-shadow(0 0 5px #b8d2ffb8);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.shot-chart__mark:focus-visible {
+  outline: none;
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.shot-chart__tooltip {
+  background: #0d131def;
+  border: 1px solid #43536a;
+  border-radius: 8px;
+  box-shadow: 0 8px 26px #0008;
+  color: #e6edf7;
+  display: grid;
+  gap: 4px;
+  left: 50%;
+  max-width: min(300px, calc(100% - 24px));
+  padding: 9px 11px;
+  pointer-events: none;
+  position: absolute;
+  top: 9px;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.shot-chart__tooltip strong {
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.shot-chart__tooltip span {
+  color: #bdc8d8;
+  font-size: 9px;
+}
+
+.shot-chart__tooltip small {
+  color: #8795a8;
+  font-size: 8px;
+}
+
+.shot-chart__footer {
+  align-items: center;
+  border-top: 1px solid #293442;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 5px;
+  padding-top: 11px;
+}
+
+.shot-chart__legend {
+  align-items: center;
+  color: #a5b0c0;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 14px;
+  font-size: 9px;
+}
+
+.shot-chart__legend span {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.shot-chart__legend i {
+  border: 1px solid #e8efff;
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.shot-chart__legend i.is-made {
+  background: #6fa9ff;
+}
+
+.shot-chart__legend i.is-missed {
+  background: #fa7583;
+}
+
+.shot-chart__footer p {
+  text-align: right;
+}
+
+.shot-chart__unavailable {
+  align-items: center;
+  background: #111822;
+  border: 1px dashed #3a485a;
+  border-radius: 9px;
+  color: #9da9b9;
+  display: flex;
+  gap: 13px;
+  margin-top: 17px;
+  min-height: 122px;
+  padding: 18px;
+}
+
+.shot-chart__unavailable strong {
+  color: #e0e6ef;
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.shot-chart__unavailable p {
+  font-size: 10px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 520px;
+}
+
+.shot-chart__unavailable-mark {
+  align-items: center;
+  background: #1b2636;
+  border: 1px solid #42506a;
+  border-radius: 11px;
+  color: #91a5d5;
+  display: inline-flex;
+  flex: 0 0 40px;
+  font-size: 20px;
+  height: 40px;
+  justify-content: center;
+}
+
+.shot-chart button:focus-visible,
+.shot-chart select:focus-visible,
+.shot-chart input:focus-visible,
+.player-analysis select:focus-visible,
+.player-analysis input:focus-visible {
+  outline: 2px solid #8ca4ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1080px) {
+  .player-analysis__metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .player-analysis__advanced-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .player-analysis {
+    gap: 19px;
+  }
+  .player-analysis__heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .player-analysis__avatar {
+    flex-basis: 46px;
+    font-size: 15px;
+    height: 46px;
+  }
+  .player-analysis__team {
+    padding: 8px;
+  }
+  .player-analysis__metrics {
+    gap: 7px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .player-analysis__metric {
+    padding: 10px;
+  }
+  .player-analysis__metric strong {
+    font-size: 16px;
+  }
+  .player-analysis__advanced-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .player-analysis__history-top,
+  .player-analysis__section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .player-analysis__section-heading p {
+    text-align: left;
+  }
+  .player-analysis__history-controls {
+    width: 100%;
+  }
+  .player-analysis__history-controls label:first-child {
+    flex: 1 1 45%;
+  }
+  .player-analysis__history-controls select {
+    max-width: 100%;
+  }
+  .player-analysis__hit-rate {
+    flex: 1 1 100%;
+  }
+  .player-analysis__comparison {
+    gap: 7px;
+    grid-template-columns: 1fr;
+  }
+  .player-analysis__comparison-card {
+    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+  .player-analysis__comparison-card strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin: 0;
+  }
+  .player-analysis__comparison-card small {
+    grid-column: 1;
+  }
+  .player-analysis__visuals {
+    grid-template-columns: 1fr;
+  }
+  .shot-chart {
+    border-radius: 10px;
+    padding: 15px 12px 12px;
+  }
+  .shot-chart__header h3 {
+    font-size: 15px;
+  }
+  .shot-chart__totals strong {
+    font-size: 16px;
+  }
+  .shot-chart__controls {
+    align-items: center;
+  }
+  .shot-chart__reset {
+    margin-left: 0;
+  }
+  .shot-chart__scene {
+    min-height: 250px;
+  }
+  .shot-chart__stage {
+    padding: 16px 2%;
+  }
+  .shot-chart__camera-controls {
+    gap: 8px 13px;
+  }
+  .shot-chart__camera-controls input {
+    width: 84px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot-chart__plane {
+    transition: none;
+  }
+}

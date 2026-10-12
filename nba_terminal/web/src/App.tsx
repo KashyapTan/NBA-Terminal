@@ -10,6 +10,7 @@ import type {
   PlayerLine,
   UpcomingResponse,
 } from "./model";
+import { PlayerAnalysisView } from "./PlayerAnalysis";
 
 type MetaState = { meta: Meta | null; error: string | null };
 const MetaContext = createContext<MetaState>({ meta: null, error: null });
@@ -101,7 +102,11 @@ function AppShell({ children }: { children: ReactNode }) {
       ? "Game Box Score"
       : "Game Center";
   return (
-    <div className="app-shell">
+    <div
+      className={
+        location.pathname.includes("/player/") ? "app-shell player-analysis-shell" : "app-shell"
+      }
+    >
       <aside className="sidebar">
         <Link className="brand" to="/" aria-label="NBA Terminal home">
           <span className="brand-mark">N</span>
@@ -496,89 +501,6 @@ function BackLink({ season, phase }: { season: string; phase?: string }) {
   );
 }
 
-const keyStats = [
-  ["min", "Minutes"],
-  ["pts", "Points"],
-  ["reb", "Rebounds"],
-  ["ast", "Assists"],
-  ["stl", "Steals"],
-  ["blk", "Blocks"],
-  ["tov", "Turnovers"],
-  ["fgm", "Field goals"],
-  ["fg3m", "3-pointers"],
-  ["ftm", "Free throws"],
-  ["oreb", "Off. rebounds"],
-  ["dreb", "Def. rebounds"],
-  ["pf", "Fouls"],
-  ["plus_minus", "+ / −"],
-] as const;
-
-function ShotChart({ analysis }: { analysis: PlayerAnalysis }) {
-  if (analysis.shot_chart_state !== "available" || !analysis.shots.length) {
-    const failed = analysis.shot_chart_state === "error";
-    return (
-      <div className="chart-unavailable">
-        <span className="empty-icon">⌖</span>
-        <b>{failed ? "Shot chart could not be loaded" : "Shot chart unavailable"}</b>
-        <p>
-          {failed
-            ? "The box score loaded, but NBA Stats did not return shot chart data. Retry later; no locations are estimated."
-            : "NBA Stats did not provide shot coordinates for this player and game. No locations are estimated."}
-        </p>
-      </div>
-    );
-  }
-  const points = analysis.shots.map((shot, index) => {
-    const x = Math.max(6, Math.min(494, 250 + shot.x));
-    const y = Math.max(8, Math.min(462, 454 - shot.y));
-    const description = shot.description || (shot.made ? "Made" : "Missed");
-    return (
-      <circle
-        key={`${index}-${shot.x}-${shot.y}`}
-        cx={x}
-        cy={y}
-        r="6.5"
-        className={`shot ${shot.made ? "made" : "missed"}`}
-      >
-        <title>
-          {description}
-          {shot.distance == null ? "" : ` · ${shot.distance} ft`}
-        </title>
-      </circle>
-    );
-  });
-  return (
-    <div className="court-wrap">
-      <svg
-        className="court"
-        viewBox="0 0 500 470"
-        role="img"
-        aria-label="NBA shot locations plotted on a half-court"
-      >
-        <rect x="8" y="8" width="484" height="454" rx="2" className="court-outline" />
-        <path
-          d="M 170 8 V 190 A 80 80 0 0 0 330 190 V 8 M 180 8 V 145 H 320 V 8 M 220 8 V 52 A 30 30 0 0 0 280 52 V 8"
-          className="court-line"
-        />
-        <circle cx="250" cy="50" r="7" className="hoop" />
-        <path d="M 8 230 A 242 242 0 0 0 492 230" className="court-line three-line" />
-        {points}
-      </svg>
-      <div className="chart-legend">
-        <span>
-          <i className="made-dot" />
-          Made
-        </span>
-        <span>
-          <i className="missed-dot" />
-          Missed
-        </span>
-        <b>{analysis.shots.length} attempts</b>
-      </div>
-    </div>
-  );
-}
-
 function PlayerDetails() {
   const { gameId = "", playerId = "" } = useParams();
   const { meta } = useMeta();
@@ -611,7 +533,7 @@ function PlayerDetails() {
     return (
       <LoadingState
         title="Player game analysis"
-        detail="Loading game-specific stats and shot locations"
+        detail="Loading the game line, advanced metrics, and season sample"
       />
     );
   if (error || !analysis)
@@ -625,64 +547,7 @@ function PlayerDetails() {
         />
       </>
     );
-  const player = analysis.player;
-  const playerName = player.player_name || "Player";
-  return (
-    <>
-      <div className="back-row">
-        <Link
-          to={`/game/${encodeURIComponent(gameId)}?season=${encodeURIComponent(season)}&phase=${encodeURIComponent(phase)}`}
-        >
-          ← Game box score
-        </Link>
-        <span className="phase-tag">GAME {gameId}</span>
-      </div>
-      <section className="detail-heading player-heading">
-        <div className="player-avatar">
-          {playerName
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")}
-        </div>
-        <div>
-          <div className="eyebrow">PLAYER GAME ANALYSIS</div>
-          <h1>{playerName}</h1>
-          <p>
-            {player.team?.name || "Team not provided"} · {season} season
-          </p>
-        </div>
-        <span className="team-badge large player-team">{player.team?.abbreviation || "NBA"}</span>
-      </section>
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">BOX SCORE</div>
-            <h2>Game stats</h2>
-          </div>
-          <span className="section-note">Game-specific NBA Stats line</span>
-        </div>
-        <div className="metrics-grid">
-          {keyStats.map(([key, title]) => (
-            <div className="metric" key={key}>
-              <span>{title}</span>
-              <b>{format(player[key])}</b>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">SHOT LOCATIONS</div>
-            <h2>Shot chart</h2>
-          </div>
-          <span className="section-note">Real NBA Stats coordinates</span>
-        </div>
-        <ShotChart analysis={analysis} />
-      </section>
-    </>
-  );
+  return <PlayerAnalysisView analysis={analysis} season={season} phase={phase} />;
 }
 
 export function AppRoutes() {

@@ -77,8 +77,89 @@ export type Shot = {
   y: number;
   made: boolean;
   description: string;
+  event_type?: string | null;
+  shot_type?: string | null;
   period: number | null;
   distance: number | null;
+  minutes_remaining?: number | null;
+  seconds_remaining?: number | null;
+  zone?: string | null;
+};
+
+export type PlayerGameLogRow = {
+  game_id?: string | null;
+  game_date?: string | null;
+  matchup?: string | null;
+  wl?: string | null;
+  min?: number | null;
+  pts?: number | null;
+  reb?: number | null;
+  ast?: number | null;
+  stl?: number | null;
+  blk?: number | null;
+  tov?: number | null;
+  fgm?: number | null;
+  fga?: number | null;
+  fg_pct?: number | null;
+  fg3m?: number | null;
+  fg3a?: number | null;
+  fg3_pct?: number | null;
+  ftm?: number | null;
+  fta?: number | null;
+  ft_pct?: number | null;
+  plus_minus?: number | null;
+  pra?: number | null;
+  pr?: number | null;
+  pa?: number | null;
+  ra?: number | null;
+  stocks?: number | null;
+  efg_pct?: number | null;
+  ts_pct?: number | null;
+  fg3a_rate?: number | null;
+  fta_rate?: number | null;
+  pts_per_fga?: number | null;
+};
+
+export type PlayerHistory = {
+  state: "available" | "unavailable" | "error";
+  note: string;
+  season: string;
+  phase: string;
+  opponent: string | null;
+  games_played: number;
+  opponent_games_played: number;
+  summary: Record<
+    string,
+    {
+      label: string;
+      mean: number;
+      std: number;
+      consistency_cv: number;
+      games: number;
+      last_5: number | null;
+      last_5_games: number;
+      last_10: number | null;
+      last_10_games: number;
+      last_20: number | null;
+      last_20_games: number;
+    }
+  >;
+  games: PlayerGameLogRow[];
+  opponent_games: PlayerGameLogRow[];
+};
+
+export type PlayerGameContext = {
+  game_id: string;
+  team: Team | null;
+  opponent: Team | null;
+  team_score?: number | null;
+  opponent_score?: number | null;
+  season: string;
+  phase: string;
+  game_date?: string | null;
+  matchup?: string | null;
+  result?: string | null;
+  opponent_abbreviation?: string;
 };
 
 export type PlayerAnalysis = {
@@ -87,4 +168,10 @@ export type PlayerAnalysis = {
   stats: PlayerLine;
   shots: Shot[];
   shot_chart_state: "available" | "unavailable" | "error";
+  advanced_stats: Record<string, number | null>;
+  advanced_stats_state: "available" | "unavailable" | "error";
+  advanced_stats_note: string;
+  history: PlayerHistory;
+  history_state: "available" | "unavailable" | "error";
+  game_context: PlayerGameContext;
 };

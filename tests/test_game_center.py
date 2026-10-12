@@ -215,6 +215,11 @@ def test_player_analysis_missing_player_and_shot_chart_states(monkeypatch):
                     "ACTION_TYPE": "Layup",
                     "PERIOD": 1,
                     "SHOT_DISTANCE": 2,
+                    "EVENT_TYPE": "Made Shot",
+                    "SHOT_TYPE": "2PT Field Goal",
+                    "MINUTES_REMAINING": 8,
+                    "SECONDS_REMAINING": 12,
+                    "SHOT_ZONE_BASIC": "Restricted Area",
                 },
                 {"LOC_X": "bad", "LOC_Y": 10, "SHOT_MADE_FLAG": 0},
             ]
@@ -230,7 +235,19 @@ def test_player_analysis_missing_player_and_shot_chart_states(monkeypatch):
     available = service.fetch_player_game_analysis("0022400001", 7, "2024-25")
     assert available["shot_chart_state"] == "available"
     assert available["shots"] == [
-        {"x": 10.0, "y": 20.0, "made": True, "description": "Layup", "period": 1, "distance": 2}
+        {
+            "x": 10.0,
+            "y": 20.0,
+            "made": True,
+            "description": "Layup",
+            "period": 1,
+            "distance": 2,
+            "event_type": "Made Shot",
+            "shot_type": "2PT Field Goal",
+            "minutes_remaining": 8,
+            "seconds_remaining": 12,
+            "zone": "Restricted Area",
+        }
     ]
     ShotChart.frame = pd.DataFrame(columns=["LOC_X", "LOC_Y", "SHOT_MADE_FLAG"])
     assert service.fetch_player_game_analysis("0022400001", 7, "2024-25")["shot_chart_state"] == "unavailable"
