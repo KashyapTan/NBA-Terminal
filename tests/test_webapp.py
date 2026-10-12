@@ -32,7 +32,9 @@ def test_metadata_and_api_routes_use_mocked_service_data(monkeypatch):
         lambda season: {"season": season, "supported": True, "games": [], "phases": []},
     )
     monkeypatch.setattr(
-        webapp.game_center, "fetch_game_boxscore", lambda game_id: {"game_id": game_id, "players": [], "teams": []}
+        webapp.game_center,
+        "fetch_game_boxscore",
+        lambda game_id, season=None: {"game_id": game_id, "players": [], "teams": []},
     )
     monkeypatch.setattr(
         webapp.player_analysis_service,
@@ -82,15 +84,26 @@ def test_cache_reuses_successes_and_does_not_keep_shot_chart_errors(monkeypatch)
     assert len(attempts) == 2
 
 
+def test_upcoming_source_failure_is_not_returned_as_an_empty_schedule(monkeypatch):
+    monkeypatch.setattr(
+        webapp.game_center,
+        "fetch_upcoming_games",
+        lambda: (_ for _ in ()).throw(RuntimeError("both NBA schedule sources failed")),
+    )
+    response = request("GET", "/api/upcoming")
+    assert response.status_code == 502
+    assert response.json() == {"detail": "NBA Stats could not return this data. Please retry."}
+
+
 def test_service_value_and_unexpected_errors_map_to_http_responses(monkeypatch):
     monkeypatch.setattr(
-        webapp.game_center, "fetch_game_boxscore", lambda _: (_ for _ in ()).throw(ValueError("bad game"))
+        webapp.game_center, "fetch_game_boxscore", lambda *_: (_ for _ in ()).throw(ValueError("bad game"))
     )
     response = request("GET", "/api/games/not-valid")
     assert response.status_code == 400
     assert response.json()["detail"] == "bad game"
     monkeypatch.setattr(
-        webapp.game_center, "fetch_game_boxscore", lambda _: (_ for _ in ()).throw(RuntimeError("private detail"))
+        webapp.game_center, "fetch_game_boxscore", lambda *_: (_ for _ in ()).throw(RuntimeError("private detail"))
     )
     response = request("GET", "/api/games/0022400001")
     assert response.status_code == 502
