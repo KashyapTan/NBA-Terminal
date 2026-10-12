@@ -200,7 +200,10 @@ describe("Fantasy workspace", () => {
     expect(window.localStorage.getItem("nba-terminal.fantasy.preferences.v1")).toContain(
       '"shortlist":[1]',
     );
-    await user.click(screen.getByRole("button", { name: "Remove Jayson Tatum from shortlist" }));
+    const removeShortlistButton = screen
+      .getAllByRole("button", { name: "Remove Jayson Tatum from shortlist" })
+      .at(-1)!;
+    await user.click(removeShortlistButton);
     expect(screen.getByText("0 saved")).toBeInTheDocument();
     expect(window.localStorage.getItem("nba-terminal.fantasy.preferences.v1")).toContain(
       '"shortlist":[]',
