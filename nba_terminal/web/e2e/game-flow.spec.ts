@@ -75,6 +75,8 @@ async function mockLeagueApi(page: Page, feedError = false, unavailableChart = f
       return route.fulfill({
         json: {
           game_id: game.game_id,
+          away_team: away,
+          home_team: home,
           teams: [
             { team: away, pts: 106 },
             { team: home, pts: 112 },
@@ -105,7 +107,8 @@ test("fans drill from season feed through box score to a player's real shot char
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Every game, in focus." })).toBeVisible();
   await expect(page.getByText("1 scheduled")).toBeVisible();
-  await expect(page.getByText(/Scheduled · 7:30 PM ET/)).toBeVisible();
+  await expect(page.locator(".upcoming-card .game-status")).toContainText("Scheduled");
+  await expect(page.locator(".upcoming-card time")).toHaveText("7:30 PM ET");
   await page.getByLabel("Season").selectOption("2024-25");
   await expect(page).toHaveURL(/season=2024-25/);
   await page.getByLabel("Season").selectOption("2025-26");
@@ -116,6 +119,16 @@ test("fans drill from season feed through box score to a player's real shot char
   await expect(
     page.getByRole("heading", { name: "Cleveland Cavaliers at Boston Celtics" }),
   ).toBeVisible();
+  await expect(page.locator(".team-boxscore")).toHaveCount(2);
+  const teamColumns = await page
+    .locator(".team-boxscore-grid")
+    .evaluate((node) => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/));
+  expect(teamColumns).toHaveLength(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTeamColumns = await page
+    .locator(".team-boxscore-grid")
+    .evaluate((node) => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/));
+  expect(mobileTeamColumns).toHaveLength(1);
   await page.getByRole("link", { name: "Jayson Tatum" }).click();
   await expect(page.getByRole("heading", { name: "Jayson Tatum" })).toBeVisible();
   await expect(

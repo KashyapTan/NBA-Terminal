@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable
@@ -89,7 +88,7 @@ async def asset(filename: str) -> FileResponse:
 
 @app.get("/api/meta")
 async def metadata() -> dict[str, Any]:
-    today = date.today()
+    today = game_center.nba_today()
     return {"current_season": game_center.current_season(today),
             "seasons": game_center.available_seasons(today),
             "supported_from": game_center.SUPPORTED_FROM}
@@ -97,7 +96,8 @@ async def metadata() -> dict[str, Any]:
 
 @app.get("/api/upcoming")
 async def upcoming() -> dict[str, Any]:
-    return await _cached_call(f"upcoming:{date.today().isoformat()}", 120, game_center.fetch_upcoming_games)
+    today = game_center.nba_today()
+    return await _cached_call(f"upcoming:{today.isoformat()}", 120, game_center.fetch_upcoming_games)
 
 
 @app.get("/api/games")
@@ -106,8 +106,11 @@ async def games(season: str = Query(..., min_length=7, max_length=7)) -> dict[st
 
 
 @app.get("/api/games/{game_id}")
-async def game(game_id: str) -> dict[str, Any]:
-    return await _cached_call(f"game:{game_id}", 3600, game_center.fetch_game_boxscore, game_id)
+async def game(game_id: str, season: str | None = None) -> dict[str, Any]:
+    return await _cached_call(
+        f"game:{game_id}:{season or 'from-game-id'}", 3600,
+        game_center.fetch_game_boxscore, game_id, season,
+    )
 
 
 @app.get("/api/games/{game_id}/players/{player_id}")

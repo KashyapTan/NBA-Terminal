@@ -97,6 +97,8 @@ export type TeamLine = {
 
 export type BoxScore = {
   game_id: string;
+  away_team?: Team | null;
+  home_team?: Team | null;
   players: PlayerLine[];
   teams: TeamLine[];
 };

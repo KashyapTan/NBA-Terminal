@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./api";
+import { groupGamesByDate } from "./game-groups";
 import FantasyPage from "./FantasyPage";
 import type {
   BoxScore,
@@ -131,10 +132,9 @@ function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
         <div className="sidebar-foot">
-          <span className="pulse" />
-          NBA Stats connection
+          NBA Stats source
           <br />
-          <small>Live source · cached reads</small>
+          <small>Cached reads · errors shown</small>
         </div>
       </aside>
       <main className="main-area">
@@ -145,14 +145,13 @@ function AppShell({ children }: { children: ReactNode }) {
             <b>{label}</b>
           </div>
           <div className="season-chip">
-            <span className="pulse" />
             <span>NBA Stats</span>
           </div>
         </header>
         <div className="view" aria-live="polite">
           {children}
         </div>
-        <footer>Data from NBA Stats · Schedule and historical coverage can vary by season</footer>
+        <footer>Data from NBA Stats · Source errors and missing data are shown</footer>
       </main>
     </div>
   );
@@ -171,11 +170,6 @@ function TeamBadge({
 }
 
 function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; season: string }) {
-  const dateText = new Date(`${game.date}T12:00:00`).toLocaleDateString(undefined, {
-    weekday: upcoming ? "short" : undefined,
-    month: "short",
-    day: "numeric",
-  });
   const phase = game.phase;
   return (
     <Link
@@ -184,8 +178,10 @@ function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; 
       aria-label={`Open ${game.away_team.name} at ${game.home_team.name}`}
     >
       <span className="game-meta">
-        <span>{dateText}</span>
         <span className="phase-tag">{phase}</span>
+        {upcoming && game.start_time && (
+          <time dateTime={game.start_time}>{formatStartTime(game.start_time)}</time>
+        )}
       </span>
       <span className="matchup">
         <span className="team-side">
@@ -201,10 +197,65 @@ function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; 
       </span>
       <span className="game-status">
         <i className={`status-dot ${upcoming ? "scheduled" : "final"}`} />
-        {upcoming ? `${game.status}${game.start_time ? ` · ${game.start_time}` : ""}` : game.status}
+        {game.status}
         <span className="arrow">↗</span>
       </span>
     </Link>
+  );
+}
+
+function formatStartTime(value: string): string {
+  const timestamp = new Date(value);
+  if (!Number.isNaN(timestamp.valueOf())) {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(timestamp);
+  }
+  return value;
+}
+
+function formatGroupDate(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function GameDateGroups({
+  games,
+  season,
+  direction,
+  upcoming = false,
+}: {
+  games: Game[];
+  season: string;
+  direction: "ascending" | "descending";
+  upcoming?: boolean;
+}) {
+  return (
+    <div className="date-groups">
+      {groupGamesByDate(games, direction).map(({ date, games: dateGames }) => (
+        <section className="date-group" key={date} aria-labelledby={`games-${date}-${direction}`}>
+          <div className="date-heading">
+            <h3 id={`games-${date}-${direction}`}>{formatGroupDate(date)}</h3>
+            <span>
+              {dateGames.length} {dateGames.length === 1 ? "game" : "games"}
+            </span>
+          </div>
+          <div className="games-grid">
+            {dateGames.map((game) => (
+              <GameCard key={game.game_id} game={game} upcoming={upcoming} season={season} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -293,13 +344,18 @@ function Dashboard() {
         {loading ? (
           <LoadingState title="Upcoming games" detail="Checking today's and tomorrow's schedule" />
         ) : upcomingError ? (
-          <EmptyState icon="!" title="Schedule unavailable" detail={upcomingError} warning />
+          <ErrorState
+            title="Schedule unavailable"
+            detail={upcomingError}
+            retry={() => setAttempt((value) => value + 1)}
+          />
         ) : upcoming?.games.length ? (
-          <div className="games-grid">
-            {upcoming.games.map((game) => (
-              <GameCard key={game.game_id} game={game} upcoming season={season} />
-            ))}
-          </div>
+          <GameDateGroups
+            games={upcoming.games}
+            season={meta.current_season}
+            direction="ascending"
+            upcoming
+          />
         ) : (
           <EmptyState
             icon="◷"
@@ -314,11 +370,13 @@ function Dashboard() {
             <div className="eyebrow">RECENT RESULTS</div>
             <h2>{season} season</h2>
           </div>
-          <span className="phase-legend">
-            <i />
-            Preseason <i />
-            Regular season <i />
-            Playoffs
+          <span className="phase-legend" aria-label="Included phases">
+            <span>Preseason</span>
+            <span>Regular</span>
+            <span>All-Star</span>
+            <span>Play-In</span>
+            <span>Playoffs</span>
+            <span>NBA Cup final</span>
           </span>
         </div>
         {loading ? (
@@ -337,11 +395,7 @@ function Dashboard() {
             warning
           />
         ) : result?.games.length ? (
-          <div className="games-grid">
-            {result.games.map((game) => (
-              <GameCard key={game.game_id} game={game} season={season} />
-            ))}
-          </div>
+          <GameDateGroups games={result.games} season={season} direction="descending" />
         ) : (
           <EmptyState
             icon="◌"
@@ -390,7 +444,7 @@ function GameDetails() {
     let active = true;
     setLoading(true);
     setError(null);
-    getGame(gameId)
+    getGame(gameId, season)
       .then((data) => {
         if (active) setBox(data);
       })
@@ -403,7 +457,7 @@ function GameDetails() {
     return () => {
       active = false;
     };
-  }, [gameId, attempt]);
+  }, [gameId, season, attempt]);
   if (loading)
     return <LoadingState title="Game box score" detail="Loading team and player lines" />;
   if (error)
@@ -418,9 +472,14 @@ function GameDetails() {
       </>
     );
   const boxTeams = box?.teams || [];
-  const teamNames = boxTeams
-    .map((item) => item.team?.name)
-    .filter((name): name is string => Boolean(name));
+  const awayTeamLine = boxTeams.find((item) => item.team?.id === box?.away_team?.id);
+  const homeTeamLine = boxTeams.find((item) => item.team?.id === box?.home_team?.id);
+  const hasMatchupOrder = Boolean(awayTeamLine && homeTeamLine);
+  const displayedTeams = hasMatchupOrder ? [awayTeamLine, homeTeamLine] : boxTeams.slice(0, 2);
+  const teamNames = hasMatchupOrder
+    ? [box?.away_team?.name, box?.home_team?.name]
+    : boxTeams.map((item) => item.team?.name);
+  const titleTeams = teamNames.filter((name): name is string => Boolean(name));
   const players = [...(box?.players || [])].sort(
     (a, b) => (Number(b.pts) || 0) - (Number(a.pts) || 0),
   );
@@ -430,40 +489,109 @@ function GameDetails() {
       <section className="detail-heading">
         <div>
           <div className="eyebrow">GAME BOX SCORE · {gameId}</div>
-          <h1>{teamNames.join(" at ") || `Game ${gameId}`}</h1>
+          <h1>{titleTeams.join(" at ") || `Game ${gameId}`}</h1>
           <p>Player stats for this matchup. Select any player for their game analysis.</p>
         </div>
-      </section>
-      <section className="section-block score-summary">
-        {boxTeams.length ? (
-          boxTeams.map((team, index) => (
-            <div className="score-team" key={team.team?.id ?? index}>
-              <TeamBadge team={team.team} large />
-              <b>{team.team?.name || "Team"}</b>
-              <strong>{format(team.pts)}</strong>
-            </div>
-          ))
-        ) : (
-          <span className="section-note">Team score not provided</span>
-        )}
-        <span className="vs">FINAL</span>
       </section>
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">PLAYER LINES</div>
-            <h2>Box score</h2>
+            <div className="eyebrow">PLAYER LINES BY TEAM</div>
+            <h2>Team box scores</h2>
           </div>
           <span className="section-note">{players.length} players</span>
         </div>
-        {players.length ? (
+        {displayedTeams.length ? (
+          <>
+            {!hasMatchupOrder && (
+              <p className="boxscore-order-note" role="status">
+                The source did not identify home and away for this game. Teams are shown in source
+                order.
+              </p>
+            )}
+            <div className="team-boxscore-grid">
+              {displayedTeams.map((teamLine, index) => {
+                if (!teamLine) return null;
+                const teamPlayers = players.filter(
+                  (player) => player.team_id === teamLine.team?.id,
+                );
+                const side = hasMatchupOrder
+                  ? index === 0
+                    ? "Away · left"
+                    : "Home · right"
+                  : `Team ${index + 1}`;
+                return (
+                  <section className="team-boxscore" key={teamLine.team?.id ?? index}>
+                    <div className="team-boxscore-heading">
+                      <TeamBadge team={teamLine.team} large />
+                      <div>
+                        <b className="team-boxscore-title">{teamLine.team?.name || "Team"}</b>
+                        <span className="team-boxscore-side">
+                          {side} · {teamPlayers.length} players
+                        </span>
+                      </div>
+                      <strong className="team-boxscore-points">{format(teamLine.pts)}</strong>
+                    </div>
+                    {teamPlayers.length ? (
+                      <div
+                        className="table-scroll"
+                        role="region"
+                        aria-label={`${teamLine.team?.name || side} player box score`}
+                        tabIndex={0}
+                      >
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th scope="col">PLAYER</th>
+                              {statColumns.map((key) => (
+                                <th key={key} scope="col">
+                                  {key.toUpperCase().replace("PLUS_MINUS", "+/-")}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teamPlayers.map((player) => (
+                              <tr key={player.player_id}>
+                                <td>
+                                  <Link
+                                    className="player-link"
+                                    to={`/game/${encodeURIComponent(gameId)}/player/${encodeURIComponent(player.player_id)}?season=${encodeURIComponent(season)}&phase=${encodeURIComponent(phase)}`}
+                                  >
+                                    {player.player_name || "Player"}
+                                  </Link>
+                                  <small>{player.starter ? "Starter" : ""}</small>
+                                </td>
+                                {statColumns.map((key) => (
+                                  <td key={key}>{format(player[key])}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon="◌"
+                        title="Player lines unavailable"
+                        detail="NBA Stats returned no player rows for this team."
+                      />
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </>
+        ) : players.length ? (
           <div className="table-wrap">
             <table className="stats-table">
               <thead>
                 <tr>
-                  <th>PLAYER</th>
+                  <th scope="col">PLAYER</th>
                   {statColumns.map((key) => (
-                    <th key={key}>{key.toUpperCase().replace("PLUS_MINUS", "+/-")}</th>
+                    <th key={key} scope="col">
+                      {key.toUpperCase().replace("PLUS_MINUS", "+/-")}
+                    </th>
                   ))}
                 </tr>
               </thead>

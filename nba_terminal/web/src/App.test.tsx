@@ -53,6 +53,8 @@ const line = {
 };
 const box = {
   game_id: game.game_id,
+  away_team: away,
+  home_team: home,
   teams: [
     { team: away, pts: 106 },
     { team: home, pts: 112 },
@@ -95,7 +97,7 @@ function defaultPayload(url: string): unknown {
       games: [game],
       phases: ["Pre Season", "Regular Season", "Playoffs"],
     };
-  if (url === `/api/games/${game.game_id}`) return box;
+  if (url.startsWith(`/api/games/${game.game_id}?season=`)) return box;
   if (url.startsWith(`/api/games/${game.game_id}/players/`)) return analysis;
   throw new Error(`Unexpected API path: ${url}`);
 }
@@ -116,6 +118,7 @@ describe("NBA Terminal screens", () => {
       await screen.findByText("No games scheduled in this two-day window"),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2025-26 season" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sunday, November 2, 2025" })).toBeInTheDocument();
     expect(screen.getByText("Boston Celtics")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Season" }), "2024-25");
@@ -128,7 +131,12 @@ describe("NBA Terminal screens", () => {
     expect(
       await screen.findByRole("heading", { name: "Cleveland Cavaliers at Boston Celtics" }),
     ).toBeInTheDocument();
-    const table = screen.getByRole("table");
+    expect(screen.getAllByText(/Away · left|Home · right/).map((node) => node.textContent)).toEqual(
+      ["Away · left · 0 players", "Home · right · 1 players"],
+    );
+    const table = within(
+      screen.getByRole("region", { name: "Boston Celtics player box score" }),
+    ).getByRole("table");
     expect(within(table).getByRole("link", { name: "Jayson Tatum" })).toBeInTheDocument();
     await user.click(within(table).getByRole("link", { name: "Jayson Tatum" }));
     expect(await screen.findByRole("heading", { name: "Jayson Tatum" })).toBeInTheDocument();
@@ -160,7 +168,8 @@ describe("NBA Terminal screens", () => {
         : { season: "2024-25", supported: true, games: [], phases: [] };
     });
     expect(await screen.findByText("Cleveland Cavaliers")).toBeInTheDocument();
-    expect(screen.getByText(/Scheduled · 7:00 PM ET/)).toBeInTheDocument();
+    expect(screen.getByText("7:00 PM ET")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sunday, November 2, 2025" })).toBeInTheDocument();
     expect(screen.getByText("History is not available in this view")).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Season" }), "2024-25");
     expect(await screen.findByText("No completed games returned")).toBeInTheDocument();
@@ -180,8 +189,13 @@ describe("NBA Terminal screens", () => {
       return defaultPayload(url);
     });
     expect(await screen.findByText("Schedule unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("history down");
-    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      screen
+        .getAllByRole("alert")
+        .map((alert) => alert.textContent)
+        .join(" "),
+    ).toContain("history down");
+    await user.click(screen.getAllByRole("button", { name: "Try again" })[0]);
     expect(await screen.findByText("No completed games returned")).toBeInTheDocument();
   });
 
@@ -205,7 +219,8 @@ describe("NBA Terminal screens", () => {
     const user = userEvent.setup();
     mount(`/game/${game.game_id}?season=2025-26`, (url) => {
       if (url === "/api/meta") return meta;
-      if (url === `/api/games/${game.game_id}`) return { ...box, players: [], teams: [] };
+      if (url.startsWith(`/api/games/${game.game_id}?season=`))
+        return { ...box, players: [], teams: [] };
       return defaultPayload(url);
     });
     expect(await screen.findByText("Box score not available")).toBeInTheDocument();

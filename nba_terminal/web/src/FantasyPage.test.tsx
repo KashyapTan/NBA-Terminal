@@ -200,6 +200,14 @@ describe("Fantasy workspace", () => {
     expect(window.localStorage.getItem("nba-terminal.fantasy.preferences.v1")).toContain(
       '"shortlist":[1]',
     );
+    const removeShortlistButton = screen
+      .getAllByRole("button", { name: "Remove Jayson Tatum from shortlist" })
+      .at(-1)!;
+    await user.click(removeShortlistButton);
+    expect(screen.getByText("0 saved")).toBeInTheDocument();
+    expect(window.localStorage.getItem("nba-terminal.fantasy.preferences.v1")).toContain(
+      '"shortlist":[]',
+    );
   });
 
   it("distinguishes a current season with no stats from a fetch error and retries", async () => {

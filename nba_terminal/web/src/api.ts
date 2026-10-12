@@ -26,8 +26,10 @@ export const getMeta = () => getJson<Meta>("/api/meta");
 export const getUpcoming = () => getJson<UpcomingResponse>("/api/upcoming");
 export const getGames = (season: string) =>
   getJson<GamesResponse>(`/api/games?season=${encodeURIComponent(season)}`);
-export const getGame = (gameId: string) =>
-  getJson<BoxScore>(`/api/games/${encodeURIComponent(gameId)}`);
+export const getGame = (gameId: string, season?: string) =>
+  getJson<BoxScore>(
+    `/api/games/${encodeURIComponent(gameId)}${season ? `?season=${encodeURIComponent(season)}` : ""}`,
+  );
 export const getPlayerAnalysis = (
   gameId: string,
   playerId: string,
