@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./api";
+import FantasyPage from "./FantasyPage";
 import type {
   BoxScore,
   Game,
@@ -95,13 +96,16 @@ function EmptyState({
 
 function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const isFantasy = location.pathname.startsWith("/fantasy");
   const label = location.pathname.includes("/player/")
     ? "Player Game Analysis"
     : location.pathname.startsWith("/game/")
       ? "Game Box Score"
-      : "Game Center";
+      : isFantasy
+        ? "Fantasy"
+        : "Game Center";
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isFantasy ? " fantasy-shell" : ""}`}>
       <aside className="sidebar">
         <Link className="brand" to="/" aria-label="NBA Terminal home">
           <span className="brand-mark">N</span>
@@ -111,8 +115,19 @@ function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <div className="nav-label">WORKSPACE</div>
         <nav>
-          <Link className="nav-item active" to="/" aria-current="page">
+          <Link
+            className={`nav-item${!isFantasy ? " active" : ""}`}
+            to="/"
+            aria-current={!isFantasy ? "page" : undefined}
+          >
             <span className="nav-icon">▦</span> Game Center
+          </Link>
+          <Link
+            className={`nav-item${isFantasy ? " active" : ""}`}
+            to="/fantasy"
+            aria-current={isFantasy ? "page" : undefined}
+          >
+            <span className="nav-icon">✳</span> Fantasy
           </Link>
         </nav>
         <div className="sidebar-foot">
@@ -703,6 +718,7 @@ export function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/fantasy" element={<FantasyPage meta={meta} />} />
         <Route path="/game/:gameId" element={<GameDetails />} />
         <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
         <Route
