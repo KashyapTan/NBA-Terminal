@@ -23,6 +23,35 @@ export type Meta = {
   supported_from: string;
 };
 
+export type FantasyPlayer = {
+  player_id: number;
+  player_name: string;
+  team_id: number | null;
+  team_abbreviation: string | null;
+  team_name: string | null;
+  games: number | null;
+  minutes_total: number | null;
+  points: number | null;
+  rebounds: number | null;
+  assists: number | null;
+  steals: number | null;
+  blocks: number | null;
+  turnovers: number | null;
+  threes_made: number | null;
+  three_attempts: number | null;
+  field_goals_made: number | null;
+  field_goal_attempts: number | null;
+  free_throws_made: number | null;
+  free_throw_attempts: number | null;
+};
+
+export type FantasySeason = {
+  season: string;
+  supported: boolean;
+  phase: "Regular Season";
+  players: FantasyPlayer[];
+};
+
 export type GamesResponse = {
   season: string;
   supported: boolean;

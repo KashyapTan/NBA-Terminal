@@ -1,4 +1,11 @@
-import type { BoxScore, GamesResponse, Meta, PlayerAnalysis, UpcomingResponse } from "./model";
+import type {
+  BoxScore,
+  FantasySeason,
+  GamesResponse,
+  Meta,
+  PlayerAnalysis,
+  UpcomingResponse,
+} from "./model";
 
 export async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -32,3 +39,5 @@ export const getPlayerAnalysis = (
   getJson<PlayerAnalysis>(
     `/api/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(playerId)}?season=${encodeURIComponent(season)}&phase=${encodeURIComponent(phase)}`,
   );
+export const getFantasySeason = (season: string) =>
+  getJson<FantasySeason>(`/api/fantasy/players?season=${encodeURIComponent(season)}`);
