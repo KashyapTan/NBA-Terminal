@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -143,6 +143,8 @@ const analysis = {
       shot_type: "3PT Field Goal",
       period: 1,
       distance: 12,
+      minutes_remaining: 3,
+      seconds_remaining: null,
     },
     {
       x: -30,
@@ -408,6 +410,32 @@ describe("NBA Terminal screens", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("analysis down");
   });
 
+  it("retries a failed box score and orders recovered player lines by points", async () => {
+    const user = userEvent.setup();
+    let requests = 0;
+    mount(`/game/${game.game_id}?season=2025-26`, (url) => {
+      if (url === "/api/meta") return meta;
+      if (url === `/api/games/${game.game_id}`) {
+        requests += 1;
+        if (requests === 1) throw new Error("cached box score unavailable");
+        return {
+          ...box,
+          players: [{ ...line, player_id: 8, player_name: "Jaylen Brown", pts: 18 }, line],
+        };
+      }
+      return defaultPayload(url);
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("cached box score unavailable");
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    const players = await screen.findByRole("table");
+    expect(
+      within(players)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Jayson Tatum", "Jaylen Brown"]);
+    expect(requests).toBe(2);
+  });
+
   it("configures historical lines and samples and filters real shot markers", async () => {
     const user = userEvent.setup();
     mount("/game/" + game.game_id + "/player/7?season=2025-26");
@@ -415,6 +443,9 @@ describe("NBA Terminal screens", () => {
       await screen.findByRole("heading", { name: "Historical sample & opponent comparison" }),
     ).toBeInTheDocument();
     expect(screen.getByText("67%")).toBeInTheDocument();
+    expect(document.querySelector(".player-analysis__hit-rate")?.textContent).toContain(
+      "2 / 3 available games · at or above line",
+    );
 
     const lineInput = screen.getByRole("spinbutton", { name: "Stat line" });
     await user.clear(lineInput);
@@ -453,6 +484,71 @@ describe("NBA Terminal screens", () => {
     expect(document.querySelector(".shot-chart__totals strong")?.textContent).toContain(
       "2 / 2 shots",
     );
+  });
+
+  it("shows missing composite history honestly and keeps the accessible perspective controls usable", async () => {
+    const user = userEvent.setup();
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: true,
+        addEventListener,
+        removeEventListener,
+      })),
+    );
+    mount("/game/" + game.game_id + "/player/7?season=2025-26");
+    await screen.findByRole("heading", { name: "Where the attempts came from" });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Historical stat" }), "pa");
+    expect(screen.getByText("33")).toBeInTheDocument();
+    expect(
+      screen.getByText("Trend unavailable: this stat has no game-log values."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Distribution unavailable: at least two valid game values are needed."),
+    ).toBeInTheDocument();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Historical sample size" }),
+      "10",
+    );
+    expect(document.querySelector(".player-analysis__hit-rate")?.textContent).toContain(
+      "0 / 0 available games",
+    );
+
+    expect(screen.getByRole("button", { name: "Perspective" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(addEventListener).toHaveBeenCalledWith("change", expect.any(Function));
+    await user.click(screen.getByRole("button", { name: "Perspective" }));
+    expect(screen.getByText(/Reduced motion is enabled/)).toBeInTheDocument();
+    const rotation = screen.getByRole("slider", { name: "Court rotation" });
+    const tilt = screen.getByRole("slider", { name: "Court tilt" });
+    fireEvent.change(rotation, { target: { value: "17" } });
+    fireEvent.change(tilt, { target: { value: "52" } });
+    expect(screen.getByText("17°")).toBeInTheDocument();
+    expect(screen.getByText("52°")).toBeInTheDocument();
+
+    const make = screen.getByRole("button", { name: /Made three-point shot/ });
+    fireEvent.pointerEnter(make);
+    expect(document.querySelector(".shot-chart__tooltip")).toHaveTextContent("Made · 3PT");
+    expect(document.querySelector(".shot-chart__tooltip")).toHaveTextContent("Q1 · 3:00");
+    fireEvent.pointerLeave(make);
+    fireEvent.focus(make);
+    fireEvent.click(make);
+    fireEvent.keyDown(make, { key: "Enter" });
+    fireEvent.keyDown(make, { key: " " });
+    fireEvent.blur(make);
+    const miss = screen.getByRole("button", { name: /Missed two-point shot/ });
+    fireEvent.pointerEnter(miss);
+    expect(document.querySelector(".shot-chart__tooltip")).toHaveTextContent("Missed · 2PT");
+    await user.click(screen.getByRole("button", { name: "Misses" }));
+    expect(screen.getByRole("button", { name: /Missed two-point shot/ })).toBeInTheDocument();
+    fireEvent.focus(screen.getByRole("button", { name: /Missed two-point shot/ }));
+    expect(document.querySelector(".shot-chart__mark.is-active")).toBeInTheDocument();
+    cleanup();
+    expect(removeEventListener).toHaveBeenCalledWith("change", expect.any(Function));
   });
 
   it("labels missing advanced metrics and game logs as unavailable", async () => {
