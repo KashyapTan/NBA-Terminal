@@ -217,15 +217,21 @@ def _schedule_team(row: pd.Series, side: str, lookup: dict[int, dict[str, Any]])
     }
 
 
+def _schedule_status_id(row: pd.Series) -> int:
+    """Read a schedule row's status before normalizing its team details."""
+    status = _serial(row.get("gameStatus"))
+    try:
+        return int(status)
+    except (TypeError, ValueError):
+        game_id = _serial(row.get("gameId"))
+        raise RuntimeError(f"NBA schedule returned an invalid status for game {game_id}.") from None
+
+
 def _schedule_game(row: pd.Series, lookup: dict[int, dict[str, Any]]) -> dict[str, Any]:
     game_id = _serial(row.get("gameId"))
     if not isinstance(game_id, str) or not game_id.isdigit() or len(game_id) != 10:
         raise RuntimeError("NBA schedule returned a game without a valid 10-digit ID.")
-    status = _serial(row.get("gameStatus"))
-    try:
-        status_id = int(status)
-    except (TypeError, ValueError):
-        raise RuntimeError(f"NBA schedule returned an invalid status for game {game_id}.") from None
+    status_id = _schedule_status_id(row)
     status_text = _serial(row.get("gameStatusText"))
     status_label = str(status_text).strip() if status_text is not None else ""
     return {
@@ -263,8 +269,9 @@ def fetch_upcoming_games(start: date | None = None, schedule_frame: pd.DataFrame
     season = current_season(start)
     frame = schedule_frame if schedule_frame is not None else fetch_season_schedule(season)
     games = [
-        game for _, row in frame.iterrows()
-        if (game := _schedule_game(row, lookup))["date"] in day_keys and game["status_id"] == 1
+        _schedule_game(row, lookup) for _, row in frame.iterrows()
+        if _required_schedule_date(row.get("gameDateEst")) in day_keys
+        and _schedule_status_id(row) == 1
     ]
     games.sort(key=lambda game: (game["date"], game["start_time"] or "", game["game_id"]))
     return {"games": games, "days": [day.isoformat() for day in days]}
@@ -278,8 +285,8 @@ def fetch_recent_games(season: str, schedule_frame: pd.DataFrame | None = None) 
     lookup = _team_lookup()
     frame = schedule_frame if schedule_frame is not None else fetch_season_schedule(season)
     games = [
-        game for _, row in frame.iterrows()
-        if (game := _schedule_game(row, lookup))["status_id"] == 3
+        _schedule_game(row, lookup) for _, row in frame.iterrows()
+        if _schedule_status_id(row) == 3
     ]
     games.sort(key=lambda item: (item["date"], item["game_id"]), reverse=True)
     return {"season": season, "supported": True, "games": games[:150], "phases": list(PHASES)}
