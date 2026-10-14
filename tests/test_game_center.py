@@ -98,11 +98,16 @@ def test_invalid_season_is_rejected(season):
 
 
 def test_upcoming_uses_eastern_two_day_schedule_and_keeps_source_team_fallback(monkeypatch):
+    unassigned_cup_game = schedule_row("0022501201", "2025-12-04", status=1, away_id=0, home_id=0)
+    for side in ("home", "away"):
+        for field in ("teamName", "teamCity", "teamTricode"):
+            unassigned_cup_game[f"{side}Team_{field}"] = None
     install_schedule(monkeypatch, [
         schedule_row("0012500001", "2025-11-02", status=1),
         schedule_row("0022500002", "2025-11-02", status=2),
         schedule_row("0022500003", "2025-11-03", status=1, home_id=99),
         schedule_row("0022500004", "2025-11-04", status=1),
+        unassigned_cup_game,
     ])
     result = service.fetch_upcoming_games(date(2025, 11, 2))
     assert result["days"] == ["2025-11-02", "2025-11-03"]
@@ -134,9 +139,14 @@ def test_nba_today_uses_eastern_date_across_utc_midnight(monkeypatch):
 
 
 def test_recent_games_covers_every_schedule_phase_and_orders_by_date(monkeypatch):
+    unassigned_cup_game = schedule_row("0022401201", "2024-12-04", status=1, away_id=0, home_id=0)
+    for side in ("home", "away"):
+        for field in ("teamName", "teamCity", "teamTricode"):
+            unassigned_cup_game[f"{side}Team_{field}"] = None
     install_schedule(monkeypatch, [
         schedule_row("0012400001", "2024-10-01"),
         schedule_row("0022400002", "2024-11-01"),
+        unassigned_cup_game,
         schedule_row("0032400003", "2025-02-16", away_id=99, home_id=100),
         schedule_row("0042400004", "2025-04-01"),
         schedule_row("0052400005", "2025-04-15"),
