@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
@@ -15,6 +16,7 @@ from fastapi.responses import FileResponse
 from nba_terminal.fantasy_api import router as fantasy_router
 from nba_terminal.services import game_center
 from nba_terminal.services import player_analysis as player_analysis_service
+from nba_terminal.services.nba_http import configure_nba_stats_client
 
 WEB_DIR = Path(__file__).with_name("web")
 WEB_DIST = WEB_DIR / "dist"
@@ -23,44 +25,75 @@ NBA_POOL = ThreadPoolExecutor(max_workers=MAX_API_WORKERS, thread_name_prefix="n
 NBA_SLOTS = asyncio.Semaphore(MAX_API_WORKERS)
 _cache: dict[str, tuple[float, Any]] = {}
 _cache_lock = asyncio.Lock()
+_inflight: dict[str, asyncio.Task[Any]] = {}
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NBA Terminal", docs_url=None, redoc_url=None)
 
 
 async def _cached_call(key: str, ttl: int, function: Callable[..., Any], *args: Any) -> Any:
-    """Run NBA I/O away from the event loop and retain successful reads briefly."""
+    """Deduplicate concurrent cache misses and run NBA work away from the event loop."""
     loop = asyncio.get_running_loop()
     async with _cache_lock:
         cached = _cache.get(key)
         if cached and cached[0] > loop.time():
             return cached[1]
+        task = _inflight.get(key)
+        if task is None:
+            task = asyncio.create_task(_fetch_and_cache(key, ttl, function, args))
+            _inflight[key] = task
+    return await asyncio.shield(task)
+
+
+async def _fetch_and_cache(key: str, ttl: int, function: Callable[..., Any], args: tuple[Any, ...]) -> Any:
+    """Fetch one cache key, log its underlying failure, and cache successful results."""
+    loop = asyncio.get_running_loop()
+    acquired = False
     try:
-        await asyncio.wait_for(NBA_SLOTS.acquire(), timeout=0.05)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="NBA data service is busy. Try again shortly.") from None
-    try:
-        result = await loop.run_in_executor(NBA_POOL, partial(function, *args))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail="NBA Stats could not return this data. Please retry.") from exc
-    finally:
-        NBA_SLOTS.release()
-    async with _cache_lock:
+        try:
+            await asyncio.wait_for(NBA_SLOTS.acquire(), timeout=0.05)
+            acquired = True
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=503, detail="NBA data service is busy. Try again shortly.") from None
+        try:
+            result = await loop.run_in_executor(NBA_POOL, partial(_run_nba_fetch, function, *args))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception(
+                "NBA data fetch failed: cache_key=%s service=%s",
+                key,
+                getattr(function, "__name__", type(function).__name__),
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="NBA Stats could not return this data. Check server logs for the upstream cause.",
+            ) from exc
         transient_error_states = {"shot_chart_state", "advanced_stats_state", "history_state"}
         cache_result = not (
             isinstance(result, dict) and any(result.get(state) == "error" for state in transient_error_states)
         )
-        if cache_result:
-            _cache[key] = (loop.time() + ttl, result)
-        if len(_cache) > 250:
-            expired = [entry for entry, value in _cache.items() if value[0] <= loop.time()]
-            for entry in expired:
-                _cache.pop(entry, None)
+        async with _cache_lock:
+            if cache_result:
+                _cache[key] = (loop.time() + ttl, result)
             if len(_cache) > 250:
-                _cache.pop(next(iter(_cache)))
-    return result
+                expired = [entry for entry, value in _cache.items() if value[0] <= loop.time()]
+                for entry in expired:
+                    _cache.pop(entry, None)
+                if len(_cache) > 250:
+                    _cache.pop(next(iter(_cache)))
+        return result
+    finally:
+        if acquired:
+            NBA_SLOTS.release()
+        async with _cache_lock:
+            _inflight.pop(key, None)
 
+
+def _run_nba_fetch(function: Callable[..., Any], *args: Any) -> Any:
+    """Install conservative Stats API transport settings before the first request."""
+    configure_nba_stats_client()
+    return function(*args)
 
 app.state.cached_nba_call = _cached_call
 app.include_router(fantasy_router)
@@ -103,12 +136,17 @@ async def metadata() -> dict[str, Any]:
 @app.get("/api/upcoming")
 async def upcoming() -> dict[str, Any]:
     today = game_center.nba_today()
-    return await _cached_call(f"upcoming:{today.isoformat()}", 120, game_center.fetch_upcoming_games)
+    season = game_center.current_season(today)
+    schedule = await _cached_call(f"schedule:{season}", 120, game_center.fetch_season_schedule, season)
+    return await _cached_call(
+        f"upcoming:{today.isoformat()}", 120, game_center.fetch_upcoming_games, today, schedule
+    )
 
 
 @app.get("/api/games")
 async def games(season: str = Query(..., min_length=7, max_length=7)) -> dict[str, Any]:
-    return await _cached_call(f"games:{season}", 900, game_center.fetch_recent_games, season)
+    schedule = await _cached_call(f"schedule:{season}", 120, game_center.fetch_season_schedule, season)
+    return await _cached_call(f"games:{season}", 900, game_center.fetch_recent_games, season, schedule)
 
 
 @app.get("/api/games/{game_id}")
