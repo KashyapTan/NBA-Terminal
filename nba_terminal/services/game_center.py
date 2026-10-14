@@ -170,8 +170,15 @@ def _validate_schedule_dataframe(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
+def fetch_season_schedule(season: str) -> pd.DataFrame:
+    """Fetch the NBA's season schedule, with the official CDN fallback for the current season."""
+    if _season_start(season) < 1996:
+        return pd.DataFrame()
+    return _schedule_dataframe(season, allow_current_cdn_fallback=season == current_season(nba_today()))
+
+
 def _schedule_dataframe(season: str, *, allow_current_cdn_fallback: bool = False) -> pd.DataFrame:
-    """Fetch the NBA's season schedule, with an official CDN fallback for today's season."""
+    """Fetch and validate one season schedule, with an optional official CDN fallback."""
     try:
         endpoint = scheduleleaguev2.ScheduleLeagueV2(season=season, timeout=12)
         return _validate_schedule_dataframe(endpoint.season_games.get_data_frame())
@@ -179,7 +186,11 @@ def _schedule_dataframe(season: str, *, allow_current_cdn_fallback: bool = False
         if not allow_current_cdn_fallback:
             raise
         logger.warning("NBA Stats schedule failed for %s; trying NBA.com schedule CDN", season, exc_info=True)
-        return _validate_schedule_dataframe(_cdn_schedule_dataframe(season))
+        try:
+            return _validate_schedule_dataframe(_cdn_schedule_dataframe(season))
+        except Exception:
+            logger.exception("NBA.com schedule CDN fallback failed for season=%s", season)
+            raise
 
 
 def _schedule_team(row: pd.Series, side: str, lookup: dict[int, dict[str, Any]]) -> dict[str, Any]:
@@ -243,17 +254,14 @@ def _season_start(season: str) -> int:
         raise ValueError("Season must use YYYY-YY format.") from None
 
 
-def fetch_upcoming_games(start: date | None = None) -> dict[str, Any]:
+def fetch_upcoming_games(start: date | None = None, schedule_frame: pd.DataFrame | None = None) -> dict[str, Any]:
     """Read scheduled games in today's and tomorrow's Eastern league dates."""
     start = start or nba_today()
     lookup = _team_lookup()
     days = [start + timedelta(days=offset) for offset in range(2)]
     day_keys = {day.isoformat() for day in days}
     season = current_season(start)
-    frame = _schedule_dataframe(
-        season,
-        allow_current_cdn_fallback=season == current_season(nba_today()),
-    )
+    frame = schedule_frame if schedule_frame is not None else fetch_season_schedule(season)
     games = [
         game for _, row in frame.iterrows()
         if (game := _schedule_game(row, lookup))["date"] in day_keys and game["status_id"] == 1
@@ -262,16 +270,13 @@ def fetch_upcoming_games(start: date | None = None) -> dict[str, Any]:
     return {"games": games, "days": [day.isoformat() for day in days]}
 
 
-def fetch_recent_games(season: str) -> dict[str, Any]:
+def fetch_recent_games(season: str, schedule_frame: pd.DataFrame | None = None) -> dict[str, Any]:
     """Fetch completed games for every phase in the official season schedule."""
     start_year = _season_start(season)
     if start_year < 1996:
         return {"season": season, "supported": False, "games": [], "phases": list(PHASES)}
     lookup = _team_lookup()
-    frame = _schedule_dataframe(
-        season,
-        allow_current_cdn_fallback=season == current_season(nba_today()),
-    )
+    frame = schedule_frame if schedule_frame is not None else fetch_season_schedule(season)
     games = [
         game for _, row in frame.iterrows()
         if (game := _schedule_game(row, lookup))["status_id"] == 3

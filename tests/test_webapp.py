@@ -25,11 +25,12 @@ def test_metadata_and_api_routes_use_mocked_service_data(monkeypatch):
     monkeypatch.setattr(webapp.game_center, "current_season", lambda today: "2025-26")
     monkeypatch.setattr(webapp.game_center, "available_seasons", lambda today: ["2025-26"])
     monkeypatch.setattr(webapp.game_center, "SUPPORTED_FROM", "1996-97")
-    monkeypatch.setattr(webapp.game_center, "fetch_upcoming_games", lambda: {"games": [], "days": []})
+    monkeypatch.setattr(webapp.game_center, "fetch_season_schedule", lambda season: object())
+    monkeypatch.setattr(webapp.game_center, "fetch_upcoming_games", lambda *args: {"games": [], "days": []})
     monkeypatch.setattr(
         webapp.game_center,
         "fetch_recent_games",
-        lambda season: {"season": season, "supported": True, "games": [], "phases": []},
+        lambda season, schedule=None: {"season": season, "supported": True, "games": [], "phases": []},
     )
     monkeypatch.setattr(
         webapp.game_center,
@@ -61,10 +62,12 @@ def test_metadata_and_api_routes_use_mocked_service_data(monkeypatch):
 def test_cache_reuses_successes_and_does_not_keep_shot_chart_errors(monkeypatch):
     calls = []
 
-    def recent(season):
+    def recent(season, schedule=None):
         calls.append(season)
         return {"season": season, "supported": True, "games": [], "phases": []}
 
+    monkeypatch.setattr(webapp.game_center, "fetch_season_schedule", lambda season: None)
+    monkeypatch.setattr(webapp.game_center, "fetch_season_schedule", lambda season: None)
     monkeypatch.setattr(webapp.game_center, "fetch_recent_games", recent)
     first = request("GET", "/api/games?season=2024-25")
     second = request("GET", "/api/games?season=2024-25")
@@ -84,15 +87,17 @@ def test_cache_reuses_successes_and_does_not_keep_shot_chart_errors(monkeypatch)
     assert len(attempts) == 2
 
 
-def test_upcoming_source_failure_is_not_returned_as_an_empty_schedule(monkeypatch):
+def test_upcoming_source_failure_is_logged_and_not_returned_as_an_empty_schedule(monkeypatch, caplog):
+    monkeypatch.setattr(webapp.game_center, "fetch_season_schedule", lambda season: None)
     monkeypatch.setattr(
         webapp.game_center,
         "fetch_upcoming_games",
-        lambda: (_ for _ in ()).throw(RuntimeError("both NBA schedule sources failed")),
+        lambda *args: (_ for _ in ()).throw(RuntimeError("both NBA schedule sources failed")),
     )
     response = request("GET", "/api/upcoming")
     assert response.status_code == 502
-    assert response.json() == {"detail": "NBA Stats could not return this data. Please retry."}
+    assert "Check server logs" in response.json()["detail"]
+    assert "both NBA schedule sources failed" in caplog.text
 
 
 def test_service_value_and_unexpected_errors_map_to_http_responses(monkeypatch):
@@ -107,7 +112,7 @@ def test_service_value_and_unexpected_errors_map_to_http_responses(monkeypatch):
     )
     response = request("GET", "/api/games/0022400001")
     assert response.status_code == 502
-    assert response.json()["detail"] == "NBA Stats could not return this data. Please retry."
+    assert "Check server logs" in response.json()["detail"]
 
 
 def test_busy_worker_pool_returns_503(monkeypatch):
@@ -163,3 +168,37 @@ def test_missing_build_returns_helpful_503(monkeypatch, tmp_path):
     monkeypatch.setattr(webapp, "WEB_DIST", Path(tmp_path))
     assert request("GET", "/").status_code == 503
     assert request("GET", "/game/abc").status_code == 503
+
+
+def test_concurrent_cache_misses_share_one_fetch():
+    import time
+
+    calls = []
+
+    def fetch():
+        calls.append(1)
+        time.sleep(0.03)
+        return "shared"
+
+    async def exercise():
+        return await asyncio.gather(
+            webapp._cached_call("same-key", 30, fetch),
+            webapp._cached_call("same-key", 30, fetch),
+        )
+
+    assert asyncio.run(exercise()) == ["shared", "shared"]
+    assert calls == [1]
+
+
+def test_upcoming_and_history_share_the_season_schedule(monkeypatch):
+    schedule = "schedule"
+    calls = []
+    monkeypatch.setattr(webapp.game_center, "nba_today", lambda: __import__("datetime").date(2025, 11, 2))
+    monkeypatch.setattr(webapp.game_center, "current_season", lambda today: "2025-26")
+    monkeypatch.setattr(webapp.game_center, "fetch_season_schedule", lambda season: calls.append(season) or schedule)
+    monkeypatch.setattr(webapp.game_center, "fetch_upcoming_games", lambda today, frame: {"schedule": frame})
+    monkeypatch.setattr(webapp.game_center, "fetch_recent_games", lambda season, frame: {"schedule": frame})
+
+    assert request("GET", "/api/upcoming").json() == {"schedule": "schedule"}
+    assert request("GET", "/api/games?season=2025-26").json() == {"schedule": "schedule"}
+    assert calls == ["2025-26"]
