@@ -39,6 +39,15 @@ export interface LeaguePlayer {
     | null;
   today: boolean | null;
   remaining_games: number | null;
+  undroppable?: boolean | null;
+  droppable?: boolean | null;
+  health_status?: "available" | "out";
+  health_source?: "espn" | "assumed_available";
+  current_rates_source?: string | null;
+  season_rank?: number | null;
+  draft_rank?: number | null;
+  draft_pick?: number | null;
+  draft_round?: number | null;
 }
 export interface LeagueTeam {
   id: number;
@@ -48,6 +57,8 @@ export interface LeagueTeam {
   totals: Stats | null;
   weekly_used_adds: number | null;
   remaining_adds: number | null;
+  weekly_usage_complete?: boolean;
+  weekly_usage_source?: string | null;
 }
 export interface LeagueStatus {
   connected: boolean;
@@ -82,6 +93,8 @@ export interface LeagueSnapshot {
     scoring_period_id: number;
     dates: string[];
     remaining_dates: string[];
+    start_date?: string | null;
+    end_date?: string | null;
   };
   selected_team_id: number;
   opponent_team_id: number | null;
@@ -99,22 +112,76 @@ export interface ConnectLeague {
 }
 export interface PlannerPreferences {
   context?: { league_id: number; team_id: number; matchup_period_id: number; fetched_at: string };
-  user_confirmed_eligibility: boolean;
-  candidate_ids: string[];
-  droppable_ids: string[];
-  max_stream_slots: number;
-  weekly_add_limit: number | null;
-  used_adds: number | null;
-  available_adds: number | null;
-  user_confirmed_counts: boolean;
+  user_confirmed_eligibility?: boolean;
+  candidate_ids?: string[];
+  droppable_ids?: string[];
+  max_stream_slots?: number;
+  weekly_add_limit?: number | null;
+  used_adds?: number | null;
+  available_adds?: number | null;
+  user_confirmed_counts?: boolean;
+  protected_ids?: string[];
   uncertainty_mode?: "history" | "sensitivity";
   margin_sd?: Partial<Record<Category, number>>;
   /** Explicit, snapshot-bound corrections confirmed by the user, never ESPN assertions. */
-  player_overrides?: Record<string, { schedule?: string[]; injured?: boolean }>;
+  player_overrides?: Record<
+    string,
+    { schedule?: string[]; injured?: boolean; protected?: boolean }
+  >;
   remaining_dates?: string[];
 }
 /** UI boundary for the later optimizer adapter; never compute probabilities in the browser. */
+export interface CategoryStrategy {
+  classification: "favored" | "swing" | "reachable" | "punt" | "unknown";
+  explanation: string;
+  projected_margin: number | null;
+  historical_margin: number | null;
+  target_priority: number | null;
+  current_user?: number | null;
+  current_opponent?: number | null;
+  projected_user?: number | null;
+  projected_opponent?: number | null;
+  previous_user?: number | null;
+  previous_opponent?: number | null;
+  previous_period_id?: number | null;
+  recommended_target?: boolean;
+  best_pickup_margin?: number | null;
+  can_flip_with_one_move?: boolean;
+}
+export interface PickupRecommendation {
+  add_id: string;
+  drop_id: string;
+  date: string;
+  probability_gain: number | null;
+  category_probability_gains?: Partial<Record<Category, number>>;
+  gains: Partial<Record<Category, number | null>>;
+  games_gain: number | null;
+  minutes_gain: number | null;
+  season_cost: number | null;
+  net_score: number | null;
+  target_categories: Category[];
+  rationale: string;
+  category_impacts?: Partial<
+    Record<
+      Category,
+      {
+        before: number | null;
+        after: number | null;
+        margin_before: number | null;
+        margin_after: number | null;
+        estimate_gain: number | null;
+        flips_projection: boolean;
+      }
+    >
+  >;
+}
 export interface WaiverPlan {
+  strategy?: Partial<Record<Category, CategoryStrategy>>;
+  protected_players?: Record<string, string>;
+  recommendations?: PickupRecommendation[];
+  recommendation_kind?: "alternatives";
+  plan?: WaiverPlan["actions"];
+  uncertainty?: { source: string; calibrated: boolean };
   status: "ready" | "incomplete" | "unavailable";
   reasons: string[];
   remaining_adds: number | null;

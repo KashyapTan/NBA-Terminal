@@ -3,6 +3,8 @@ export default defineConfig({
   testDir: "./e2e",
   testMatch: "league-production.spec.ts",
   fullyParallel: true,
+  // Keep the deterministic suite within the production bounded NBA worker pool.
+  workers: 2,
   reporter: "list",
   use: { ...devices["Desktop Chrome"] },
   projects: [

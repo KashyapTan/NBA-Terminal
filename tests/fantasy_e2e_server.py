@@ -5,20 +5,22 @@ as a production entry point; no fixture code is imported by nba_terminal.
 """
 
 import copy
-import json
 import os
 from datetime import datetime, timezone
-from pathlib import Path
+from types import SimpleNamespace
 
+import requests
 import uvicorn
+from fantasy_v2_fixture import league_payload, nba_rates_payload, nba_schedule_payload
 
 from nba_terminal import webapp
 from nba_terminal.services import espn_fantasy as espn
 from nba_terminal.services import fantasy as fantasy_stats
+from nba_terminal.services import fantasy_nba as nba
 from nba_terminal.services import fantasy_planner_adapter as adapter
 
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
-RAW = json.loads((Path(__file__).parent / "fixtures/espn_fantasy_synthetic.json").read_text())
+RAW = league_payload()
 
 
 class Clock(datetime):
@@ -54,10 +56,7 @@ def synthetic_get(self, views, *args, **kwargs):
         for entry in collection.get("players", []):
             player = espn.player_body(entry)
             if player.get("id") == 100:
-                for split in player.get("stats", []):
-                    if "stats" in split:
-                        split["stats"]["3"] = 60  # deliberate synthetic streaming improvement
-                        split["stats"]["2"] = 12
+                player["stats"] = [split for split in player.get("stats", []) if split["seasonId"] != 2027]
     return data[
         {
             "mSettings": "league",
@@ -65,10 +64,19 @@ def synthetic_get(self, views, *args, **kwargs):
             "kona_player_info": "pool",
             "kona_playercard": "cards",
             "mTransactions2": "transactions",
+            "mMatchupScore": "league",
         }[views[0]]
     ]
 
 
+def blocked_cdn(*args, **kwargs):
+    raise requests.HTTPError("Synthetic CDN 403")
+
+
+# Only external transports are replaced. Real load/cache, identity/rate/schedule parsing run.
+nba.leaguedashplayerstats.LeagueDashPlayerStats = lambda **kwargs: SimpleNamespace(get_dict=nba_rates_payload)
+nba.scheduleleaguev2.ScheduleLeagueV2 = lambda **kwargs: SimpleNamespace(get_dict=nba_schedule_payload)
+nba.requests.get = blocked_cdn
 espn.datetime = Clock
 adapter.datetime = Clock
 espn.EspnClient.get = synthetic_get
