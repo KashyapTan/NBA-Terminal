@@ -4,11 +4,13 @@ import { getDevServices } from "../src/dev-services.ts";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const webRoot = fileURLToPath(new URL("../", import.meta.url));
+const viteArgs = process.argv.slice(2);
+
 const services = getDevServices({
   repoRoot,
   webRoot,
   bunExecutable: process.execPath,
-  viteArgs: process.argv.slice(2),
+  viteArgs: viteArgs.includes("--strictPort") ? viteArgs : [...viteArgs, "--strictPort"],
 });
 const children = [];
 let stopping = false;
@@ -30,8 +32,20 @@ function signalChild(child, signal) {
   }
 }
 
+function childGroupIsRunning(child) {
+  if (!child.pid) return false;
+  if (process.platform === "win32") return child.exitCode === null && child.signalCode === null;
+
+  try {
+    process.kill(-child.pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
+}
+
 function finishWhenChildrenExit() {
-  if (children.every(({ child }) => child.exitCode !== null || child.signalCode !== null)) {
+  if (children.every(({ child }) => !childGroupIsRunning(child))) {
     clearTimeout(shutdownTimer);
   }
 }
@@ -45,7 +59,7 @@ function stopAll(code, signal = "SIGTERM") {
 
   shutdownTimer = setTimeout(() => {
     for (const { child } of children) {
-      if (child.exitCode === null && child.signalCode === null) signalChild(child, "SIGKILL");
+      if (childGroupIsRunning(child)) signalChild(child, "SIGKILL");
     }
   }, 5000);
   shutdownTimer.unref();
