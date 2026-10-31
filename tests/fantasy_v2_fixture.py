@@ -38,10 +38,16 @@ def league_payload():
             player = entry["playerPoolEntry"]["player"]
             player["id"] = team["id"] if slot == 0 else team["id"] * 1000 + slot
             player["fullName"] = f"Fixture Player {player['id']}"
-            player["droppable"] = slot == 0
+            player["droppable"] = slot in (0, 2)
+            if team["id"] == 1 and slot == 0:
+                player.update(injured=True, injuryStatus="DAY_TO_DAY")
+            if slot > 0:
+                for split in player["stats"]:
+                    split["stats"].update({"40": 320, "0": 200})
             entry["lineupSlotId"] = 0 if slot == 0 else (slot % 5 if slot < 10 else 12)
             roster.append(entry)
         team["roster"]["entries"] = roster
+    raw["league"]["draftDetail"] = {"picks": [{"playerId": 1002, "overallPickNumber": 1, "roundId": 1}]}
     raw["pool"]["players"] = []
     for index in range(9):
         entry = copy.deepcopy(template["playerPoolEntry"])
@@ -65,3 +71,78 @@ def league_payload():
         + copy.deepcopy(raw["pool"]["players"])
     }
     return raw
+
+
+def nba_rates_payload():
+    """Official endpoint table; test values only, matching stable name + team."""
+    headers = [
+        "PLAYER_ID",
+        "PLAYER_NAME",
+        "TEAM_ID",
+        "TEAM_ABBREVIATION",
+        "GP",
+        "MIN",
+        "PTS",
+        "REB",
+        "AST",
+        "STL",
+        "BLK",
+        "FG3M",
+        "TOV",
+        "FGM",
+        "FGA",
+        "FTM",
+        "FTA",
+    ]
+    return {
+        "resultSets": [
+            {
+                "name": "LeagueDashPlayerStats",
+                "headers": headers,
+                "rowSet": [
+                    [
+                        990100,
+                        "Fixture Pickup 1",
+                        1610612738,
+                        "BOS",
+                        10,
+                        28,
+                        15,
+                        4.5,
+                        5.5,
+                        1.5,
+                        1.2,
+                        2.4,
+                        0.6,
+                        5,
+                        10,
+                        2,
+                        2.5,
+                    ]
+                ],
+            }
+        ]
+    }
+
+
+def nba_schedule_payload():
+    """Actual-shape regular-season schedule with a deterministic daily anchor."""
+    return {
+        "leagueSchedule": {
+            "seasonYear": "2026-27",
+            "gameDates": [
+                {
+                    "games": [
+                        {
+                            "gameId": f"00226000{index}",
+                            "gameDateTimeUTC": date,
+                            "homeTeam": {"teamId": 1610612737},
+                            "awayTeam": {"teamId": 1610612738},
+                            "gameStatus": 1,
+                        }
+                    ]
+                }
+                for index, date in enumerate(["2026-10-22T23:00:00Z", "2026-10-31T23:00:00Z", "2026-11-01T23:00:00Z"])
+            ],
+        }
+    }

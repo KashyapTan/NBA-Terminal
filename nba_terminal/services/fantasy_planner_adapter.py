@@ -256,11 +256,18 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         if player.get("lineup_slot") in {"IR", "IR+"}:
             provenance[f"inactive:{pid}"] = "IR player excluded; activation is not modeled"
             continue
-        known_out = (
-            player.get("health_status") == "out"
-            or player.get("injured") is True
-            or str(player.get("injury_status", "")).upper() in {"OUT", "O", "INACTIVE", "SUSPENDED", "SUSPENSION"}
-        )
+        # V2 normalization applies the authorized available-unless-explicitly-out policy.
+        # The raw ESPN injured boolean can also mean questionable; do not override health_status.
+        health = player.get("health_status")
+        known_out = health == "out" or str(player.get("injury_status", "")).upper() in {
+            "OUT",
+            "O",
+            "INACTIVE",
+            "SUSPENDED",
+            "SUSPENSION",
+            "INJURY_RESERVE",
+            "RESERVE_RETIRED",
+        }
         injured = override.get("injured", known_out)
         if not isinstance(injured, bool):
             forecast_gaps.append(f"{name}: availability override must be Available or Out.")

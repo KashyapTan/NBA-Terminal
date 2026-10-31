@@ -57,6 +57,8 @@ export interface LeagueTeam {
   totals: Stats | null;
   weekly_used_adds: number | null;
   remaining_adds: number | null;
+  weekly_usage_complete?: boolean;
+  weekly_usage_source?: string | null;
 }
 export interface LeagueStatus {
   connected: boolean;
@@ -135,6 +137,16 @@ export interface CategoryStrategy {
   projected_margin: number | null;
   historical_margin: number | null;
   target_priority: number | null;
+  current_user?: number | null;
+  current_opponent?: number | null;
+  projected_user?: number | null;
+  projected_opponent?: number | null;
+  previous_user?: number | null;
+  previous_opponent?: number | null;
+  previous_period_id?: number | null;
+  recommended_target?: boolean;
+  best_pickup_margin?: number | null;
+  can_flip_with_one_move?: boolean;
 }
 export interface PickupRecommendation {
   add_id: string;
@@ -149,9 +161,23 @@ export interface PickupRecommendation {
   net_score: number | null;
   target_categories: Category[];
   rationale: string;
+  category_impacts?: Partial<
+    Record<
+      Category,
+      {
+        before: number | null;
+        after: number | null;
+        margin_before: number | null;
+        margin_after: number | null;
+        estimate_gain: number | null;
+        flips_projection: boolean;
+      }
+    >
+  >;
 }
 export interface WaiverPlan {
   strategy?: Partial<Record<Category, CategoryStrategy>>;
+  protected_players?: Record<string, string>;
   recommendations?: PickupRecommendation[];
   recommendation_kind?: "alternatives";
   plan?: WaiverPlan["actions"];

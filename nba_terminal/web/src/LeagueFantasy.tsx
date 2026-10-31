@@ -337,7 +337,7 @@ export function Matchups({
           <h3>
             {user?.name ?? "Your team"} <span>vs {comparison?.name ?? "Unavailable"}</span>
           </h3>
-          <p>Category score · live cumulative totals</p>
+          <p>Category score · current cumulative totals</p>
         </div>
         <div className="matchup-record">
           <strong aria-label={`${tally.winning} wins, ${tally.losing} losses, ${tally.tied} ties`}>
@@ -500,6 +500,7 @@ function WaiverStrategy({
   onRefresh?: () => void;
 }) {
   const [preferences, setPreferences] = useState<PlannerPreferences>({});
+  const availabilityPanel = useRef<HTMLDetailsElement>(null);
   const [plan, setPlan] = useState<WaiverPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -596,20 +597,34 @@ function WaiverStrategy({
     value == null
       ? "Unavailable"
       : `${value > 0 ? "+" : ""}${key?.endsWith("pct") ? `${(value * 100).toFixed(2)} pp` : value.toLocaleString(undefined, { maximumFractionDigits: 1 })}`;
+  function netCategoryGain(
+    item: (typeof recommendations)[number],
+    key: (typeof LEAGUE_CATEGORIES)[number]["key"],
+  ) {
+    const impact = item.category_impacts?.[key];
+    return key.endsWith("pct") && impact?.before != null && impact.after != null
+      ? impact.after - impact.before
+      : item.gains[key];
+  }
   function controls(rows: typeof relevant) {
     return rows.map((player) => {
       const out =
         preferences.player_overrides?.[player.id]?.injured ??
-        (player.health_status === "out" ||
-          player.injured === true ||
-          ["OUT", "O", "INJURY_RESERVE", "SUSPENSION"].includes(player.injury_status ?? ""));
+        (player.health_status
+          ? player.health_status === "out"
+          : ["OUT", "O", "INJURY_RESERVE", "SUSPENSION", "RESERVE_RETIRED"].includes(
+              player.injury_status ?? "",
+            ));
       const hardProtected =
         player.undroppable === true ||
         player.droppable === false ||
         player.draft_round === 1 ||
-        (player.draft_rank != null && player.draft_rank <= snapshot.league.team_count) ||
-        (player.draft_pick != null && player.draft_pick <= snapshot.league.team_count);
-      const protectedPlayer = preferences.player_overrides?.[player.id]?.protected ?? hardProtected;
+        (player.season_rank != null && player.season_rank > 0 && player.season_rank <= 12) ||
+        (player.draft_rank != null && player.draft_rank > 0 && player.draft_rank <= 12) ||
+        (player.draft_pick != null && player.draft_pick > 0 && player.draft_pick <= 12);
+      const protectedPlayer =
+        preferences.player_overrides?.[player.id]?.protected ??
+        (hardProtected || Boolean(plan?.protected_players?.[player.id]));
       return (
         <div className="player-control" key={player.id}>
           <div>
@@ -619,7 +634,11 @@ function WaiverStrategy({
                 ? "Minutes unavailable"
                 : `${player.current_rates.minutes.toFixed(1)} MPG`}{" "}
               · {player.remaining_games ?? "?"} games left{player.locked ? " · Locked" : ""}
-              {hardProtected ? " · Core protection" : ""}
+              {plan?.protected_players?.[player.id]
+                ? ` · ${plan.protected_players[player.id]}`
+                : hardProtected
+                  ? " · Core protection"
+                  : ""}
             </small>
           </div>
           <div className="player-switches">
@@ -667,7 +686,11 @@ function WaiverStrategy({
           </p>
         </div>
         <div className="waiver-budget">
-          <b>{plan?.remaining_adds ?? user?.remaining_adds ?? "?"}</b>
+          <b>
+            {plan?.remaining_adds != null
+              ? plan.remaining_adds + actions.length
+              : (user?.remaining_adds ?? "?")}
+          </b>
           <span>adds remaining</span>
           <small>
             {knownLimit ?? "Unknown"} cap · {user?.weekly_used_adds ?? "Unknown"} used
@@ -703,6 +726,20 @@ function WaiverStrategy({
             : "Review the outlook before using an add."}
         </p>
       )}
+      <p className="availability-assumption">
+        Availability: assume Available unless explicitly reported Out.{" "}
+        <button
+          type="button"
+          onClick={() => {
+            if (availabilityPanel.current) {
+              availabilityPanel.current.open = true;
+              availabilityPanel.current.scrollIntoView?.({ block: "start" });
+            }
+          }}
+        >
+          Edit player availability
+        </button>
+      </p>
       <div className="strategy-legend">
         <span className="league-winning">● Favored: defend</span>
         <span className="league-tied">◆ Swing / reachable: target</span>
@@ -742,15 +779,22 @@ function WaiverStrategy({
                   {share != null && <span style={{ width: `${share}%` }} />}
                 </div>
                 <small>This week · {key === "to" ? "fewer wins" : "higher wins"}</small>
-                <p>
-                  {strategy?.explanation ??
-                    "Projection needs schedule and rate evidence; current totals alone do not establish a winnable category."}
-                </p>
+                <p>{strategy?.explanation.split(". ")[0] ?? "Forecast evidence is unavailable."}</p>
                 {strategy && (
                   <small>
                     Projected gap {signed(strategy.projected_margin, key)}
                     <br />
                     Prior-week gap {signed(strategy.historical_margin, key)}
+                    <br />
+                    Last week {formatCategory(strategy.previous_user ?? null, key)} vs{" "}
+                    {formatCategory(strategy.previous_opponent ?? null, key)}
+                    {strategy.best_pickup_margin != null && (
+                      <>
+                        <br />
+                        Best pickup gap {signed(strategy.best_pickup_margin, key)}
+                        {strategy.can_flip_with_one_move ? " · flips lead" : ""}
+                      </>
+                    )}
                   </small>
                 )}
               </article>
@@ -764,8 +808,7 @@ function WaiverStrategy({
             ({ key }) => plan?.strategy?.[key]?.classification === "favored",
           )
             .map(({ label }) => label)
-            .join(" · ") || "No confirmed favorites"}{" "}
-          favored
+            .join(" · ") || "No projected cushions"}
         </summary>
         <div className="league-table-wrap">
           <table>
@@ -774,6 +817,7 @@ function WaiverStrategy({
                 <th>Category</th>
                 <th>Outlook</th>
                 <th>This week: you / opponent</th>
+                <th>Last week: you / opponent</th>
                 <th>Projected / prior gap</th>
                 <th>Why</th>
               </tr>
@@ -786,6 +830,10 @@ function WaiverStrategy({
                   <td>
                     {formatCategory(categoryValue(user?.totals ?? null, key), key)} /{" "}
                     {formatCategory(categoryValue(opponent?.totals ?? null, key), key)}
+                  </td>
+                  <td>
+                    {formatCategory(plan?.strategy?.[key]?.previous_user ?? null, key)} /{" "}
+                    {formatCategory(plan?.strategy?.[key]?.previous_opponent ?? null, key)}
                   </td>
                   <td>
                     {signed(plan?.strategy?.[key]?.projected_margin, key)} /{" "}
@@ -812,8 +860,8 @@ function WaiverStrategy({
         </p>
         {plan && plan.remaining_adds == null && (
           <p className="league-tied">
-            Conditional alternatives: weekly adds are unknown. Verify your remaining budget in ESPN
-            before choosing a move.
+            Conditional alternatives: acquisition limits or usage are not fully verified. Check your
+            remaining budget in ESPN before choosing a move.
           </p>
         )}
         {recommendations.length > 0 ? (
@@ -837,6 +885,7 @@ function WaiverStrategy({
                     <b>
                       Target{" "}
                       {item.target_categories
+                        .slice(0, 3)
                         .map(
                           (key) =>
                             LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ??
@@ -849,10 +898,10 @@ function WaiverStrategy({
                     <span>1 add · {item.date}</span>
                   </div>
                   <div className="pickup-net pickup-target-gains">
-                    {item.target_categories.map((key) => (
+                    {item.target_categories.slice(0, 3).map((key) => (
                       <span key={key}>
                         {LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key}{" "}
-                        <b>{signed(item.gains[key], key)} net</b>
+                        <b>{signed(netCategoryGain(item, key), key)} net</b>
                       </span>
                     ))}
                   </div>
@@ -883,8 +932,12 @@ function WaiverStrategy({
                         : `${signed(item.probability_gain * 100)} pp`}
                     </small>
                     <p>
-                      Long-term roster value and protected core players are considered before
-                      recommending this drop.
+                      {item.season_cost == null
+                        ? "Long-term roster value is considered before this drop."
+                        : item.season_cost > 0
+                          ? "The weekly gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
+                          : "No long-term downgrade is estimated by the season-value model."}{" "}
+                      Core players stay protected.
                     </p>
                   </details>
                 </div>
@@ -906,7 +959,7 @@ function WaiverStrategy({
       <details className="weekly-plan">
         <summary>
           Combined weekly plan · {actions.length} moves · {plan?.remaining_adds ?? "unknown"} adds
-          available
+          left after this plan
         </summary>
         {actions.length > 0 ? (
           <>
@@ -938,7 +991,7 @@ function WaiverStrategy({
           </p>
         )}
       </details>
-      <details className="availability-controls">
+      <details ref={availabilityPanel} className="availability-controls">
         <summary>Edit availability & roster protection</summary>
         <p>
           Assume Available unless explicitly reported Out. Change a player below to recalculate

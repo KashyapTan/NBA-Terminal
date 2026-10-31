@@ -238,3 +238,46 @@ it("renders seven alternatives separately from combined plan and protects core p
   expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeDisabled();
   expect(screen.getByText(/Prior-week gap/)).toBeInTheDocument();
 });
+
+it("uses normalized health, displays actual pre-plan budget and computes net shooting impact", async () => {
+  const snapshot = testSnapshot();
+  snapshot.teams[0].remaining_adds = 2;
+  snapshot.teams[0].roster[0].injured = true;
+  snapshot.teams[0].roster[0].health_status = "available";
+  const onPlan = vi.fn().mockResolvedValue({
+    ...readyPlan,
+    remaining_adds: 1,
+    recommendations: [
+      {
+        add_id: "free",
+        drop_id: "rostered",
+        date: "2026-11-01",
+        probability_gain: 0.02,
+        gains: { fgm: 2 },
+        games_gain: 0,
+        minutes_gain: 5,
+        season_cost: 0,
+        net_score: 1,
+        target_categories: ["fg_pct"],
+        category_impacts: {
+          fg_pct: {
+            before: 0.48,
+            after: 0.49,
+            margin_before: -0.005,
+            margin_after: 0.005,
+            estimate_gain: 0.1,
+            flips_projection: true,
+          },
+        },
+        rationale: "Improves shooting after the dropped player.",
+      },
+    ],
+  });
+  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await screen.findByText("+1.00 pp net");
+  expect(view.container.querySelector(".waiver-budget b")).toHaveTextContent("2");
+  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  expect(
+    screen.getByRole("button", { name: "Test player rostered availability: Available" }),
+  ).toBeInTheDocument();
+});

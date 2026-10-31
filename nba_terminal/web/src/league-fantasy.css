@@ -669,3 +669,24 @@
     margin: 0;
   }
 }
+.league-waiver .availability-assumption {
+  font-size: 11px;
+  margin: 10px 0;
+}
+.league-waiver .availability-assumption button {
+  font-size: 11px;
+  padding: 4px 8px;
+  margin-left: 8px;
+}
+.league-matchups .league-roster ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0 12px;
+}
+.league-matchups .league-roster li b {
+  font-size: 12px;
+}
+.league-matchups .league-roster li span {
+  font-size: 11px;
+  margin-top: 3px;
+}

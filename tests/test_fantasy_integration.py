@@ -285,12 +285,17 @@ def test_prior_only_fallback_and_verified_server_counts(snapshot):
     player = snapshot["teams"][0]["roster"][0]
     player.update(current_rates=None, current_games=None)
     user = snapshot["teams"][0]
-    user.update(weekly_used_adds=5, remaining_adds=2)
+    user.update(
+        weekly_used_adds=5,
+        remaining_adds=2,
+        weekly_usage_complete=True,
+        weekly_usage_source="espn_matchup_acquisition_totals",
+    )
     prefs = preferences(snapshot) | {"user_confirmed_counts": False, "player_overrides": {"1": []}}
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert result["status"] == "ready", result
     assert result["provenance"]["rates"]["1"] == "prior season fallback"
-    assert result["provenance"]["counts"] == "ESPN complete matchup counts"
+    assert result["provenance"]["counts"] == "espn_matchup_acquisition_totals"
     user["roster"][0]["locked"] = True
     assert not adapter.plan_snapshot_waivers(snapshot, prefs, NOW)["actions"]
 
@@ -335,3 +340,16 @@ def test_daily_caps_and_inactive_only_eligibility_never_become_weekly_plans(snap
     snapshot["teams"][0]["roster"][0]["positions"] = ["BENCH", "IR"]
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert result["status"] == "incomplete" and not result["actions"]
+
+
+def test_normalized_available_health_overrides_raw_questionable_injury_flag(snapshot):
+    player = snapshot["teams"][0]["roster"][0]
+    player.update(injured=True, injury_status="DAY_TO_DAY", health_status="available")
+    prefs = preferences(snapshot)
+    available = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert available["baseline"]["games"] == 2
+    player.update(health_status="out", injury_status="OUT")
+    out = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert out["baseline"]["games"] == 0
+    restored = adapter.plan_snapshot_waivers(snapshot, prefs | {"player_overrides": {"1": {"injured": False}}}, NOW)
+    assert restored["baseline"]["minutes"] == available["baseline"]["minutes"]

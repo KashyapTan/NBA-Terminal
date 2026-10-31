@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { LEAGUE_CATEGORIES, type WaiverPlan } from "../src/league-fantasy-model";
 
 // Real HTTP routes, normalizer, auth/session and planner; only external transport is synthetic.
 async function connect(page: Page, league = 123) {
@@ -39,10 +40,21 @@ test("production chain automatically ranks seven net pickup alternatives and pre
     path: resolve(evidence, `${info.project.name}-matchups-desktop.png`),
     fullPage: true,
   });
+  const initialResponse = page.waitForResponse(
+    (response) => response.url().endsWith("/api/fantasy/espn/plan") && response.ok(),
+  );
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  const initialPlan = (await (await initialResponse).json()) as WaiverPlan;
+  expect(initialPlan.recommendations).toHaveLength(7);
+  const primaryTarget = initialPlan.recommendations![0].target_categories[0];
+  expect(initialPlan.strategy?.[primaryTarget]?.recommended_target).toBe(true);
+  await expect(page.getByRole("heading", { name: /Focus on/ })).toContainText(
+    LEAGUE_CATEGORIES.find((category) => category.key === primaryTarget)!.label,
+  );
   const alternatives = page.getByRole("region", { name: "Ranked pickup alternatives" });
   await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
   await expect(page.locator(".category-overview tbody > tr")).toHaveCount(9);
+  await expect(page.locator(".category-overview thead th")).toHaveCount(6);
   await expect(page.getByText(/Combined weekly plan/)).toBeVisible();
   await expect(page.locator(".waiver-budget")).toContainText("5 used");
   await page.screenshot({
@@ -60,6 +72,9 @@ test("production chain automatically ranks seven net pickup alternatives and pre
   await page.getByText("Edit availability & roster protection", { exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Protect Fixture Player 1001", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Protect Fixture Player 1002", exact: true }),
   ).toBeDisabled();
   await page
     .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
@@ -133,10 +148,12 @@ test("missing schedules, unsupported formats and failed connections stay honest"
 }) => {
   await connect(page, 124);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveCount(0);
   await expect(
     page.getByRole("region", { name: "Ranked pickup alternatives" }).locator(".pickup-list > li"),
-  ).toHaveCount(0);
+  ).toHaveCount(7);
+  const fallbackSnapshot = await (await page.request.get("/api/fantasy/espn/snapshot")).json();
+  expect(fallbackSnapshot.free_agents[0].schedule_source).toBe("nba_schedule");
+  expect(fallbackSnapshot.free_agents[0].current_rates_source).toBe("nba_stats");
   await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
   await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
   await connect(page, 125);

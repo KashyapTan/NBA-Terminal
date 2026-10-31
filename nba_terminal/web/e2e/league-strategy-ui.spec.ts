@@ -67,7 +67,7 @@ test("strategy hierarchy, score and seven conditional alternatives remain usable
         {
           classification: key === "ast" || i % 3 === 0 ? "swing" : i % 3 === 1 ? "favored" : "punt",
           explanation:
-            i % 3 === 0
+            key === "ast" || i % 3 === 0
               ? "One productive pickup could close this gap."
               : i % 3 === 1
                 ? "Protect this lead before chasing other categories."
