@@ -62,12 +62,13 @@ it("clears private cookies immediately after submit and never persists them", as
   const connect = vi.fn().mockResolvedValue(undefined);
   const storage = vi.spyOn(Storage.prototype, "setItem");
   render(<LeagueConnection state={state({ connect })} />);
-  await user.type(screen.getByLabelText("League ID"), "123");
-  await user.type(screen.getByLabelText("Season ending year"), "2027");
+  await user.click(screen.getByText("Manual or public league fallback"));
+  await user.type(screen.getByLabelText("Manual league ID"), "123");
+  await user.type(screen.getByLabelText("Manual season ending year"), "2027");
   await user.click(screen.getByLabelText("Private league"));
   await user.type(screen.getByLabelText("SWID"), "test-cookie");
   await user.type(screen.getByLabelText("espn_s2"), "test-cookie2");
-  await user.click(screen.getByRole("button", { name: "Connect ESPN" }));
+  await user.click(screen.getByRole("button", { name: "Connect manually" }));
   expect(connect).toHaveBeenCalledOnce();
   expect(screen.getByLabelText("SWID")).toHaveValue("");
   expect(screen.getByLabelText("espn_s2")).toHaveValue("");
@@ -194,7 +195,7 @@ it("ignores late analysis after a protection edit", async () => {
   await waitFor(() => expect(screen.queryByText("Stale analysis")).not.toBeInTheDocument());
   expect(onPlan.mock.calls[1][0].player_overrides).toEqual({ rostered: { protected: true } });
 });
-it("renders seven alternatives separately from combined plan and protects core players", async () => {
+it("renders every beneficial alternative separately from sequential plan and respects legal protection", async () => {
   const snapshot = testSnapshot();
   snapshot.teams[0].roster[0].undroppable = true;
   const recommendation = {
@@ -232,8 +233,8 @@ it("renders seven alternatives separately from combined plan and protects core p
     within(screen.getByRole("region", { name: "Ranked pickup alternatives" })).getAllByRole(
       "listitem",
     ),
-  ).toHaveLength(7);
-  expect(screen.getByText(/Combined weekly plan · 1 moves/)).toBeInTheDocument();
+  ).toHaveLength(9);
+  expect(screen.getByText(/Sequential matchup plan · 1 moves/)).toBeInTheDocument();
   await userEvent.click(screen.getByText("Edit availability & roster protection"));
   expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeDisabled();
   expect(screen.getByText(/Prior-week gap/)).toBeInTheDocument();
@@ -274,10 +275,83 @@ it("uses normalized health, displays actual pre-plan budget and computes net sho
     ],
   });
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await screen.findByText("+1.00 pp net");
+  await screen.findByText("+1.00 pp net total");
   expect(view.container.querySelector(".waiver-budget b")).toHaveTextContent("2");
   await userEvent.click(screen.getByText("Edit availability & roster protection"));
   expect(
     screen.getByRole("button", { name: "Test player rostered availability: Available" }),
   ).toBeInTheDocument();
+});
+
+it("shows total arithmetic, selected five and paginates genuine alternatives without a seven cap", async () => {
+  const snapshot = testSnapshot();
+  snapshot.teams[0].roster[0].draft_round = 1;
+  const recommendation = {
+    add_id: "free",
+    drop_id: "rostered",
+    date: "2026-11-01",
+    probability_gain: null,
+    gains: { pts: 8 },
+    games_gain: 0,
+    minutes_gain: 0,
+    season_cost: 2,
+    net_score: 1,
+    target_categories: ["pts"],
+    rationale: "A reachable scoring deficit.",
+    calculation: {
+      pts: {
+        add_rate: 12,
+        add_starts: 4,
+        drop_rate: 10,
+        drop_starts: 4,
+        added_total: 48,
+        lost_total: 40,
+        lineup_other_net: 0,
+        net_total: 8,
+      },
+    },
+  };
+  const onPlan = vi.fn().mockResolvedValue({
+    ...readyPlan,
+    selected_categories: ["pts", "reb", "ast", "stl", "to"],
+    safe_categories: ["reb"],
+    improvement_categories: ["pts", "ast", "stl", "to"],
+    recommendations: Array.from({ length: 25 }, (_, i) => ({
+      ...recommendation,
+      add_id: `free${i}`,
+      drop_id: i === 24 ? "other" : "rostered",
+    })),
+  });
+  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await screen.findByText("25 beneficial alternatives");
+  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(12);
+  expect(screen.getByText(/Safe wins: REB/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /Show more alternatives/ }));
+  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(24);
+  await userEvent.selectOptions(screen.getByLabelText("Review by roster drop"), "other");
+  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(1);
+  await userEvent.selectOptions(screen.getByLabelText("Review by roster drop"), "rostered");
+  const detail = view.container.querySelector(".pickup-details")!;
+  await userEvent.click(
+    within(detail as HTMLElement).getByText("Remaining matchup arithmetic & tradeoffs"),
+  );
+  expect(
+    within(detail as HTMLElement).getByText(/12 × 4 starts − 10 × 4 starts = \+8 total/),
+  ).toBeInTheDocument();
+  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeEnabled();
+  await userEvent.click(screen.getByText("Edit selected five categories"));
+  await userEvent.click(screen.getByLabelText("REB", { selector: "input" }));
+  expect(screen.getByRole("button", { name: "Recalculate selected five" })).toBeDisabled();
+  await userEvent.click(screen.getByLabelText("BLK", { selector: "input" }));
+  await userEvent.click(screen.getByRole("button", { name: "Recalculate selected five" }));
+  await waitFor(() =>
+    expect(onPlan.mock.lastCall?.[0].selected_categories).toEqual([
+      "pts",
+      "ast",
+      "stl",
+      "to",
+      "blk",
+    ]),
+  );
 });

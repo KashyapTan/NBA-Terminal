@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { testPlayer, testSnapshot } from "../src/league-fantasy.test-fixtures";
 import { LEAGUE_CATEGORIES, type WaiverPlan } from "../src/league-fantasy-model";
 
-test("strategy hierarchy, score and seven conditional alternatives remain usable on mobile", async ({
+test("strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile", async ({
   page,
 }) => {
   const snapshot = testSnapshot();
@@ -34,10 +34,13 @@ test("strategy hierarchy, score and seven conditional alternatives remain usable
     ftm: 50,
     fta: 70,
   };
-  snapshot.free_agents = Array.from({ length: 7 }, (_, i) =>
+  snapshot.free_agents = Array.from({ length: 15 }, (_, i) =>
     testPlayer(`free${i}`, { name: `Synthetic pickup ${i + 1}` }),
   );
   const plan: WaiverPlan = {
+    selected_categories: ["ast", "pts", "reb", "to", "blk"],
+    safe_categories: ["reb", "blk"],
+    improvement_categories: ["ast", "pts", "to"],
     status: "incomplete",
     reasons: [],
     remaining_adds: null,
@@ -51,8 +54,20 @@ test("strategy hierarchy, score and seven conditional alternatives remain usable
       add_id: player.id,
       drop_id: "rostered",
       date: "2026-11-01",
-      gains: { ast: 8 - i, pts: 12 },
-      probability_gain: 0.03,
+      gains: { ast: 8, pts: 12 },
+      probability_gain: null,
+      calculation: {
+        ast: {
+          add_rate: 12,
+          add_starts: 4,
+          drop_rate: 10,
+          drop_starts: 4,
+          added_total: 48,
+          lost_total: 40,
+          lineup_other_net: 0,
+          net_total: 8,
+        },
+      },
       games_gain: 1,
       minutes_gain: 24,
       season_cost: 0.2,
@@ -84,26 +99,33 @@ test("strategy hierarchy, score and seven conditional alternatives remain usable
     const json =
       path === "/api/meta"
         ? { current_season: "2026-27", seasons: ["2026-27"], supported_from: "1996-97" }
-        : path.endsWith("/status")
-          ? { connected: true, team_id: 1 }
-          : path.endsWith("/plan")
-            ? plan
-            : path.endsWith("/snapshot")
-              ? snapshot
-              : path === "/api/fantasy/players"
-                ? { season: "2026-27", supported: true, phase: "Regular Season", players: [] }
-                : {};
+        : path.endsWith("/bridge/status")
+          ? { enabled: false }
+          : path.endsWith("/status")
+            ? { connected: true, team_id: 1 }
+            : path.endsWith("/plan")
+              ? plan
+              : path.endsWith("/snapshot")
+                ? snapshot
+                : path === "/api/fantasy/players"
+                  ? { season: "2026-27", supported: true, phase: "Regular Season", players: [] }
+                  : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v2");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/fantasy?fantasyTab=matchups");
   await expect(page.getByLabel("4 wins, 5 losses, 0 ties")).toBeVisible();
   await page.screenshot({ path: resolve(evidence, "ui-matchups-desktop.png"), fullPage: true });
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await expect(page.locator(".pickup-list > li")).toHaveCount(7);
+  await expect(page.locator(".pickup-list > li")).toHaveCount(12);
   await expect(page.getByText(/Conditional alternatives:/)).toBeVisible();
+  await expect(page.getByText("15 beneficial alternatives")).toBeVisible();
+  await page.getByRole("button", { name: /Show more alternatives/ }).click();
+  await expect(page.locator(".pickup-list > li")).toHaveCount(15);
+  await page.locator(".pickup-details summary").first().click();
+  await expect(page.getByText(/12 × 4 starts − 10 × 4 starts = \+8 total/).first()).toBeVisible();
   await page.screenshot({ path: resolve(evidence, "ui-waiver-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
@@ -116,4 +138,48 @@ test("strategy hierarchy, score and seven conditional alternatives remain usable
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
   await page.screenshot({ path: resolve(evidence, "ui-matchups-mobile.png"), fullPage: true });
+});
+
+test("browser setup and consented pairing states work without exposing cookie inputs", async ({
+  page,
+}) => {
+  let paired = false;
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/bridge/pair")) {
+      paired = true;
+      return route.fulfill({ json: { enabled: true, state: "waiting_extension" } });
+    }
+    const json = path.endsWith("/bridge/status")
+      ? { enabled: paired, state: "waiting_extension" }
+      : path.endsWith("/status")
+        ? { connected: false }
+        : path === "/api/meta"
+          ? { current_season: "2026-27", seasons: ["2026-27"], supported_from: "1996-97" }
+          : path === "/api/fantasy/players"
+            ? { season: "2026-27", supported: true, players: [] }
+            : {};
+    return route.fulfill({ json });
+  });
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
+  mkdirSync(evidence, { recursive: true });
+  await page.goto("/fantasy");
+  await page.getByText("One-time browser setup", { exact: true }).click();
+  await expect(page.getByRole("link", { name: "Firefox extension" })).toHaveAttribute(
+    "href",
+    "/api/fantasy/espn/bridge/setup/firefox.zip",
+  );
+  await page.getByLabel("League ID", { exact: true }).fill("123");
+  await page.getByLabel("Season ending year", { exact: true }).fill("2027");
+  await page.getByRole("button", { name: "Connect ESPN", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Waiting for the extension");
+  await expect(page.getByLabel("SWID", { exact: true })).not.toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: resolve(evidence, "ui-login-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: resolve(evidence, "ui-login-mobile.png"), fullPage: true });
 });

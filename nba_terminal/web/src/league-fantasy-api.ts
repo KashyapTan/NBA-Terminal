@@ -52,3 +52,23 @@ export type LeagueFantasyApi = typeof leagueFantasyApi;
 
 export const requestWaiverPlan = (preferences: PlannerPreferences) =>
   request<WaiverPlan>("/plan", "POST", preferences);
+
+export interface BrowserBridgeStatus {
+  enabled: boolean;
+  league_id?: number;
+  season_id?: number;
+  team_id?: number | null;
+  state?:
+    | "waiting_extension"
+    | "no_espn_session"
+    | "connected"
+    | "account_changed"
+    | "permission_denied"
+    | "error";
+}
+export const browserBridgeApi = {
+  pair: (input: Pick<ConnectLeague, "league_id" | "season_id" | "team_id">) =>
+    request<BrowserBridgeStatus>("/bridge/pair", "POST", input),
+  status: () => request<BrowserBridgeStatus>("/bridge/status"),
+  cancel: () => request<LeagueStatus>("/connection", "DELETE"),
+};
