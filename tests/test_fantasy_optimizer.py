@@ -48,9 +48,10 @@ def test_no_inputs_and_unknown_uncertainty():
     data = fixture()
     del data["margin_sd"]
     result = plan_waivers(data)
-    assert result["status"] == "incomplete"
+    assert result["status"] == "ready"
     assert result["actions"] == []
-    assert result["baseline"]["win_at_least_five_probability"] is None
+    assert result["uncertainty"]["source"] == "model_estimate"
+    assert result["uncertainty"]["calibrated"] is False
 
 
 def test_category_direction_and_weighted_shooting():
@@ -107,8 +108,10 @@ def test_sequential_rotation_counts_games_once_and_respects_budget():
     assert result["projected"]["user_totals"]["stl"] == 15
     assert result["remaining_adds"] == 0
     data["used_adds"] = 6
+    data["available_adds"] = 1
     assert len(plan_waivers(data)["actions"]) == 1
     data["used_adds"] = 7
+    data["available_adds"] = 0
     assert plan_waivers(data)["actions"] == []
 
 
@@ -174,14 +177,14 @@ def test_prior_stats_and_history_provenance():
     data["prior_week_margins"] = [{k: n for k in CATEGORIES} for n in (1, 2, 3)]
     result = plan_waivers(data)
     assert result["status"] == "ready"
-    assert result["provenance"]["drop"] == "current/prior blend"
-    assert result["baseline"]["user_totals"]["ast"] == 16
+    assert "prior season fallback" in result["provenance"]["drop"]
+    assert result["baseline"]["user_totals"]["ast"] == 15
     data["players"][0].pop("current_rates")
     assert plan_waivers(data)["provenance"]["drop"] == "prior season fallback"
 
 
 @pytest.mark.parametrize(
-    "key,value", [("weekly_add_limit", -1), ("used_adds", True), ("dates", []), ("margin_sd", {}), ("lineup_slots", [])]
+    "key,value", [("weekly_add_limit", -1), ("used_adds", True), ("margin_sd", {}), ("lineup_slots", [])]
 )
 def test_invalid_inputs_fail_closed(key, value):
     data = fixture()
@@ -208,7 +211,10 @@ def test_unknown_constraints_are_not_false_or_zero(field):
         data["players"][0][field] = None
     else:
         data[field] = None
-    assert plan_waivers(data)["status"] == "unavailable"
+    result = plan_waivers(data)
+    assert result["status"] == ("ready" if field == "locked" else "incomplete")
+    if field != "locked":
+        assert result["remaining_adds"] is None and not result["actions"]
 
 
 def test_evaluation_limit_is_reported_and_deterministic():

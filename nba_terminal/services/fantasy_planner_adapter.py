@@ -1,15 +1,14 @@
-"""Translate a server-owned ESPN snapshot into a constrained, read-only plan.
+"""Translate server-owned league facts into pure, read-only waiver recommendations.
 
-No network or authentication lives here. The authenticated route must supply its
-own snapshot and run this CPU work in a bounded worker, never the event loop.
+No network, authentication or transactions live here. Unknown health/locks use the
+user-authorized availability assumption; missing forecasting data remains visible.
 """
 
 from datetime import date, datetime, timezone
 from math import isfinite
-from statistics import stdev
 from zoneinfo import ZoneInfo
 
-from nba_terminal.services.fantasy_optimizer import CATEGORIES, TOTALS, plan_waivers
+from nba_terminal.services.fantasy_optimizer import CATEGORIES, TOTALS, _rates, plan_waivers
 
 ACTIVE_SLOTS = {"PG", "SG", "SF", "PF", "C", "G", "F", "SG/SF", "G/F", "PF/C", "F/C", "UTIL"}
 
@@ -39,7 +38,7 @@ def _values(values):
     return {**totals, "fg_pct": totals["fgm"] / totals["fga"], "ft_pct": totals["ftm"] / totals["fta"]}
 
 
-def _history(snapshot, user_id, target_id):
+def _history_periods(snapshot):
     periods = {}
     for row in snapshot.get("matchup_history", []):
         period = row.get("matchup_period_id")
@@ -48,14 +47,19 @@ def _history(snapshot, user_id, target_id):
         teams = periods.setdefault(period, {})
         for side in ("home", "away"):
             teams[row.get(f"{side}_team_id")] = _values(row.get(f"{side}_totals"))
-    margins = []
-    for teams in periods.values():
-        ours, theirs = teams.get(user_id), teams.get(target_id)
-        if ours is not None and theirs is not None:
-            margins.append({k: (ours[k] - theirs[k]) * (-1 if k == "to" else 1) for k in CATEGORIES})
-    if len(margins) < 3 or any(stdev(row[k] for row in margins) <= 0 for k in CATEGORIES):
-        return None
-    return margins
+    return periods
+
+
+def _history(snapshot, user_id, target_id):
+    periods = _history_periods(snapshot)
+    return [
+        {
+            k: (periods[period][user_id][k] - periods[period][target_id][k]) * (-1 if k == "to" else 1)
+            for k in CATEGORIES
+        }
+        for period in sorted(periods)
+        if periods[period].get(user_id) is not None and periods[period].get(target_id) is not None
+    ]
 
 
 def _forecast_view(forecast):
@@ -72,17 +76,67 @@ def _forecast_view(forecast):
     }
 
 
+def _schedule(player, override, remaining, now):
+    schedule = player.get("schedule")
+    started = {g.get("date") for g in schedule or [] if isinstance(g, dict) and g.get("started") is True}
+    if "schedule" in override:
+        dates = override["schedule"]
+        if (
+            not isinstance(dates, list)
+            or len(set(dates)) != len(dates)
+            or any(
+                not isinstance(d, str) or date.fromisoformat(d).isoformat() != d or d not in remaining or d in started
+                for d in dates
+            )
+        ):
+            raise ValueError("schedule correction must use unique remaining unstarted game dates")
+        return sorted(dates), "user correction"
+    if schedule is None:
+        raise ValueError("remaining schedule is unknown")
+    dates = []
+    for game in schedule:
+        start = datetime.fromisoformat(game["start_at"].replace("Z", "+00:00"))
+        if start.tzinfo is None or not isinstance(game.get("started"), bool):
+            raise ValueError("game start/lock timing is unknown")
+        if not game["started"] and start > now and game["date"] in remaining:
+            dates.append(game["date"])
+    return sorted(set(dates)), player.get("schedule_source") or "upstream schedule checked against server time"
+
+
+def _remaining_lineup_slots(roster, lineup, remaining, now):
+    """Started active players consume today's slot even when no future game remains."""
+    daily = {day: list(lineup) for day in remaining}
+    for player in roster:
+        consumed = set()
+        slot = player.get("lineup_slot")
+        if slot not in ACTIVE_SLOTS:
+            continue
+        for game in player.get("schedule") or []:
+            day = game.get("date")
+            if day not in daily or day in consumed or slot not in daily[day]:
+                continue
+            try:
+                start = datetime.fromisoformat(game["start_at"].replace("Z", "+00:00"))
+                if game.get("started") is True or (start.tzinfo is not None and start <= now):
+                    daily[day].remove(slot)
+                    consumed.add(day)
+            except (KeyError, ValueError, TypeError):
+                continue
+    return daily
+
+
 def plan_snapshot_waivers(snapshot, preferences, now=None):
-    """Use only server snapshot facts and explicit context-bound user confirmations."""
+    """Default to automatic choices; explicit preferences narrow or correct facts."""
     now = now or datetime.now(timezone.utc)
     gaps, provenance = [], {}
-    user_id, target_id = snapshot["selected_team_id"], snapshot.get("opponent_team_id")
-    teams = {team["id"]: team for team in snapshot["teams"]}
-    user, target = teams.get(user_id), teams.get(target_id)
     result = {
         "status": "unavailable",
         "reasons": [],
         "actions": [],
+        "plan": [],
+        "recommendations": [],
+        "recommendation_kind": "alternatives",
+        "strategy": {},
         "baseline": None,
         "projected": None,
         "remaining_adds": None,
@@ -91,19 +145,23 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "data_gaps": gaps,
         "provenance": provenance,
     }
+    user_id, target_id = snapshot["selected_team_id"], snapshot.get("opponent_team_id")
+    teams = {team["id"]: team for team in snapshot["teams"]}
+    user, target = teams.get(user_id), teams.get(target_id)
     expected = {
         "league_id": snapshot["league"]["id"],
         "team_id": user_id,
         "matchup_period_id": snapshot["period"]["matchup_period_id"],
-        "fetched_at": snapshot["fetched_at"],
     }
-    if preferences.get("context") != expected:
-        result["reasons"] = ["Snapshot changed. Refresh and reconfirm inputs for this league, team and matchup."]
+    context = preferences.get("context")
+    if not isinstance(context, dict) or any(context.get(k) != v for k, v in expected.items()):
+        result["reasons"] = ["Preferences belong to another league, team or matchup. Refresh this matchup."]
         return result
     if not snapshot["league"].get("supported") or user is None or target is None or target_id == user_id:
         result["reasons"] = ["A supported nine-category league and an actual current opponent are required."]
         return result
-    # Preserve actuals as a useful comparison when future inputs cannot be validated.
+    provenance["context"] = {**expected, "fetched_at": snapshot["fetched_at"]}
+    provenance["snapshot_data_gaps"] = snapshot.get("data_gaps", [])
     result["baseline"] = {
         "basis": "recorded",
         "totals": user.get("totals") or {},
@@ -111,260 +169,229 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "minutes": None,
         "probability_five_wins": None,
     }
-    provenance["context"] = expected
-    provenance["snapshot_data_gaps"] = snapshot.get("data_gaps", [])
     settings = snapshot["league"].get("acquisition_settings", {})
-    if settings.get("limit_per_scoring_period") is True:
-        gaps.append("This league has per-day acquisition rules; daily acquisition budgets are not modeled.")
     if preferences.get("user_confirmed_counts") is True:
         counts = [preferences.get(k) for k in ("weekly_add_limit", "used_adds", "available_adds")]
-        provenance["counts"] = "user_confirmed for this snapshot and matchup"
-    elif settings.get("limit_per_scoring_period") is False:
-        # ESPN scoring periods are days; a matchup cap is usable only when this is explicitly false.
+        provenance["counts"] = "user_confirmed matchup counts"
+    elif settings.get("limit_per_scoring_period") is False and user.get("weekly_usage_complete") is not False:
         counts = [settings.get("weekly_add_limit"), user.get("weekly_used_adds"), user.get("remaining_adds")]
-        provenance["counts"] = "ESPN complete matchup counts"
+        provenance["counts"] = user.get("weekly_usage_source") or "ESPN complete matchup counts"
     else:
         counts = [None, None, None]
-    if not all(_integer(n) for n in counts) or counts[1] + counts[2] > counts[0]:
+        provenance["counts"] = "unknown; daily acquisition rules are not modeled"
+    if settings.get("limit_per_scoring_period") is True or settings.get("daily_add_limit") is not None:
+        # An additional daily cap needs a day-specific ledger; do not call a weekly plan feasible.
+        counts = [None, None, None]
         gaps.append(
-            "Confirm weekly cap, adds used and adds remaining; nonnegative integers with used + remaining <= cap."
+            "Per-day acquisition limits require a daily ledger; alternatives are conditional, not a weekly plan."
         )
-    else:
-        result["remaining_adds"] = counts[2]
-    candidates, drops = preferences.get("candidate_ids", []), preferences.get("droppable_ids", [])
-    if (
-        not isinstance(candidates, list)
-        or not isinstance(drops, list)
-        or any(not isinstance(pid, str) for pid in [*candidates, *drops])
-        or len(candidates) != len(set(candidates))
-        or len(drops) != len(set(drops))
-    ):
-        result["reasons"] = ["Shortlist and drop choices must contain unique player IDs."]
-        return result
+    if not all(_integer(n) for n in counts) or counts[1] + counts[2] > counts[0]:
+        counts = [None, None, None]
+        gaps.append(
+            "Weekly adds remaining are unknown; enter the actual weekly cap, used and remaining counts for a plan."
+        )
     rostered = {p["id"] for team in teams.values() for p in team["roster"]}
     market = {
         p["id"]: p
         for p in snapshot.get("free_agents", [])
-        if p.get("eligible") is True and p.get("availability") == "FREEAGENT" and p["id"] not in rostered
+        if p.get("eligible") is not False and p.get("availability") == "FREEAGENT" and p["id"] not in rostered
     }
     roster = {p["id"]: p for p in user["roster"]}
-    if (
-        not candidates
-        or not drops
-        or any(pid not in market for pid in candidates)
-        or any(
-            pid not in roster or roster[pid].get("locked") is True or roster[pid].get("lineup_slot") in {"IR", "IR+"}
-            for pid in drops
-        )
-    ):
-        result["reasons"] = ["Choose eligible unrostered free agents and unlocked user roster players to stream."]
-        return result
-    if preferences.get("user_confirmed_eligibility") is not True:
-        gaps.append("Confirm that each selected add and drop is available now in ESPN for this matchup.")
-    slots = preferences.get("max_stream_slots")
+    candidates = preferences.get("candidate_ids", list(market))
+    drops = preferences.get("droppable_ids", list(roster))
+    protected = preferences.get("protected_ids", [])
+    for ids, pool in ((candidates, market), (drops, roster), (protected, roster)):
+        if (
+            not isinstance(ids, list)
+            or any(not isinstance(pid, str) or pid not in pool for pid in ids)
+            or len(ids) != len(set(ids))
+        ):
+            result["reasons"] = ["Candidate, drop and protection choices must contain unique eligible player IDs."]
+            return result
+    slots = preferences.get("max_stream_slots", 2)
     if not _integer(slots) or not 1 <= slots <= 4:
-        gaps.append("Maximum stream slots must be an integer from one to four.")
-    remaining = preferences.get("remaining_dates", snapshot["period"].get("remaining_dates"))
-    if "remaining_dates" in preferences:
-        try:
-            today = now.astimezone(ZoneInfo("America/New_York")).date().isoformat()
-            period_dates = snapshot["period"].get("dates", [])
-            if (
-                not isinstance(remaining, list)
-                or not 1 <= len(remaining) <= 14
-                or len(set(remaining)) != len(remaining)
-                or any(date.fromisoformat(d).isoformat() != d or d < today for d in remaining)
-                or (period_dates and any(d not in period_dates for d in remaining))
-            ):
-                raise ValueError
-            remaining = sorted(remaining)
-            provenance["remaining_dates"] = "user_confirmed remaining matchup dates"
-        except (TypeError, ValueError):
-            gaps.append("Confirm one to fourteen unique remaining ISO dates in the current matchup, not past dates.")
-            remaining = []
-    if not isinstance(remaining, list) or not remaining:
-        gaps.append("No verified remaining matchup dates. Refresh the snapshot or wait for the next matchup.")
-        remaining = []
+        result["reasons"] = ["Maximum stream slots must be from one to four."]
+        return result
+    today = now.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    remaining = preferences.get("remaining_dates", snapshot["period"].get("remaining_dates", []))
+    try:
+        if (
+            not isinstance(remaining, list)
+            or len(remaining) > 14
+            or len(set(remaining)) != len(remaining)
+            or any(not isinstance(d, str) or date.fromisoformat(d).isoformat() != d for d in remaining)
+        ):
+            raise ValueError
+        period_dates = snapshot["period"].get("dates", [])
+        if "remaining_dates" in preferences and any(
+            d < today or (period_dates and d not in period_dates) for d in remaining
+        ):
+            raise ValueError
+        remaining = sorted(d for d in remaining if d >= today)
+    except (TypeError, ValueError):
+        result.update(status="incomplete", reasons=["Remaining dates must be unique current-matchup ISO dates."])
+        return result
+    if not remaining:
+        gaps.append("No remaining matchup dates; future contributions and pickup timing cannot be projected.")
     lineup = [s for s in snapshot["league"].get("lineup_slots", []) if s not in ("BENCH", "IR", "IR+")]
     if not lineup or any(slot not in ACTIVE_SLOTS for slot in lineup):
-        gaps.append("Active lineup slot rules are missing or unsupported in ESPN.")
+        gaps.append("Active lineup rules are missing or unsupported.")
+        result.update(status="incomplete", reasons=list(gaps))
+        return result
     overrides = preferences.get("player_overrides", {})
     if not isinstance(overrides, dict):
-        overrides = {}
-        gaps.append("Player corrections must be keyed by player ID.")
-    players = []
+        result["reasons"] = ["Player corrections must be keyed by player ID."]
+        return result
+    players, forecast_gaps, excluded = [], [], []
+    if not user["roster"] or not target["roster"]:
+        forecast_gaps.append("Complete user and opponent rosters are required for a remaining-games forecast.")
     relevant = [(p, "user") for p in user["roster"]] + [(p, "opponent") for p in target["roster"]]
     relevant += [(market[pid], "free") for pid in candidates]
-    if not user["roster"] or not target["roster"]:
-        gaps.append("Complete user and opponent rosters are required.")
+    assumed = 0
     for player, owner in relevant:
         pid, name = player["id"], player["name"]
-        if player.get("lineup_slot") in {"IR", "IR+"}:
-            provenance[f"inactive:{pid}"] = "IR player excluded; moves out of IR are not modeled"
-            continue
         override = overrides.get(pid, {})
         if not isinstance(override, dict):
             override = {}
-        schedule = player.get("schedule")
-        if "schedule" in override:
-            dates = override["schedule"]
-            try:
-                if (
-                    not isinstance(dates, list)
-                    or any(date.fromisoformat(d).isoformat() != d for d in dates)
-                    or len(set(dates)) != len(dates)
-                    or any(d not in remaining for d in dates)
-                ):
-                    raise ValueError
-                # User corrections cannot resurrect a known already-started game today.
-                started = {g["date"] for g in schedule or [] if g.get("started") is True}
-                if any(d in started for d in dates):
-                    raise ValueError
-                provenance[f"schedule:{pid}"] = "user_confirmed unstarted, transaction-effective remaining games"
-            except (ValueError, TypeError):
-                gaps.append(f"{name}: confirm unique remaining unstarted ISO game dates.")
-                dates = None
-        elif schedule is None:
-            dates = None
-            gaps.append(f"{name}: remaining schedule is unknown; enter verified unstarted game dates.")
-        else:
-            dates = []
-            for game in schedule:
-                try:
-                    start = datetime.fromisoformat(game["start_at"].replace("Z", "+00:00"))
-                    if start.tzinfo is None or not isinstance(game.get("started"), bool):
-                        raise ValueError
-                    if not game["started"] and start > now and game["date"] in remaining:
-                        dates.append(game["date"])
-                except (ValueError, TypeError, KeyError):
-                    gaps.append(f"{name}: game start/lock timing is unknown.")
-            provenance[f"schedule:{pid}"] = "ESPN unstarted games checked against server time"
-        injured = override.get("injured", player.get("injured"))
-        if "injured" not in override and str(player.get("injury_status", "")).upper() in {
-            "OUT",
-            "O",
-            "INACTIVE",
-            "SUSPENDED",
-            "SUSPENSION",
-        }:
-            injured = True
-        if "injured" in override and isinstance(injured, bool):
-            provenance[f"availability:{pid}"] = "user_confirmed availability for the modeled remaining dates"
-        if not isinstance(injured, bool):
-            gaps.append(f"{name}: availability is unknown; confirm available or out for modeled dates.")
-        sample = player.get("current_games")
-        if isinstance(sample, (int, float)) and not isinstance(sample, bool) and isfinite(sample) and sample >= 0:
-            sample = int(sample) if sample == int(sample) else None
-        elif player.get("current_rates") is None and player.get("prior_rates") is not None:
-            sample = 0  # explicitly prior-only, no current sample is asserted
-        else:
-            sample = None
-        if sample is None:
-            gaps.append(f"{name}: integral observed season sample count is missing.")
-        positions = [position for position in player.get("positions") or [] if position in ACTIVE_SLOTS]
-        if not positions:
-            gaps.append(f"{name}: active lineup eligibility is unknown or unsupported.")
-        if player.get("current_rates") is None and player.get("prior_rates") is None:
-            gaps.append(f"{name}: current and prior season rates are unavailable.")
-        for season in ("current_rates", "prior_rates"):
-            rates = player.get(season)
-            if rates is not None and (
-                _totals(rates) is None
-                or isinstance(rates.get("minutes"), bool)
-                or not isinstance(rates.get("minutes"), (int, float))
-                or not isfinite(rates["minutes"])
-                or rates["minutes"] < 0
-            ):
-                gaps.append(f"{name}: {season} needs complete valid category makes/attempts and observed minutes.")
-        # Locked here means planner cannot transact; it does not assert ESPN's unknown lock is true.
-        allowed_move = owner == "free" or (owner == "user" and pid in drops)
-        locked = (
-            not allowed_move
-            or player.get("locked") is True
-            or preferences.get("user_confirmed_eligibility") is not True
+        if player.get("lineup_slot") in {"IR", "IR+"}:
+            provenance[f"inactive:{pid}"] = "IR player excluded; activation is not modeled"
+            continue
+        known_out = (
+            player.get("health_status") == "out"
+            or player.get("injured") is True
+            or str(player.get("injury_status", "")).upper() in {"OUT", "O", "INACTIVE", "SUSPENDED", "SUSPENSION"}
         )
+        injured = override.get("injured", known_out)
+        if not isinstance(injured, bool):
+            forecast_gaps.append(f"{name}: availability override must be Available or Out.")
+            continue
+        if "injured" not in override and player.get("injured") is None and not known_out:
+            assumed += 1
+        try:
+            # Out players need no schedule/rates for their zero remaining contribution.
+            if injured:
+                dates, source = [], "explicitly out"
+            else:
+                dates, source = _schedule(player, override, remaining, now)
+            positions = [p for p in player.get("positions") or [] if p in ACTIVE_SLOTS]
+            if not positions:
+                raise ValueError("active lineup eligibility is missing")
+            sample = player.get("current_games")
+            if isinstance(sample, (int, float)) and not isinstance(sample, bool) and isfinite(sample) and sample >= 0:
+                sample = int(sample) if sample == int(sample) else None
+                if sample is None:
+                    raise ValueError("observed season game count must be integral")
+            else:
+                sample = None
+            # No observed game count: current averages are still useful, explicitly labeled.
+            if sample is None:
+                sample = 3 if player.get("current_rates") is not None else 0
+                provenance[f"sample:{pid}"] = "sample count unknown; available current season averages used"
+            rates, prior = player.get("current_rates"), player.get("prior_rates")
+            if rates is None and prior is None and not injured:
+                raise ValueError("season rates are missing")
+            if injured and rates is None and prior is None:
+                # Zero only because explicitly unavailable, never a missing-rate forecast.
+                rates = {**dict.fromkeys(TOTALS, 0), "minutes": 0}
+                sample = 3
+            _rates({"id": pid, "current_rates": rates, "prior_rates": prior, "current_games": sample})
+        except (TypeError, ValueError, KeyError) as error:
+            (excluded if owner == "free" else forecast_gaps).append(f"{name}: {error}.")
+            continue
+        provenance[f"schedule:{pid}"] = source
+        protection = override.get("protected")
+        if pid in protected:
+            protection = True
         players.append(
             {
+                **player,
                 "id": pid,
                 "owner": owner,
                 "positions": positions,
                 "eligible": True,
-                "locked": locked,
+                "locked": player.get("locked") is True or (owner == "user" and pid not in drops),
+                "undroppable": player.get("undroppable") is True or player.get("droppable") is False,
+                "protected": protection,
                 "schedule": dates,
-                "injury_status": "out" if injured is True else "active",
-                "current_rates": player.get("current_rates"),
-                "prior_rates": player.get("prior_rates"),
+                "injury_status": "out" if injured else "active",
+                "current_rates": rates,
+                "prior_rates": prior,
                 "current_games": sample,
+                "season_value_unknown": player.get("current_rates") is None and player.get("prior_rates") is None,
             }
         )
-    provenance["transactions"] = "user_confirmed selected adds/drops; all unselected roster slots protected"
-    provenance["candidate_ids"] = candidates
-    provenance["droppable_ids"] = drops
+    gaps.extend(forecast_gaps)
+    if excluded:
+        provenance["excluded_candidates"] = excluded
     history = _history(snapshot, user_id, target_id)
+    periods = _history_periods(snapshot)
+    complete_periods = [
+        period
+        for period in sorted(periods)
+        if periods[period].get(user_id) is not None and periods[period].get(target_id) is not None
+    ]
+    previous = {}
+    if complete_periods:
+        period = complete_periods[-1]
+        previous = {"user": periods[period][user_id], "opponent": periods[period][target_id], "period": period}
+
     payload = {
         "dates": remaining,
         "current_totals": user.get("totals"),
         "opponent_totals": target.get("totals"),
         "players": players,
         "lineup_slots": lineup,
+        "lineup_slots_by_date": _remaining_lineup_slots(user["roster"], lineup, remaining, now),
+        "opponent_lineup_slots_by_date": _remaining_lineup_slots(target["roster"], lineup, remaining, now),
         "weekly_add_limit": counts[0],
         "used_adds": counts[1],
         "available_adds": counts[2],
         "max_stream_slots": slots,
-        "candidate_limit": min(40, max(1, len(candidates))),
-        "evaluation_limit": 500,
+        "candidate_limit": min(100, max(1, len(candidates))),
+        "evaluation_limit": 1000,
+        "prior_week_margins": history,
+        "previous_comparison": previous,
+        "data_gaps": forecast_gaps,
     }
-    if preferences.get("uncertainty_mode") not in (None, "history", "sensitivity"):
-        gaps.append("Choose historical evidence or explicitly opt into sensitivity mode.")
     if preferences.get("uncertainty_mode") == "sensitivity":
-        deviations = preferences.get("margin_sd")
-        if not isinstance(deviations, dict) or any(
-            isinstance(deviations.get(k), bool)
-            or not isinstance(deviations.get(k), (int, float))
-            or not isfinite(deviations[k])
-            or deviations[k] <= 0
-            for k in CATEGORIES
-        ):
-            gaps.append("Sensitivity mode requires a positive margin standard deviation for each of nine categories.")
-        else:
-            payload["margin_sd"] = deviations
-            provenance["uncertainty"] = "user_selected sensitivity assumptions; not historical/calibrated probabilities"
-    elif history:
-        payload["prior_week_margins"] = history
-        provenance["uncertainty"] = f"{len(history)} complete prior same-period team comparisons; uncalibrated"
-    else:
-        gaps.append(
-            "Insufficient historical variance. Use baseline comparisons or explicitly enter sensitivity assumptions."
-        )
-    if gaps:
-        result.update(status="incomplete", reasons=list(gaps))
-        result["assumptions"] = ["Baseline contains recorded matchup totals only; a future forecast is withheld."]
-        return result
+        payload["margin_sd"] = preferences.get("margin_sd")
     planned = plan_waivers(payload)
-    result.update(
-        {k: planned[k] for k in ("status", "reasons", "actions", "remaining_adds", "assumptions", "limitations")}
-    )
+    for key in (
+        "status",
+        "reasons",
+        "actions",
+        "plan",
+        "recommendations",
+        "recommendation_kind",
+        "strategy",
+        "remaining_adds",
+        "assumptions",
+        "limitations",
+        "search",
+        "uncertainty",
+        "protected_players",
+        "score_basis",
+    ):
+        if key in planned:
+            result[key] = planned[key]
     result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
     result["projected"] = _forecast_view(planned["projected"])
-    result["provenance"]["rates"] = planned["provenance"]
-    result["search"] = planned["search"]
-    result["assumptions"].append(
-        "Sensitivity mode uses your nine entered margin standard deviations, not measured historical uncertainty."
-        if preferences.get("uncertainty_mode") == "sensitivity"
-        else f"Uncertainty uses {len(history)} complete prior weekly comparisons between these teams."
+    provenance["rates"] = planned["provenance"]
+    provenance["uncertainty"] = (f"{len(history)} complete prior weekly comparisons; " if history else "") + (
+        planned.get("uncertainty", {}).get("source", "unavailable") + "; uncalibrated model estimates"
     )
-    result["assumptions"].append(
-        "Weekly counts and selected add/drop availability are user-confirmed for this snapshot."
-        if preferences.get("user_confirmed_counts") is True
-        else "Weekly counts come from ESPN; selected add/drop availability is user-confirmed for this snapshot."
+    provenance["availability"] = (
+        f"{assumed} players assumed available unless explicitly out; user toggles take precedence"
     )
-    if overrides:
-        result["assumptions"].append(
-            "Schedule or availability corrections are user-confirmed inputs for this snapshot."
+    provenance["transactions"] = "Known locks/undroppable and core value protected; unknown locks assumed open"
+    if forecast_gaps:
+        result["status"] = "incomplete"
+        result["reasons"] = list(forecast_gaps)
+        result["limitations"].append(
+            "Partial roster forecast: omitted players have unknown contributions, not zero ability."
         )
-    if planned["search"]["evaluation_limit_reached"]:
-        result["limitations"].append("Search reached its 500-evaluation production limit; a better plan may exist.")
-    # Human-readable stream slot ordinal, while retaining the actual roster ancestry identifier.
+    if not remaining:
+        result.update(status="incomplete", reasons=[gaps[-1]])
     for action in result["actions"]:
         action["stream_roster_id"] = action["stream_slot"]
         action["stream_slot"] = drops.index(action["stream_slot"]) + 1
