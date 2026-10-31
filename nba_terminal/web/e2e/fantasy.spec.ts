@@ -87,6 +87,25 @@ test("Fantasy supports season stats, sample filters, player comparison and short
     path: resolve(evidenceDir, "fantasy-dashboard-desktop.png"),
     fullPage: true,
   });
+  const expandedWidth = await page.locator(".main-area").evaluate((node) => node.clientWidth);
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.getByRole("button", { name: "Expand sidebar" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await expect
+    .poll(() => page.locator(".main-area").evaluate((node) => node.clientWidth))
+    .toBeGreaterThan(expandedWidth);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByRole("link", { name: "Fantasy", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: resolve(evidenceDir, "fantasy-sidebar-collapsed.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
   await page.setViewportSize({ width: 390, height: 1024 });
   await page.screenshot({
     path: resolve(evidenceDir, "fantasy-dashboard-mobile.png"),
@@ -109,7 +128,12 @@ test("Fantasy supports season stats, sample filters, player comparison and short
   await page.screenshot({ path: resolve(evidenceDir, "fantasy-desktop.png") });
   await page.setViewportSize({ width: 390, height: 1024 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await expect(page.getByRole("link", { name: "✳ Fantasy" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByRole("link", { name: "Fantasy", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeHidden();
   await page.screenshot({ path: resolve(evidenceDir, "fantasy-mobile.png") });
 
   await page.getByRole("tab", { name: "TO" }).click();
