@@ -1,0 +1,3457 @@
+{
+  "fixture_notice": "Entirely synthetic mocked ESPN shapes; not a real league, schedule or credentials.",
+  "league": {
+    "id": 123,
+    "seasonId": 2027,
+    "scoringPeriodId": 10,
+    "status": {
+      "currentMatchupPeriod": 2
+    },
+    "settings": {
+      "name": "Synthetic 14-team nine-cat fixture",
+      "size": 14,
+      "scoringSettings": {
+        "scoringType": "H2H_CATEGORY",
+        "scoringItems": [
+          {
+            "statId": 0
+          },
+          {
+            "statId": 6
+          },
+          {
+            "statId": 3
+          },
+          {
+            "statId": 2
+          },
+          {
+            "statId": 1
+          },
+          {
+            "statId": 17
+          },
+          {
+            "statId": 11
+          },
+          {
+            "statId": 19
+          },
+          {
+            "statId": 20
+          }
+        ]
+      },
+      "scheduleSettings": {
+        "matchupPeriods": {
+          "1": [
+            1,
+            2,
+            3
+          ],
+          "2": [
+            10,
+            11,
+            12
+          ]
+        }
+      },
+      "rosterSettings": {
+        "lineupSlotCounts": {
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "11": 2,
+          "12": 3,
+          "13": 1
+        }
+      },
+      "acquisitionSettings": {
+        "matchupAcquisitionLimit": 7,
+        "matchupLimitPerScoringPeriod": false,
+        "acquisitionLimit": -1
+      }
+    },
+    "teams": [
+      {
+        "id": 1,
+        "name": "Fixture Team 1",
+        "owners": [
+          "fixture-owner-0001"
+        ],
+        "transactionCounter": {
+          "acquisitions": 21
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 1,
+                  "fullName": "Fixture Player 1",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "name": "Fixture Team 2",
+        "owners": [
+          "fixture-owner-0002"
+        ],
+        "transactionCounter": {
+          "acquisitions": 22
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 2,
+                  "fullName": "Fixture Player 2",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "name": "Fixture Team 3",
+        "owners": [
+          "fixture-owner-0003"
+        ],
+        "transactionCounter": {
+          "acquisitions": 23
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 3,
+                  "fullName": "Fixture Player 3",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "name": "Fixture Team 4",
+        "owners": [
+          "fixture-owner-0004"
+        ],
+        "transactionCounter": {
+          "acquisitions": 24
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 4,
+                  "fullName": "Fixture Player 4",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "name": "Fixture Team 5",
+        "owners": [
+          "fixture-owner-0005"
+        ],
+        "transactionCounter": {
+          "acquisitions": 25
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 5,
+                  "fullName": "Fixture Player 5",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "name": "Fixture Team 6",
+        "owners": [
+          "fixture-owner-0006"
+        ],
+        "transactionCounter": {
+          "acquisitions": 26
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 6,
+                  "fullName": "Fixture Player 6",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "name": "Fixture Team 7",
+        "owners": [
+          "fixture-owner-0007"
+        ],
+        "transactionCounter": {
+          "acquisitions": 27
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 7,
+                  "fullName": "Fixture Player 7",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "name": "Fixture Team 8",
+        "owners": [
+          "fixture-owner-0008"
+        ],
+        "transactionCounter": {
+          "acquisitions": 28
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 8,
+                  "fullName": "Fixture Player 8",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 9,
+        "name": "Fixture Team 9",
+        "owners": [
+          "fixture-owner-0009"
+        ],
+        "transactionCounter": {
+          "acquisitions": 29
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 9,
+                  "fullName": "Fixture Player 9",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 10,
+        "name": "Fixture Team 10",
+        "owners": [
+          "fixture-owner-0010"
+        ],
+        "transactionCounter": {
+          "acquisitions": 30
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 10,
+                  "fullName": "Fixture Player 10",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "name": "Fixture Team 11",
+        "owners": [
+          "fixture-owner-0011"
+        ],
+        "transactionCounter": {
+          "acquisitions": 31
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 11,
+                  "fullName": "Fixture Player 11",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 12,
+        "name": "Fixture Team 12",
+        "owners": [
+          "fixture-owner-0012"
+        ],
+        "transactionCounter": {
+          "acquisitions": 32
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 12,
+                  "fullName": "Fixture Player 12",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 13,
+        "name": "Fixture Team 13",
+        "owners": [
+          "fixture-owner-0013"
+        ],
+        "transactionCounter": {
+          "acquisitions": 33
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 13,
+                  "fullName": "Fixture Player 13",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 1,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 14,
+        "name": "Fixture Team 14",
+        "owners": [
+          "fixture-owner-0014"
+        ],
+        "transactionCounter": {
+          "acquisitions": 34
+        },
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "status": "ONTEAM",
+                "player": {
+                  "id": 14,
+                  "fullName": "Fixture Player 14",
+                  "eligibleSlots": [
+                    0,
+                    1,
+                    5,
+                    11,
+                    12,
+                    13
+                  ],
+                  "proTeamId": 2,
+                  "injured": false,
+                  "injuryStatus": "ACTIVE",
+                  "stats": [
+                    {
+                      "id": "002026",
+                      "seasonId": 2026,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    },
+                    {
+                      "id": "002027",
+                      "seasonId": 2027,
+                      "statSourceId": 0,
+                      "statSplitTypeId": 0,
+                      "scoringPeriodId": 0,
+                      "stats": {
+                        "0": 40,
+                        "1": 2,
+                        "2": 4,
+                        "3": 12,
+                        "6": 16,
+                        "11": 6,
+                        "13": 12,
+                        "14": 24,
+                        "15": 6,
+                        "16": 8,
+                        "17": 4,
+                        "19": 0.5,
+                        "20": 0.75,
+                        "40": 64,
+                        "42": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "schedule": [
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 1,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 2,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 3,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 4,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 5,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 6,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 7,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 8,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 9,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 10,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 11,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 12,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 1,
+        "home": {
+          "teamId": 13,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 14,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 1,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 2,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 3,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 4,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 5,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 6,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 7,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 8,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 9,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 10,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 11,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 12,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      },
+      {
+        "matchupPeriodId": 2,
+        "home": {
+          "teamId": 13,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 40,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 2,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 16,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 12,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 24,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 6,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 8,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 4,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 0.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 0.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 64,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 2,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        },
+        "away": {
+          "teamId": 14,
+          "cumulativeScore": {
+            "scoreByStat": {
+              "0": {
+                "score": 41,
+                "result": "UNDECIDED"
+              },
+              "1": {
+                "score": 3,
+                "result": "UNDECIDED"
+              },
+              "2": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "3": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "6": {
+                "score": 17,
+                "result": "UNDECIDED"
+              },
+              "11": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "13": {
+                "score": 13,
+                "result": "UNDECIDED"
+              },
+              "14": {
+                "score": 25,
+                "result": "UNDECIDED"
+              },
+              "15": {
+                "score": 7,
+                "result": "UNDECIDED"
+              },
+              "16": {
+                "score": 9,
+                "result": "UNDECIDED"
+              },
+              "17": {
+                "score": 5,
+                "result": "UNDECIDED"
+              },
+              "19": {
+                "score": 1.5,
+                "result": "UNDECIDED"
+              },
+              "20": {
+                "score": 1.75,
+                "result": "UNDECIDED"
+              },
+              "40": {
+                "score": 65,
+                "result": "UNDECIDED"
+              },
+              "42": {
+                "score": 3,
+                "result": "UNDECIDED"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "schedule": {
+    "settings": {
+      "proTeams": [
+        {
+          "id": 1,
+          "proGamesByScoringPeriod": {
+            "10": [
+              {
+                "date": 1793473200000,
+                "homeProTeamId": 1,
+                "awayProTeamId": 2
+              }
+            ],
+            "11": [
+              {
+                "date": 1793559600000,
+                "homeProTeamId": 2,
+                "awayProTeamId": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "proGamesByScoringPeriod": {
+            "10": [
+              {
+                "date": 1793473200000,
+                "homeProTeamId": 1,
+                "awayProTeamId": 2
+              }
+            ],
+            "11": [
+              {
+                "date": 1793559600000,
+                "homeProTeamId": 2,
+                "awayProTeamId": 1
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "pool": {
+    "players": [
+      {
+        "status": "FREEAGENT",
+        "player": {
+          "id": 100,
+          "fullName": "Fixture Player 100",
+          "eligibleSlots": [
+            0,
+            1,
+            5,
+            11,
+            12,
+            13
+          ],
+          "proTeamId": 2,
+          "injured": false,
+          "injuryStatus": "ACTIVE",
+          "stats": [
+            {
+              "id": "002026",
+              "seasonId": 2026,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            },
+            {
+              "id": "002027",
+              "seasonId": 2027,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            }
+          ]
+        }
+      },
+      {
+        "status": "WAIVERS",
+        "player": {
+          "id": 101,
+          "fullName": "Fixture Player 101",
+          "eligibleSlots": [
+            0,
+            1,
+            5,
+            11,
+            12,
+            13
+          ],
+          "proTeamId": 1,
+          "injured": false,
+          "injuryStatus": "ACTIVE",
+          "stats": [
+            {
+              "id": "002026",
+              "seasonId": 2026,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            },
+            {
+              "id": "002027",
+              "seasonId": 2027,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            }
+          ]
+        }
+      },
+      {
+        "status": "FREEAGENT",
+        "player": {
+          "id": 1,
+          "fullName": "Fixture Player 1",
+          "eligibleSlots": [
+            0,
+            1,
+            5,
+            11,
+            12,
+            13
+          ],
+          "proTeamId": 1,
+          "injured": false,
+          "injuryStatus": "ACTIVE",
+          "stats": [
+            {
+              "id": "002026",
+              "seasonId": 2026,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            },
+            {
+              "id": "002027",
+              "seasonId": 2027,
+              "statSourceId": 0,
+              "statSplitTypeId": 0,
+              "scoringPeriodId": 0,
+              "stats": {
+                "0": 40,
+                "1": 2,
+                "2": 4,
+                "3": 12,
+                "6": 16,
+                "11": 6,
+                "13": 12,
+                "14": 24,
+                "15": 6,
+                "16": 8,
+                "17": 4,
+                "19": 0.5,
+                "20": 0.75,
+                "40": 64,
+                "42": 2
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "cards": {
+    "players": []
+  },
+  "transactions": {
+    "transactions": [
+      {
+        "id": "synthetic-transaction-1",
+        "teamId": 1,
+        "type": "FREEAGENT",
+        "status": "EXECUTED",
+        "scoringPeriodId": 10,
+        "processDate": 1793473200000
+      }
+    ]
+  }
+}

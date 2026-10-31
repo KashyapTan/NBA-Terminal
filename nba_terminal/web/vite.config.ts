@@ -6,7 +6,12 @@ export default defineConfig({
   build: { outDir: "dist", emptyOutDir: true },
   server: {
     proxy: {
-      "/api": process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000",
+      "/api": {
+        target: process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000",
+        // Keep the browser-facing Host so the backend can enforce same-origin
+        // ESPN mutations without trusting forwarded-origin headers.
+        changeOrigin: false,
+      },
     },
   },
   test: {

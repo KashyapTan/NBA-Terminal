@@ -13,6 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from nba_terminal.espn_fantasy_api import router as espn_fantasy_router
 from nba_terminal.fantasy_api import router as fantasy_router
 from nba_terminal.services import game_center
 from nba_terminal.services import player_analysis as player_analysis_service
@@ -97,9 +98,13 @@ def _run_nba_fetch(function: Callable[..., Any], *args: Any) -> Any:
 
 app.state.cached_nba_call = _cached_call
 app.include_router(fantasy_router)
+app.state.espn_pool = NBA_POOL
+app.state.espn_slots = NBA_SLOTS
+app.include_router(espn_fantasy_router)
 
 
 @app.get("/")
+@app.get("/fantasy")
 async def index() -> FileResponse:
     if not (WEB_DIST / "index.html").is_file():
         raise HTTPException(status_code=503, detail="Web client is not built. Run `bun run build` in nba_terminal/web.")

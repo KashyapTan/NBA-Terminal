@@ -8,6 +8,8 @@ import {
   rankProfile,
   sortedRankings,
   statValue,
+  minutesPerGame,
+  meetsPlayingTime,
 } from "./fantasy-model";
 
 const player = (overrides: Partial<FantasyPlayer> = {}): FantasyPlayer => ({
@@ -128,5 +130,52 @@ describe("Fantasy stat calculations", () => {
     const profile = rankProfile(row, [row, other], "totals", DEFAULT_WEIGHTS);
     expect(profile).toEqual({ strongest: "STL #1", weakest: "PTS #2" });
     expect(rankProfile(player({ player_id: 99 }), [other], "perGame", DEFAULT_WEIGHTS)).toBeNull();
+  });
+});
+
+describe("Playing-time sample integrity", () => {
+  const limits = { minimumGames: 5, minimumMinutesPerGame: 25, minimumTotalMinutes: 250 };
+  it("derives MPG and requires each active sample threshold", () => {
+    expect(minutesPerGame(player())).toBe(30);
+    expect(meetsPlayingTime(player(), limits)).toBe(true);
+    expect(meetsPlayingTime(player({ minutes_total: 240 }), limits)).toBe(false);
+    expect(meetsPlayingTime(player({ games: 20 }), limits)).toBe(false);
+    expect(meetsPlayingTime(player({ games: 4 }), limits)).toBe(false);
+    expect(meetsPlayingTime(player({ minutes_total: 250 }), limits)).toBe(true);
+  });
+  it("excludes unknown and non-finite samples only when their threshold is active", () => {
+    for (const row of [
+      player({ minutes_total: null }),
+      player({ games: 0 }),
+      player({ games: null }),
+      player({ minutes_total: Number.NaN }),
+      player({ minutes_total: -1 }),
+      player({ games: Infinity }),
+    ]) {
+      expect(minutesPerGame(row)).toBeNull();
+      expect(meetsPlayingTime(row, limits)).toBe(false);
+      expect(
+        meetsPlayingTime(row, {
+          minimumGames: 0,
+          minimumMinutesPerGame: 0,
+          minimumTotalMinutes: 0,
+        }),
+      ).toBe(true);
+    }
+  });
+  it("keeps malformed counting stats and percentages out of rankings", () => {
+    expect(statValue(player({ points: Number.NaN }), "points", "totals")).toBeNull();
+    expect(statValue(player({ games: Infinity }), "points", "perGame")).toBeNull();
+    for (const row of [
+      player({ field_goal_attempts: Infinity }),
+      player({ field_goals_made: Number.NaN }),
+      player({ field_goals_made: 201 }),
+      player({ field_goals_made: -1 }),
+    ]) {
+      expect(statValue(row, "field_goal_percentage", "totals")).toBeNull();
+    }
+    expect(
+      sortedRankings([player({ points: Infinity })], "points", "totals", DEFAULT_WEIGHTS),
+    ).toEqual([]);
   });
 });

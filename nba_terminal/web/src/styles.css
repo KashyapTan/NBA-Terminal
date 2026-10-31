@@ -78,6 +78,7 @@ a:focus-visible,
 }
 
 .app-shell {
+  --sidebar-width: 238px;
   min-height: 100vh;
 }
 
@@ -86,7 +87,7 @@ a:focus-visible,
   inset: 0 auto 0 0;
   z-index: 5;
   display: flex;
-  width: 238px;
+  width: var(--sidebar-width);
   flex-direction: column;
   border-right: 1px solid #ffffff0d;
   background: #080b10;
@@ -121,8 +122,72 @@ a:focus-visible,
   font-weight: 700;
 }
 
+/* The desktop preference never hides the horizontal mobile navigation. */
+.sidebar-toggle {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 11px;
+  margin-top: 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 7px 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.sidebar-toggle:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.sidebar-toggle > span:first-child {
+  width: 18px;
+  font-size: 20px;
+  line-height: 1;
+  text-align: center;
+}
+
+@media (min-width: 761px) {
+  .sidebar-collapsed {
+    --sidebar-width: 76px;
+  }
+
+  .sidebar-collapsed .sidebar {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .sidebar-collapsed .brand,
+  .sidebar-collapsed .nav-item,
+  .sidebar-collapsed .sidebar-toggle {
+    justify-content: center;
+  }
+
+  .sidebar-collapsed .brand-name,
+  .sidebar-collapsed .nav-text,
+  .sidebar-collapsed .sidebar-toggle-label,
+  .sidebar-collapsed .sidebar-foot {
+    display: none;
+  }
+
+  .sidebar-collapsed .nav-label {
+    height: 16px;
+    overflow: hidden;
+    margin: 16px 0 10px;
+    font-size: 0;
+  }
+
+  .sidebar-collapsed .nav-item {
+    min-height: 44px;
+    padding: 10px;
+  }
+}
+
 .nav-label {
-  margin: 42px 10px 10px;
+  margin: 20px 10px 10px;
   color: #5e6a7b;
   font:
     600 10px "SFMono-Regular",
@@ -202,9 +267,10 @@ a:focus-visible,
 }
 
 .main-area {
+  min-width: 0;
   min-height: 100vh;
   max-width: 1800px;
-  margin-left: 238px;
+  margin-left: var(--sidebar-width);
   padding: 0 42px 20px;
 }
 
@@ -1199,12 +1265,14 @@ footer {
     height: 26px;
   }
 
+  .sidebar-toggle,
   .nav-label,
   .sidebar-foot {
     display: none;
   }
 
   .sidebar nav {
+    min-width: 0;
     display: flex;
     overflow-x: auto;
     gap: 3px;

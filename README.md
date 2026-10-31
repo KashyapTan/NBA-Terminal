@@ -25,6 +25,15 @@ The season menu covers 1996-97 through the current season. NBA Stats is an unoff
 
 The existing desktop player projections, consistency analysis, defense boards, slate scanner, API explorer, and Picks Archive are not yet ported into web pages. Their implementations remain available in the optional desktop app. Files under `nba_terminal/data/picks/` are user data and were not changed.
 
+## Fantasy workspace
+
+Fantasy now opens on Dashboard with Matchups, Leaders and Waiver Wire subtabs. Connect a local
+ESPN league for same-week comparisons and read-only waiver planning. Leaders retains season
+rankings with playing-time filters. The global sidebar collapses on desktop and keeps mobile
+navigation available. See [Fantasy setup, confirmed constraints and model limits](docs/fantasy.md)
+and [ESPN authentication](docs/espn-fantasy.md). Remote ESPN hosting is unsupported; no roster
+transactions are submitted and missing evidence never becomes a live recommendation.
+
 ## Verification commands
 
 From the project root, backend checks use UV and enforce each new Python web/API module separately:
@@ -46,4 +55,5 @@ bun run format:check
 bun run typecheck
 bun run build
 bun run e2e
+bun run e2e:fantasy
 ```
