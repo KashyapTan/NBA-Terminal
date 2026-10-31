@@ -14,10 +14,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
+from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 
+from nba_terminal.services.espn_bridge import PAIR_TTL, BridgeStore
 from nba_terminal.services.espn_fantasy import EspnClient, EspnError, team_choices, validate_team
 
 router = APIRouter(prefix="/api/fantasy/espn", tags=["ESPN Fantasy"])
@@ -54,7 +57,7 @@ def guard(request: Request, response: Response) -> None:
             raise fail("json_required", "Send connection details as JSON.", 415)
 
 
-async def body(request: Request, *, connect: bool = False) -> dict:
+async def body(request: Request, *, connect: bool = False, bridge: bool = False) -> dict:
     # Manual validation avoids FastAPI validation errors echoing private cookie input.
     content = bytearray()
     async for chunk in request.stream():
@@ -66,6 +69,8 @@ async def body(request: Request, *, connect: bool = False) -> dict:
     except (ValueError, UnicodeError):
         raise fail("invalid_json", "Send a valid JSON object.") from None
     allowed = {"team_id", "league_id", "season_id", "swid", "espn_s2"} if connect else {"team_id"}
+    if bridge:
+        allowed |= {"nonce", "state"}
     if not isinstance(data, dict) or set(data) - allowed:
         raise fail("invalid_fields", "Connection request contains unsupported fields.")
     for key, minimum, maximum in (("team_id", 1, 1_000_000), ("league_id", 1, 2**53), ("season_id", 2019, 2100)):
@@ -249,6 +254,8 @@ def connect_sync(data: dict) -> Connection:
 async def connect(request: Request, response: Response) -> dict:
     guard(request, response)
     conn = await worker(request, connect_sync, await body(request, connect=True))
+    revoke_bridge(request)
+    response.delete_cookie(BRIDGE_COOKIE, path="/api/fantasy/espn")
     try:
         token = store(request).add(conn, request.cookies.get(COOKIE))
     except EspnError as exc:
@@ -283,7 +290,11 @@ def status_sync(conn: Connection) -> dict:
 async def select_team(request: Request, response: Response) -> dict:
     guard(request, response)
     conn, data = connection(request), await body(request)
-    return await worker(request, select_sync, conn, data["team_id"])
+    result = await worker(request, select_sync, conn, data["team_id"])
+    pair = bridges(request).get(request.cookies.get(BRIDGE_COOKIE), str(request.base_url).rstrip("/"))
+    if pair and pair.session == request.cookies.get(COOKIE):
+        pair.team_id = result["team_id"]
+    return result
 
 
 def select_sync(conn: Connection, team_id: int) -> dict:
@@ -296,6 +307,8 @@ def select_sync(conn: Connection, team_id: int) -> dict:
 @router.delete("/connection")
 async def disconnect(request: Request, response: Response) -> dict:
     guard(request, response)
+    revoke_bridge(request)
+    response.delete_cookie(BRIDGE_COOKIE, path="/api/fantasy/espn")
     conn = store(request).remove(request.cookies.get(COOKIE))
     if conn:
         # Memory deletion is CPU-only; busy connection is already revoked and clears on return.
@@ -399,3 +412,170 @@ def plan_sync(conn: Connection, preferences: dict) -> dict:
         result = plan_snapshot_waivers(current, preferences)
         ensure_active(conn)
         return result
+
+
+# The extension uses an isolated content script's same-origin fetch. Never allow an
+# extension Origin here: no CORS exemption and no credential-bearing page messages.
+BRIDGE_COOKIE = "nba_espn_bridge"
+
+
+def bridges(request: Request) -> BridgeStore:
+    if not hasattr(request.app.state, "espn_bridges"):
+        request.app.state.espn_bridges = BridgeStore()
+    return request.app.state.espn_bridges
+
+
+def bridge_pair(request: Request):
+    pair = bridges(request).get(request.cookies.get(BRIDGE_COOKIE), str(request.base_url).rstrip("/"))
+    if pair is None:
+        raise fail("bridge_unpaired", "Pair this local browser page first.", 401)
+    return pair
+
+
+def revoke_bridge(request: Request) -> None:
+    pair = bridges(request).remove(request.cookies.get(BRIDGE_COOKIE))
+    if pair:
+        conn = store(request).remove(pair.session)
+        if conn and conn.lock.acquire(blocking=False):
+            try:
+                conn.clear()
+            finally:
+                conn.lock.release()
+
+
+def local_cookie(request: Request, response: Response, name: str, token: str, ttl: int) -> None:
+    response.set_cookie(
+        name,
+        token,
+        max_age=ttl,
+        httponly=True,
+        samesite="strict",
+        secure=request.url.scheme == "https",
+        path="/api/fantasy/espn",
+    )
+
+
+@router.post("/bridge/pair")
+async def pair_bridge(request: Request, response: Response) -> dict:
+    guard(request, response)
+    data = await body(request, connect=True)
+    if set(data) - {"league_id", "season_id", "team_id"}:
+        raise fail("invalid_fields", "Pairing accepts league, season and optional team only.")
+    revoke_bridge(request)
+    try:
+        token, pair = bridges(request).add(str(request.base_url).rstrip("/"), data)
+    except EspnError as exc:
+        raise fail(exc.code, exc.message, exc.status) from None
+    local_cookie(request, response, BRIDGE_COOKIE, token, PAIR_TTL)
+    return pair.status()
+
+
+@router.get("/bridge/status")
+async def bridge_status(request: Request, response: Response) -> dict:
+    guard(request, response)
+    pair = bridges(request).get(request.cookies.get(BRIDGE_COOKIE), str(request.base_url).rstrip("/"))
+    return pair.status() if pair else {"enabled": False}
+
+
+@router.post("/bridge/challenge")
+async def bridge_challenge(request: Request, response: Response) -> dict:
+    guard(request, response)
+    pair = bridge_pair(request)
+    try:
+        return {"nonce": bridges(request).challenge(pair), **pair.status()}
+    except EspnError as exc:
+        raise fail(exc.code, exc.message, exc.status) from None
+
+
+@router.post("/bridge/refresh")
+async def bridge_refresh(request: Request, response: Response) -> dict:
+    guard(request, response)
+    pair = bridge_pair(request)
+    data = await body(request, connect=True, bridge=True)
+    nonce = data.pop("nonce", None)
+    state = data.pop("state", None)
+    if not isinstance(nonce, str) or not nonce.isascii() or len(nonce) > 128:
+        raise fail("bridge_ticket_invalid", "Supply a fresh extension ticket.", 409)
+    if state is not None and (
+        not isinstance(state, str) or state not in {"no_espn_session", "permission_denied", "account_changed", "error"}
+    ):
+        raise fail("invalid_fields", "Supply a recognized extension state.")
+    try:
+        bridges(request).consume(pair, nonce)
+    except EspnError as exc:
+        raise fail(exc.code, exc.message, exc.status) from None
+    try:
+        if pair.state == "account_changed":
+            raise fail("bridge_account_changed", "ESPN account changed. Disconnect and pair again.", 409)
+        if data["league_id"] != pair.league_id or data["season_id"] != pair.season_id:
+            raise fail("bridge_mismatch", "Pairing league and season cannot change during refresh.", 409)
+        if state in {"no_espn_session", "permission_denied", "account_changed", "error"}:
+            pair.state = state
+            conn = store(request).remove(pair.session)
+            if conn and conn.lock.acquire(blocking=False):
+                try:
+                    conn.clear()
+                finally:
+                    conn.lock.release()
+            return pair.status()
+        if state is not None or not data.get("swid") or not data.get("espn_s2"):
+            raise fail("cookies_required", "Extension refresh requires both ESPN cookies.")
+        if pair.account and pair.account.lower().strip("{}") != data["swid"].lower().strip("{}"):
+            pair.state = "account_changed"
+            old = store(request).remove(pair.session)
+            if old and old.lock.acquire(blocking=False):
+                try:
+                    old.clear()
+                finally:
+                    old.lock.release()
+            raise fail("bridge_account_changed", "ESPN account changed. Disconnect and pair again.", 409)
+        current = store(request).get(pair.session)
+        # Team selection belongs to the server session, never to extension input.
+        data["team_id"] = current.team_id if current else pair.team_id
+        conn = await worker(request, bridge_connect_sync, data)
+        with bridges(request).lock:
+            if not pair.active or pair.expires <= time.time():
+                conn.clear()
+                raise fail("bridge_canceled", "Pairing was canceled while ESPN was responding.", 409)
+            pair.session = store(request).add(conn, pair.session or request.cookies.get(COOKIE))
+            pair.account, pair.team_id, pair.state = data["swid"], conn.team_id, "connected"
+        local_cookie(request, response, COOKIE, pair.session, SESSION_TTL)
+        return pair.status()
+    except (HTTPException, EspnError) as exc:
+        if pair.state != "account_changed":
+            pair.state = "error"
+        # Definite auth rejection revokes; transient upstream/worker failure may
+        # keep the still-valid prior connection until its normal expiry.
+        status = exc.status_code if isinstance(exc, HTTPException) else exc.status
+        if status < 500:
+            old = store(request).remove(pair.session)
+            if old and old.lock.acquire(blocking=False):
+                try:
+                    old.clear()
+                finally:
+                    old.lock.release()
+        if isinstance(exc, EspnError):
+            raise fail(exc.code, exc.message, exc.status) from None
+        raise
+    finally:
+        pair.busy = False
+
+
+@router.get("/bridge/setup/{filename}")
+async def bridge_setup(filename: str, request: Request, response: Response):
+    guard(request, response)
+    if filename not in {"firefox.zip", "chromium.zip", "instructions.md"}:
+        raise fail("not_found", "Unknown extension setup artifact.", 404)
+    return FileResponse(
+        Path(__file__).parent / "browser_extension" / "dist" / filename,
+        filename=filename,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+def bridge_connect_sync(data: dict) -> Connection:
+    conn = connect_sync(data)
+    if not any(team["ownership_verified"] for team in team_choices(conn.raw, conn.client.swid)):
+        conn.clear()
+        raise EspnError("account_not_member", "This ESPN account does not own a team in the paired league.", 403)
+    return conn

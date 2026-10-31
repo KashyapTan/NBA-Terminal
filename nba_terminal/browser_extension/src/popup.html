@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>NBA Terminal ESPN connection</title>
+<style>body{font:14px system-ui;width:330px;padding:12px;line-height:1.5}button{margin:6px 0;padding:8px;width:100%}#status{overflow-wrap:anywhere}</style>
+<h2>Connect this browser profile</h2>
+<p>Allow NBA Terminal on the active localhost tab to use only SWID and espn_s2 from ESPN in this browser profile/container. Credentials stay in local app memory. No password is collected and no roster changes are made.</p>
+<p>First pair your league in NBA Terminal. Then enable here. This permission can access ESPN cookies; this extension reads only these two names.</p>
+<button id="enable">Allow ESPN session for this local app</button>
+<button id="login">Sign in directly at ESPN</button>
+<button id="forget">Forget this local app and disconnect</button>
+<p id="status" role="status"></p><script src="popup.js"></script></html>

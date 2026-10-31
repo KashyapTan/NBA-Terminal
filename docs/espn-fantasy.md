@@ -8,11 +8,13 @@ Run NBA Terminal's existing single-process loopback server (`uv run nba-terminal
 
 Use the league ID from ESPN and the **ending** season year (for example, the 2026–27 NBA season uses 2027). Public leagues need no private credentials. Select a team returned by the league; ownership cannot be verified for public access. The adapter reports actual team count and scoring categories, and returns an unsupported-scoring explanation for leagues outside standard head-to-head nine-category scoring. It never assumes 14 managers or a seven-add cap.
 
+For automatic reuse of an ESPN login already open in Firefox/Chromium, use the first-party [browser extension installation guide](../nba_terminal/browser_extension/README.md). The running local app serves real Firefox/Chromium ZIPs and instructions under `/api/fantasy/espn/bridge/setup/`. After explicit local pairing and extension consent, verification stays on ESPN itself; the app receives only the two session cookies through an isolated same-origin relay. A normal web popup alone cannot read ESPN cookies. Firefox unsigned temporary installs must be reloaded after browser restart; no permanent signed package or live private-account compatibility is claimed.
+
 For private access, sign into ESPN directly in your own browser. ESPN's existing browser session may expose `SWID` and `espn_s2` under its domain's developer-tools cookie storage. Supply only those two values to the local connection form when it is available; send them only in the same-origin JSON POST body. Do not send passwords, put values in a URL, copy them to issue reports, or store them in browser localStorage. Clear the form fields after submission. If cookies are absent, expired, or ESPN denies access, renew the session through ESPN itself; this application does not automate login or bypass access restrictions.
 
 The supplied SWID is checked against the selected team's ESPN owner IDs, after ESPN grants league access. This is a cookie-to-owner consistency check, not an independently authenticated OAuth identity assertion; the local client is trusted to supply its own session. A private connection can first omit team selection to discover selectable teams.
 
-Credentials stay in per-browser backend memory behind an opaque HttpOnly SameSite=Strict session cookie. The cookie is Secure over HTTPS; plain HTTP is permitted only on loopback. Sessions expire after eight hours without extension, have a global cap of 64, and are lost on restart. Expired records are removed lazily on the next session access; disconnect revokes immediately and drops credential/cache references, or clears them when a currently running worker finishes. Python does not guarantee physical memory zeroization. Never enable request-body/header debug capture around connection requests.
+Credentials stay in per-browser backend memory behind an opaque HttpOnly SameSite=Strict session cookie. The cookie is Secure over HTTPS; plain HTTP is permitted only on loopback. Manual sessions expire after eight hours; an enabled paired extension renews before expiry while an app tab is open. Sessions have a global cap of 64, and are lost on restart. Expired records are removed lazily on the next session access; disconnect revokes immediately and drops credential/cache references, or clears them when a currently running worker finishes. Python does not guarantee physical memory zeroization. Never enable request-body/header debug capture around connection requests.
 
 ## HTTP contract
 
@@ -25,11 +27,15 @@ All routes live under `/api/fantasy/espn`. Send `X-Fantasy-Request: 1` for POST,
 | PUT `/team` | Body: `team_id`. Validates existence and private owner match; invalidates snapshot cache. |
 | GET `/snapshot` | Optional `refresh=true` and `compare_team_id`. Requires team selection. Returns normalized snapshot, actual opponent and same-period category comparison against any returned team. |
 | POST `/plan` | Snapshot-bound planner preferences and explicit confirmations; returns recommendations or precise missing-input reasons. Never performs transactions. |
-| DELETE `/connection` | Revokes this browser session and removes its cookie. No ESPN-side account/session changes. |
+| DELETE `/connection` | Revokes this browser session, automatic bridge and in-flight refresh, and removes both cookies. No ESPN-side account/session changes. |
 
 Errors contain `detail.code` and a static `detail.message`. Codes distinguish invalid input, local-only/origin denial, missing connection/team, team owner mismatch, unavailable league, access denial, upstream throttling/timeouts/network/schema failures, capacity and busy workers. Upstream bodies and exception text are never returned or logged by this adapter. Transient errors are not cached or silently replaced with stale success. Normalized snapshots cache for 60 seconds per connection; refresh bypasses that cache. Connections share the app's four bounded worker slots, and cancelled browser requests retain a slot until their underlying worker actually finishes.
 
 The normalized contract and synthetic example are also delivered as coordination artifacts. The repository fixture `tests/fixtures/espn_fantasy_synthetic.json` is entirely invented **test data**, not live league data. It covers 14 teams, nine categories, shooting attempts, current/prior season samples, schedules and current/prior matchups. Tests never require real credentials or ESPN access.
+
+## Extension bridge HTTP contract
+
+Same guards apply unchanged. POST `/bridge/pair` takes only league/season/optional team and creates a fresh HttpOnly binding. GET `/bridge/status` reports enabled/config/state without credentials. The isolated extension requests a single-use ticket at POST `/bridge/challenge`, then POST `/bridge/refresh` with that ticket and the two cookies (or a secret-free no-session/permission/account-change state). Only an actual successful member league read creates a fresh backend session cookie; account changes require explicit re-pair. GET `/bridge/setup/{filename}` allowlists `firefox.zip`, `chromium.zip`, `instructions.md`. DELETE `/connection` cancels the bridge and prevents late refresh resurrection; successful manual POST `/connect` also disables any prior bridge. No extension-origin CORS access is granted.
 
 ## Data sources and recommendation inputs
 
