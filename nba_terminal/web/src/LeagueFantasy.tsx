@@ -980,6 +980,32 @@ function WaiverStrategy({
             remaining budget in ESPN before choosing a move.
           </p>
         )}
+        {plan?.search && (
+          <p
+            className={
+              plan.search.alternatives_complete === false ? "league-tied" : "search-summary"
+            }
+          >
+            {plan.search.alternatives_complete === false
+              ? "Search incomplete: some beneficial alternatives may be omitted. "
+              : "Explored one-move pairs and timing; lineup forecasts are approximate. "}
+            {plan.search.evaluated_drop_ids?.length ?? "?"} of{" "}
+            {plan.search.legal_drop_ids?.length ?? "?"} legal roster drops evaluated ·{" "}
+            {plan.search.evaluations} evaluations · {plan.search.candidate_pool ?? "?"} candidates.
+            {plan.search.alternatives_complete === false && (
+              <>
+                {" "}
+                Bounds: {plan.search.candidate_limit ?? "unknown"} candidates /{" "}
+                {plan.search.evaluation_limit ?? "unknown"} evaluations.
+              </>
+            )}
+          </p>
+        )}
+        {snapshot.free_agents_truncated && (
+          <p className="league-tied">
+            ESPN returned a limited free-agent pool. Results cover that pool only.
+          </p>
+        )}
         {recommendations.length > 0 && (
           <label className="pickup-filter">
             Review by roster drop
@@ -1058,16 +1084,18 @@ function WaiverStrategy({
                                 </b>{" "}
                                 {key.endsWith("pct") ? (
                                   <>
-                                    Weighted team shooting: {calc.before_makes ?? "?"}/
-                                    {calc.before_attempts ?? "?"} → {calc.after_makes ?? "?"}/
-                                    {calc.after_attempts ?? "?"}; change{" "}
+                                    Weighted team shooting: {calc.weighted?.before_makes ?? "?"}/
+                                    {calc.weighted?.before_attempts ?? "?"} →{" "}
+                                    {calc.weighted?.after_makes ?? "?"}/
+                                    {calc.weighted?.after_attempts ?? "?"}; change{" "}
                                     {signed(calc.net_total, key as Category)}
                                   </>
                                 ) : (
                                   <>
                                     {calc.add_rate ?? "?"} × {calc.add_starts ?? "?"} starts −{" "}
                                     {calc.drop_rate ?? "?"} × {calc.drop_starts ?? "?"} starts
-                                    {calc.lineup_other_net
+                                    {calc.lineup_other_net != null &&
+                                    Math.abs(calc.lineup_other_net) >= 0.05
                                       ? ` + (${signed(calc.lineup_other_net)} other lineup changes)`
                                       : ""}{" "}
                                     = {signed(calc.net_total)} total

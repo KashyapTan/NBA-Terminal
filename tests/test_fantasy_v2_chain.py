@@ -89,8 +89,8 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
             snapshot = response.json()
             assert len(snapshot["teams"]) == 14
             assert len(snapshot["teams"][0]["roster"]) == 13
-            assert snapshot["teams"][0]["weekly_used_adds"] == 5
-            assert snapshot["teams"][0]["remaining_adds"] == 2
+            assert snapshot["teams"][0]["weekly_used_adds"] == 6
+            assert snapshot["teams"][0]["remaining_adds"] == 1
             pickup = next(p for p in snapshot["free_agents"] if p["id"] == "100")
             roster = snapshot["teams"][0]["roster"][0]
             assert roster["current_rates"]["minutes"] == 18  # usable ESPN remains authoritative
@@ -121,21 +121,34 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                     return response.json()
 
                 initial = await plan()
-                assert len(initial["recommendations"]) == 7
-                assert initial["remaining_adds"] + len(initial["actions"]) == 2
-                assert initial["protected_players"]["1002"] == "First-round/core value"
-                assert all(item["drop_id"] == "1" for item in initial["recommendations"])
+                assert len(initial["recommendations"]) > 7
+                assert all(item["net_score"] > 0 for item in initial["recommendations"])
+                assert all(item["estimated_win_gain"] > 0 for item in initial["recommendations"])
+                unique_pairs = {(item["add_id"], item["drop_id"]) for item in initial["recommendations"]}
+                assert len(unique_pairs) == len(initial["recommendations"])
+                assert len(initial["selected_categories"]) == 5
+                assert set(initial["improvement_categories"]).isdisjoint(initial["safe_categories"])
+                assert "1002" in initial["search"]["legal_drop_ids"]
+                assert "1002" in initial["search"]["evaluated_drop_ids"]
+                assert "1001" not in initial["search"]["legal_drop_ids"]
+                assert initial["remaining_adds"] + len(initial["actions"]) == 1
+                assert "1002" not in initial["protected_players"]
+                assert {item["drop_id"] for item in initial["recommendations"]} >= {"1", "1002"}
                 best = initial["recommendations"][0]
                 assert best["target_categories"]
                 assert all(
-                    initial["strategy"][key]["classification"] in {"swing", "reachable"}
+                    initial["strategy"][key]["improvement_target"]
                     for key in best["target_categories"]
                 )
                 out = await plan({"100": {"injured": True}})
                 assert all(item["add_id"] != "100" for item in out["recommendations"])
                 protected = await plan({"1": {"protected": True}, "1002": {"protected": False}})
-                assert not protected["recommendations"]
-                assert protected["protected_players"]["1002"] == "First-round/core value"
+                assert all(item["drop_id"] != "1" for item in protected["recommendations"])
+                assert "1002" not in protected["protected_players"]
+                assert "1002" in protected["search"]["evaluated_drop_ids"]
+                core_protected = await plan({"1002": {"protected": True}})
+                assert all(item["drop_id"] != "1002" for item in core_protected["recommendations"])
+                assert "1002" not in core_protected["search"]["legal_drop_ids"]
                 available = await plan({"1": {"injured": False}})
                 assert available["baseline"]["minutes"] == initial["baseline"]["minutes"]
 

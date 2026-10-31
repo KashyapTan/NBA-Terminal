@@ -355,3 +355,63 @@ it("shows total arithmetic, selected five and paginates genuine alternatives wit
     ]),
   );
 });
+
+it("discloses incomplete bounds and reads final weighted percentage calculation fields", async () => {
+  const onPlan = vi
+    .fn()
+    .mockResolvedValue({
+      ...readyPlan,
+      search: {
+        evaluations: 5000,
+        evaluation_limit_reached: true,
+        alternatives_complete: false,
+        legal_drop_ids: ["rostered", "other"],
+        evaluated_drop_ids: ["rostered"],
+        candidate_pool: 80,
+        candidate_limit: 80,
+        evaluation_limit: 5000,
+      },
+      recommendations: [
+        {
+          add_id: "free",
+          drop_id: "rostered",
+          date: "2026-11-01",
+          probability_gain: null,
+          gains: {},
+          games_gain: 0,
+          minutes_gain: 0,
+          season_cost: 0,
+          net_score: 1,
+          target_categories: ["fg_pct"],
+          rationale: "Weighted gain.",
+          calculation: {
+            fg_pct: {
+              add_rate: 0.6,
+              drop_rate: 0.4,
+              add_starts: 2,
+              drop_starts: 2,
+              added_total: null,
+              lost_total: null,
+              lineup_other_net: null,
+              net_total: 0.01,
+              weighted: {
+                before_makes: 40,
+                before_attempts: 100,
+                after_makes: 41,
+                after_attempts: 100,
+              },
+            },
+          },
+        },
+      ],
+    });
+  render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
+  await screen.findByText(/Search incomplete: some beneficial alternatives may be omitted/);
+  expect(screen.getByText(/1 of 2 legal roster drops evaluated/)).toHaveTextContent(
+    "80 candidates",
+  );
+  await userEvent.click(screen.getByText("Remaining matchup arithmetic & tradeoffs"));
+  expect(screen.getByText(/Weighted team shooting: 40\/100 → 41\/100/)).toHaveTextContent(
+    "+1.00 pp",
+  );
+});

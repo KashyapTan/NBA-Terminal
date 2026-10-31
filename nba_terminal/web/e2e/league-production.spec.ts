@@ -10,16 +10,17 @@ async function connect(page: Page, league = 123) {
     "aria-selected",
     "true",
   );
-  await page.getByLabel("League ID", { exact: true }).fill(String(league));
-  await page.getByLabel("Season ending year").fill("2027");
-  await page.getByRole("button", { name: "Connect ESPN", exact: true }).click();
+  await page.getByText("Manual or public league fallback", { exact: true }).click();
+  await page.getByLabel("Manual league ID", { exact: true }).fill(String(league));
+  await page.getByLabel("Manual season ending year").fill("2027");
+  await page.getByRole("button", { name: "Connect manually", exact: true }).click();
   if (league !== 126) {
     await expect(page.getByLabel("Your ESPN team")).toBeEnabled();
     await page.getByLabel("Your ESPN team").selectOption("1");
     await expect(page.getByText("Current opponent: Fixture Team 2", { exact: true })).toBeVisible();
   }
 }
-test("production chain automatically ranks seven net pickup alternatives and preserves edits", async ({
+test("production chain evaluates all legal drops with selected five and preserves edits", async ({
   page,
 }, info) => {
   await connect(page);
@@ -33,7 +34,7 @@ test("production chain automatically ranks seven net pickup alternatives and pre
   await compared.selectOption("14");
   await expect(page.getByLabel("0 wins, 0 losses, 9 ties")).toBeVisible();
   await compared.selectOption("2");
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v2");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({
@@ -45,18 +46,30 @@ test("production chain automatically ranks seven net pickup alternatives and pre
   );
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
   const initialPlan = (await (await initialResponse).json()) as WaiverPlan;
-  expect(initialPlan.recommendations).toHaveLength(7);
+  expect(initialPlan.recommendations!.length).toBeGreaterThan(7);
+  expect(initialPlan.selected_categories).toHaveLength(5);
+  expect(initialPlan.search!.legal_drop_ids).toContain("1002");
+  expect(initialPlan.search!.evaluated_drop_ids).toContain("1002");
+  expect(
+    initialPlan.recommendations!.every(
+      (option) => option.net_score! > 0 && option.estimated_win_gain! > 0,
+    ),
+  ).toBe(true);
   const primaryTarget = initialPlan.recommendations![0].target_categories[0];
   expect(initialPlan.strategy?.[primaryTarget]?.recommended_target).toBe(true);
   await expect(page.getByRole("heading", { name: /Focus on/ })).toContainText(
     LEAGUE_CATEGORIES.find((category) => category.key === primaryTarget)!.label,
   );
   const alternatives = page.getByRole("region", { name: "Ranked pickup alternatives" });
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
   await expect(page.locator(".category-overview tbody > tr")).toHaveCount(9);
   await expect(page.locator(".category-overview thead th")).toHaveCount(6);
-  await expect(page.getByText(/Combined weekly plan/)).toBeVisible();
-  await expect(page.locator(".waiver-budget")).toContainText("5 used");
+  await expect(page.getByText(/Sequential matchup plan/)).toBeVisible();
+  await expect(page.locator(".waiver-budget")).toContainText("6 used");
+  await expect(page.locator(".waiver-budget b")).toHaveText("1");
+  await alternatives.locator(".pickup-details summary").first().click();
+  await expect(alternatives.getByText(/Weighted team shooting:/).first()).toBeVisible();
+  await expect(alternatives.getByText(/Weighted team shooting:/).first()).not.toContainText("?");
   await page.screenshot({
     path: resolve(evidence, `${info.project.name}-waiver-desktop.png`),
     fullPage: true,
@@ -75,7 +88,7 @@ test("production chain automatically ranks seven net pickup alternatives and pre
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Protect Fixture Player 1002", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
     .click();
@@ -90,11 +103,15 @@ test("production chain automatically ranks seven net pickup alternatives and pre
   await page
     .getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true })
     .click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
   await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(0);
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(9);
+  await expect(
+    alternatives.getByRole("heading", { name: "Fixture Player 1", exact: true }),
+  ).toHaveCount(0);
+  await expect(alternatives.locator(".pickup-list")).toContainText("Fixture Player 1002");
   await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
   await page.route("**/api/fantasy/espn/plan", (route) =>
     route.fulfill({ status: 503, json: { detail: "test busy" } }),
   );
@@ -115,12 +132,13 @@ test("private cookie flow uses the local session and enforces selectable ownersh
   page,
 }) => {
   await page.goto("/fantasy");
-  await page.getByLabel("League ID", { exact: true }).fill("123");
-  await page.getByLabel("Season ending year").fill("2027");
+  await page.getByText("Manual or public league fallback", { exact: true }).click();
+  await page.getByLabel("Manual league ID", { exact: true }).fill("123");
+  await page.getByLabel("Manual season ending year").fill("2027");
   await page.getByLabel("Private league", { exact: true }).check();
   await page.getByLabel("SWID", { exact: true }).fill("fixture-owner-0001");
   await page.getByLabel("espn_s2", { exact: true }).fill("synthetic-cookie-test-only");
-  await page.getByRole("button", { name: "Connect ESPN", exact: true }).click();
+  await page.getByRole("button", { name: "Connect manually", exact: true }).click();
   await expect(page.getByLabel("Your ESPN team")).toBeEnabled();
   await expect(page.getByLabel("Your ESPN team").locator('option[value="2"]')).toHaveAttribute(
     "disabled",
@@ -150,7 +168,7 @@ test("missing schedules, unsupported formats and failed connections stay honest"
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "Ranked pickup alternatives" }).locator(".pickup-list > li"),
-  ).toHaveCount(7);
+  ).toHaveCount(12);
   const fallbackSnapshot = await (await page.request.get("/api/fantasy/espn/snapshot")).json();
   expect(fallbackSnapshot.free_agents[0].schedule_source).toBe("nba_schedule");
   expect(fallbackSnapshot.free_agents[0].current_rates_source).toBe("nba_stats");

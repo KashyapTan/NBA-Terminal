@@ -160,6 +160,8 @@ export interface PickupRecommendation {
   drop_id: string;
   date: string;
   probability_gain: number | null;
+  estimated_win_gain?: number | null;
+  score_basis?: string;
   category_probability_gains?: Partial<Record<Category, number>>;
   gains: Partial<Record<Category, number | null>>;
   games_gain: number | null;
@@ -180,10 +182,12 @@ export interface PickupRecommendation {
         lost_total: number | null;
         lineup_other_net: number | null;
         net_total: number | null;
-        before_makes?: number | null;
-        before_attempts?: number | null;
-        after_makes?: number | null;
-        after_attempts?: number | null;
+        weighted?: {
+          before_makes: number | null;
+          before_attempts: number | null;
+          after_makes: number | null;
+          after_attempts: number | null;
+        };
       }
     >
   >;
@@ -202,6 +206,20 @@ export interface PickupRecommendation {
   >;
 }
 export interface WaiverPlan {
+  search?: {
+    candidate_pool?: number;
+    candidate_limit?: number;
+    evaluation_limit?: number;
+    evaluations: number;
+    evaluation_limit_reached: boolean;
+    legal_drop_ids?: string[];
+    evaluated_drop_ids?: string[];
+    alternatives_returned?: number;
+    alternatives_complete?: boolean;
+    plan_search?: string;
+  };
+  recommendation_groups?: Record<string, number[]>;
+
   selected_categories?: Category[];
   safe_categories?: Category[];
   improvement_categories?: Category[];
