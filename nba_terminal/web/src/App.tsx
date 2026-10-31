@@ -96,7 +96,25 @@ function EmptyState({
   );
 }
 
+const SIDEBAR_PREFERENCE_KEY = "nba-terminal.sidebar-collapsed";
+
 function AppShell({ children }: { children: ReactNode }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_PREFERENCE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  function toggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(next));
+    } catch {
+      // Navigation remains usable when storage is blocked or full.
+    }
+  }
   const location = useLocation();
   const isFantasy = location.pathname.startsWith("/fantasy");
   const label = location.pathname.includes("/player/")
@@ -108,32 +126,54 @@ function AppShell({ children }: { children: ReactNode }) {
         : "Game Center";
   return (
     <div
-      className={`app-shell${isFantasy ? " fantasy-shell" : ""}${
+      className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}${isFantasy ? " fantasy-shell" : ""}${
         location.pathname.includes("/player/") ? " player-analysis-shell" : ""
       }`}
     >
       <aside className="sidebar">
         <Link className="brand" to="/" aria-label="NBA Terminal home">
           <span className="brand-mark">N</span>
-          <span>
+          <span className="brand-name">
             NBA <b>TERMINAL</b>
           </span>
         </Link>
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={toggleSidebar}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="workspace-navigation"
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <span aria-hidden="true">{sidebarCollapsed ? "»" : "«"}</span>
+          <span className="sidebar-toggle-label">Collapse sidebar</span>
+        </button>
         <div className="nav-label">WORKSPACE</div>
-        <nav>
+        <nav id="workspace-navigation" aria-label="Workspace">
           <Link
             className={`nav-item${!isFantasy ? " active" : ""}`}
             to="/"
+            aria-label="Game Center"
+            title="Game Center"
             aria-current={!isFantasy ? "page" : undefined}
           >
-            <span className="nav-icon">▦</span> Game Center
+            <span className="nav-icon" aria-hidden="true">
+              ▦
+            </span>
+            <span className="nav-text">Game Center</span>
           </Link>
           <Link
             className={`nav-item${isFantasy ? " active" : ""}`}
             to="/fantasy"
+            aria-label="Fantasy"
+            title="Fantasy"
             aria-current={isFantasy ? "page" : undefined}
           >
-            <span className="nav-icon">✳</span> Fantasy
+            <span className="nav-icon" aria-hidden="true">
+              ✳
+            </span>
+            <span className="nav-text">Fantasy</span>
           </Link>
         </nav>
         <div className="sidebar-foot">

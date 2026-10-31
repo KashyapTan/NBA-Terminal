@@ -115,7 +115,7 @@ describe("Fantasy workspace", () => {
     const user = userEvent.setup();
     const { fetch } = mount("/");
     await screen.findByRole("heading", { name: "Every game, in focus." });
-    await user.click(screen.getByRole("link", { name: "✳ Fantasy" }));
+    await user.click(screen.getByRole("link", { name: "Fantasy" }));
 
     expect(
       await screen.findByRole("heading", { name: "Find your next edge." }),
