@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getFantasySeason } from "./api";
 import type { FantasyPlayer, Meta } from "./model";
@@ -14,6 +14,8 @@ import {
   rankProfile,
   sortedRankings,
   statValue,
+  minutesPerGame,
+  meetsPlayingTime,
   type FantasyCategoryKey,
   type FantasyPreferences,
 } from "./fantasy-model";
@@ -57,6 +59,8 @@ function readPreferences(): FantasyPreferences {
       statView: value.statView === "totals" ? "totals" : "perGame",
       minimumGames: clampMinimum(value.minimumGames),
       minimumAttempts: clampMinimum(value.minimumAttempts),
+      minimumMinutesPerGame: clampMinimum(value.minimumMinutesPerGame),
+      minimumTotalMinutes: clampMinimum(value.minimumTotalMinutes, 10000),
       weights,
       shortlist: Array.isArray(value.shortlist)
         ? [...new Set(value.shortlist.filter((id) => Number.isInteger(id) && id > 0))].slice(0, 100)
@@ -67,9 +71,9 @@ function readPreferences(): FantasyPreferences {
   }
 }
 
-function clampMinimum(value: unknown) {
+function clampMinimum(value: unknown, maximum = 1000) {
   return typeof value === "number" && Number.isFinite(value)
-    ? Math.min(1000, Math.max(0, Math.floor(value)))
+    ? Math.min(maximum, Math.max(0, Math.floor(value)))
     : 0;
 }
 
@@ -92,12 +96,114 @@ function playerSample(player: FantasyPlayer, key: FantasyCategoryKey) {
   return `${Math.round(sample).toLocaleString()} ${key === "field_goal_percentage" ? "FGA" : key === "free_throw_percentage" ? "FTA" : "3PA"}`;
 }
 
-function playerMinutes(player: FantasyPlayer) {
-  if (player.minutes_total === null || !player.games || player.games <= 0) return null;
-  return player.minutes_total / player.games;
+export type FantasyTab = "dashboard" | "matchups" | "leaders" | "waiver";
+export type FantasyLeagueSlots = {
+  dashboard?: ReactNode;
+  matchups?: ReactNode;
+  waiver?: ReactNode;
+};
+export type FantasyPageProps = { meta: Meta; league?: FantasyLeagueSlots };
+const FANTASY_TABS: { key: FantasyTab; label: string }[] = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "matchups", label: "Matchups" },
+  { key: "leaders", label: "Leaders" },
+  { key: "waiver", label: "Waiver Wire" },
+];
+
+function LeaguePrompt() {
+  return (
+    <section className="fantasy-state">
+      <div>
+        <b>Connect your ESPN league</b>
+        <p>
+          League connection is required for your matchup, roster, available players and weekly adds.
+          No league is linked here yet. Open Leaders to browse NBA season stats.
+        </p>
+      </div>
+    </section>
+  );
 }
 
-function FantasyPage({ meta }: { meta: Meta }) {
+function FantasyPage({ meta, league }: FantasyPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("fantasyTab");
+  const tab = FANTASY_TABS.find((item) => item.key === requested)?.key ?? "dashboard";
+  const requestedSeason = searchParams.get("season");
+  const season =
+    requestedSeason && /^\d{4}-\d{2}$/.test(requestedSeason)
+      ? requestedSeason
+      : meta.current_season;
+  function selectTab(key: FantasyTab) {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set("fantasyTab", key);
+      return next;
+    });
+  }
+  return (
+    <section className="fantasy-page">
+      <FantasyHeader season={season} meta={meta} />
+      <div className="fantasy-subtabs" role="tablist" aria-label="Fantasy workspace">
+        {FANTASY_TABS.map((item, index) => (
+          <button
+            type="button"
+            key={item.key}
+            id={`fantasy-tab-${item.key}`}
+            role="tab"
+            aria-selected={tab === item.key}
+            aria-controls={`fantasy-panel-${item.key}`}
+            tabIndex={tab === item.key ? 0 : -1}
+            onClick={() => selectTab(item.key)}
+            onKeyDown={(event) => {
+              let target: number | null = null;
+              if (event.key === "ArrowRight") target = (index + 1) % FANTASY_TABS.length;
+              if (event.key === "ArrowLeft")
+                target = (index + FANTASY_TABS.length - 1) % FANTASY_TABS.length;
+              if (event.key === "Home") target = 0;
+              if (event.key === "End") target = FANTASY_TABS.length - 1;
+              if (target !== null) {
+                event.preventDefault();
+                selectTab(FANTASY_TABS[target].key);
+                document.getElementById(`fantasy-tab-${FANTASY_TABS[target].key}`)?.focus();
+              }
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id={`fantasy-panel-${tab}`}
+        aria-labelledby={`fantasy-tab-${tab}`}
+        tabIndex={0}
+      >
+        {tab === "dashboard" && (league?.dashboard ?? <LeaguePrompt />)}
+        {tab === "matchups" ? (
+          (league?.matchups ?? <LeaguePrompt />)
+        ) : tab === "waiver" ? (
+          (league?.waiver ?? <LeaguePrompt />)
+        ) : (
+          <FantasyStats
+            meta={meta}
+            dashboard={tab === "dashboard"}
+            onLeaders={() => selectTab("leaders")}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FantasyStats({
+  meta,
+  dashboard,
+  onLeaders,
+}: {
+  meta: Meta;
+  dashboard: boolean;
+  onLeaders: () => void;
+}) {
   const [searchParams] = useSearchParams();
   const requestedSeason = searchParams.get("season");
   const season =
@@ -112,7 +218,10 @@ function FantasyPage({ meta }: { meta: Meta }) {
   const [search, setSearch] = useState("");
   const [compared, setCompared] = useState<number[]>([]);
   const [notice, setNotice] = useState("");
-  const [sort, setSort] = useState<SortState>({ key: "stat", ascending: false });
+  const [sort, setSort] = useState<SortState>(() => ({
+    key: "stat",
+    ascending: preferences.ranking === "categories" && preferences.category === "turnovers",
+  }));
   const [weightsOpen, setWeightsOpen] = useState(false);
 
   useEffect(() => savePreferences(preferences), [preferences]);
@@ -150,7 +259,7 @@ function FantasyPage({ meta }: { meta: Meta }) {
   const candidateRows = useMemo(
     () =>
       players.filter((player) => {
-        if ((player.games ?? 0) < preferences.minimumGames) return false;
+        if (!meetsPlayingTime(player, preferences)) return false;
         if (percentage) {
           if ((attemptSample(player, activeCategory) ?? 0) < preferences.minimumAttempts)
             return false;
@@ -165,6 +274,8 @@ function FantasyPage({ meta }: { meta: Meta }) {
     [
       players,
       preferences.minimumGames,
+      preferences.minimumMinutesPerGame,
+      preferences.minimumTotalMinutes,
       preferences.minimumAttempts,
       activeCategory,
       percentage,
@@ -198,7 +309,8 @@ function FantasyPage({ meta }: { meta: Meta }) {
           (statValue(left, activeCategory, preferences.statView, preferences.weights) ?? 0) -
           (statValue(right, activeCategory, preferences.statView, preferences.weights) ?? 0);
       if (sort.key === "games") result = (left.games ?? 0) - (right.games ?? 0);
-      if (sort.key === "minutes") result = (playerMinutes(left) ?? 0) - (playerMinutes(right) ?? 0);
+      if (sort.key === "minutes")
+        result = (minutesPerGame(left) ?? 0) - (minutesPerGame(right) ?? 0);
       if (sort.key === "sample")
         result =
           (attemptSample(left, activeCategory) ?? 0) - (attemptSample(right, activeCategory) ?? 0);
@@ -288,7 +400,6 @@ function FantasyPage({ meta }: { meta: Meta }) {
   if (error)
     return (
       <section className="fantasy-page">
-        <FantasyHeader season={season} meta={meta} />
         <div className="fantasy-error" role="alert">
           <b>Fantasy stats unavailable</b>
           <p>{error} NBA Stats is the source; no values have been filled in.</p>
@@ -301,7 +412,6 @@ function FantasyPage({ meta }: { meta: Meta }) {
   if (payload?.supported === false)
     return (
       <section className="fantasy-page">
-        <FantasyHeader season={season} meta={meta} />
         <div className="fantasy-state">
           <span aria-hidden="true">i</span>
           <div>
@@ -312,9 +422,97 @@ function FantasyPage({ meta }: { meta: Meta }) {
       </section>
     );
 
+  if (dashboard) {
+    const sampled = players.filter((player) => meetsPlayingTime(player, preferences));
+    return (
+      <div className="fantasy-dashboard">
+        <div className="fantasy-board-header">
+          <div>
+            <span className="fantasy-kicker">SEASON SNAPSHOT · {season}</span>
+            <h2>Your fantasy workspace</h2>
+            <p>
+              NBA Stats regular-season actuals. These are player leaders, not your league standings
+              or projections.
+            </p>
+          </div>
+          <button type="button" onClick={onLeaders}>
+            Explore Leaders
+          </button>
+        </div>
+        <div className="fantasy-overview" aria-label="Season overview">
+          <div>
+            <span>PLAYERS IN SEASON DATA</span>
+            <strong>{players.length}</strong>
+            <small>Returned by NBA Stats</small>
+          </div>
+          <div>
+            <span>PLAYING-TIME SAMPLE</span>
+            <strong>{sampled.length}</strong>
+            <small>
+              At least {preferences.minimumGames} GP · {preferences.minimumMinutesPerGame} MPG ·{" "}
+              {preferences.minimumTotalMinutes} total minutes
+            </small>
+          </div>
+          <div>
+            <span>YOUR SHORTLIST</span>
+            <strong>{preferences.shortlist.length}</strong>
+            <small>Saved on this device · available in Leaders</small>
+          </div>
+        </div>
+        {players.length === 0 ? (
+          <div className="fantasy-state">
+            <div>
+              <b>
+                {season === meta.current_season
+                  ? `${season} season stats are not available yet`
+                  : "No regular-season player stats returned"}
+              </b>
+              <p>No rankings or projections are shown.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3>Category watch</h3>
+            <p className="fantasy-list-intro">
+              Per-game leaders using your Leaders playing-time filters. Percentage leaders require
+              at least {preferences.minimumAttempts} season attempts; zero-attempt rates are
+              unavailable. Adjust sample limits in Leaders.
+            </p>
+            <div className="fantasy-dashboard-categories">
+              {STANDARD_NINE.map((key) => {
+                const eligible = sampled.filter(
+                  (row) =>
+                    !isPercentageCategory(key) ||
+                    (attemptSample(row, key) ?? 0) >= preferences.minimumAttempts,
+                );
+                const leader = sortedRankings(eligible, key, "perGame", preferences.weights)[0];
+                return (
+                  <article key={key}>
+                    <span>
+                      {categoryShort(key)}
+                      {key === "turnovers" ? " · fewer is better" : ""}
+                    </span>
+                    <b>{leader?.player_name ?? "No qualifying sample"}</b>
+                    <strong>
+                      {leader ? formatStat(statValue(leader, key, "perGame"), key) : "—"}
+                    </strong>
+                    <small>
+                      {leader
+                        ? `${leader.games ?? "—"} GP · ${minutesPerGame(leader)?.toFixed(1) ?? "—"} MPG${isPercentageCategory(key) ? ` · ${playerSample(leader, key)}` : ""}`
+                        : "Review sample filters in Leaders"}
+                    </small>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section className="fantasy-page">
-      <FantasyHeader season={season} meta={meta} />
       <div className="fantasy-statusline">
         <span className="fantasy-source-dot" />
         <span>NBA Stats · regular season actuals</span>
@@ -572,6 +770,37 @@ function FantasyPage({ meta }: { meta: Meta }) {
                   }
                 />
               </label>
+              <label>
+                <span>MIN MPG</span>
+                <input
+                  aria-label="Minimum minutes per game"
+                  aria-describedby="fantasy-sample-help"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={preferences.minimumMinutesPerGame}
+                  onChange={(event) =>
+                    update("minimumMinutesPerGame", clampMinimum(numericInput(event.target.value)))
+                  }
+                />
+              </label>
+              <label>
+                <span>MIN TOTAL MIN</span>
+                <input
+                  aria-label="Minimum total minutes"
+                  aria-describedby="fantasy-sample-help"
+                  type="number"
+                  min="0"
+                  max="10000"
+                  value={preferences.minimumTotalMinutes}
+                  onChange={(event) =>
+                    update(
+                      "minimumTotalMinutes",
+                      clampMinimum(numericInput(event.target.value), 10000),
+                    )
+                  }
+                />
+              </label>
               {showAttemptFilter && (
                 <label>
                   <span>MIN ATTEMPTS</span>
@@ -596,6 +825,11 @@ function FantasyPage({ meta }: { meta: Meta }) {
               </span>
             </div>
 
+            <p id="fantasy-sample-help" className="fantasy-table-footnote">
+              MPG is season minutes divided by games played. Playing-time limits apply in both stat
+              views; unknown minutes or games cannot meet a positive limit. All limits default to
+              zero, so small samples may lead.
+            </p>
             <div className="fantasy-table-wrap">
               <table className="fantasy-table">
                 <thead>
@@ -666,7 +900,9 @@ function FantasyPage({ meta }: { meta: Meta }) {
                         </td>
                         <td>{player.games === null ? "—" : Math.round(player.games)}</td>
                         <td>
-                          {playerMinutes(player) === null ? "—" : playerMinutes(player)?.toFixed(1)}
+                          {minutesPerGame(player) === null
+                            ? "—"
+                            : minutesPerGame(player)?.toFixed(1)}
                         </td>
                         <td className="fantasy-sample">{playerSample(player, activeCategory)}</td>
                         <td className="fantasy-row-actions">
@@ -697,7 +933,7 @@ function FantasyPage({ meta }: { meta: Meta }) {
               {visibleRows.length === 0 && (
                 <div className="fantasy-table-empty">
                   <b>No players match these filters.</b>
-                  <span>Lower the minimum games or attempts, or clear the search.</span>
+                  <span>Lower the minimum games, minutes or attempts, or clear the search.</span>
                 </div>
               )}
             </div>
@@ -896,7 +1132,11 @@ function FantasyHeader({ season, meta }: { season: string; meta: Meta }) {
           aria-label="Fantasy season"
           value={season}
           onChange={(event) =>
-            setSearchParams(event.target.value ? { season: event.target.value } : {})
+            setSearchParams((previous) => {
+              const next = new URLSearchParams(previous);
+              next.set("season", event.target.value);
+              return next;
+            })
           }
         >
           {seasonOptions.map((option) => (

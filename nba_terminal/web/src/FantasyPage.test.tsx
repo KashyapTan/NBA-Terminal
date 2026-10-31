@@ -1,8 +1,9 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes, MetaProvider } from "./App";
+import FantasyPage from "./FantasyPage";
 
 const meta = {
   current_season: "2025-26",
@@ -76,7 +77,7 @@ const players = [
   },
 ];
 
-function mount(path = "/fantasy", payload = players) {
+function mount(path = "/fantasy?fantasyTab=leaders", payload = players) {
   const fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url === "/api/meta") return response(meta);
@@ -121,6 +122,8 @@ describe("Fantasy workspace", () => {
       await screen.findByRole("heading", { name: "Find your next edge." }),
     ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith("/api/fantasy/players?season=2025-26");
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Leaders" }));
     const table = screen.getByRole("table", { name: "" });
     expect(within(table).getAllByRole("row")[1]).toHaveTextContent("Jayson Tatum");
     expect(within(table).getAllByRole("row")[1]).toHaveTextContent("30");
@@ -236,7 +239,7 @@ describe("Fantasy workspace", () => {
     });
     vi.stubGlobal("fetch", fetch);
     render(
-      <MemoryRouter initialEntries={["/fantasy"]}>
+      <MemoryRouter initialEntries={["/fantasy?fantasyTab=leaders"]}>
         <MetaProvider>
           <AppRoutes />
         </MetaProvider>
@@ -247,5 +250,110 @@ describe("Fantasy workspace", () => {
     expect(
       await screen.findByRole("button", { name: "Add Jayson Tatum to comparison" }),
     ).toBeInTheDocument();
+  });
+});
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output aria-label="Current location">{location.search}</output>;
+}
+
+describe("Fantasy subtabs and sample limits", () => {
+  it("defaults to an honest dashboard and preserves season and unrelated URL selections", async () => {
+    const user = userEvent.setup();
+    mount("/fantasy?season=2024-25&fantasyTab=unknown&keep=yes");
+    expect(
+      await screen.findByRole("heading", { name: "Your fantasy workspace" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Connect your ESPN league")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
+    cleanup();
+    render(
+      <MemoryRouter initialEntries={["/fantasy?season=2024-25&keep=yes"]}>
+        <FantasyPage meta={meta} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+    const dashboard = screen.getByRole("tab", { name: "Dashboard" });
+    dashboard.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Matchups" })).toHaveFocus();
+    expect(screen.getByRole("tabpanel", { name: "Matchups" })).toHaveTextContent(
+      "No league is linked",
+    );
+    expect(screen.getByLabelText("Current location")).toHaveTextContent(
+      "season=2024-25&keep=yes&fantasyTab=matchups",
+    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "Fantasy season" }), "2025-26");
+    expect(screen.getByLabelText("Current location")).toHaveTextContent(
+      "season=2025-26&keep=yes&fantasyTab=matchups",
+    );
+    await user.keyboard("{Tab}");
+    await user.click(screen.getByRole("tab", { name: "Waiver Wire" }));
+    expect(screen.getByRole("tabpanel", { name: "Waiver Wire" })).toHaveTextContent(
+      "No league is linked",
+    );
+  });
+
+  it("renders league extension slots without waiting for player stats", () => {
+    render(
+      <MemoryRouter initialEntries={["/fantasy?fantasyTab=matchups"]}>
+        <FantasyPage meta={meta} league={{ matchups: <h2>League matchup fixture</h2> }} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("heading", { name: "League matchup fixture" })).toBeInTheDocument();
+    expect(screen.queryByText("Connect your ESPN league")).not.toBeInTheDocument();
+  });
+
+  it("persists minutes limits and applies them in both views alongside games and attempts", async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByRole("button", { name: "Add Jayson Tatum to comparison" });
+    const mpg = screen.getByRole("spinbutton", { name: "Minimum minutes per game" });
+    await user.clear(mpg);
+    await user.type(mpg, "20");
+    expect(screen.queryByText("Rookie Sample")).not.toBeInTheDocument();
+    const total = screen.getByRole("spinbutton", { name: "Minimum total minutes" });
+    await user.clear(total);
+    await user.type(total, "350");
+    expect(screen.queryByText("Luka Doncic")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Season totals" }));
+    expect(screen.getByText("1 players")).toBeInTheDocument();
+    expect(screen.getByText("300", { selector: ".fantasy-value" })).toBeInTheDocument();
+    cleanup();
+    mount();
+    await screen.findByRole("button", { name: "Add Jayson Tatum to comparison" });
+    expect(screen.getByRole("spinbutton", { name: "Minimum minutes per game" })).toHaveValue(20);
+    expect(screen.getByRole("spinbutton", { name: "Minimum total minutes" })).toHaveValue(350);
+    await user.click(screen.getByRole("tab", { name: "FG%" }));
+    const attempts = screen.getByRole("spinbutton", { name: "Minimum field-goal attempts" });
+    await user.clear(attempts);
+    await user.type(attempts, "201");
+    expect(screen.getByText("No players match these filters.")).toBeInTheDocument();
+  });
+
+  it("restores turnovers from fewest to most after preferences reload", async () => {
+    window.localStorage.setItem(
+      "nba-terminal.fantasy.preferences.v1",
+      JSON.stringify({ category: "turnovers" }),
+    );
+    mount();
+    await screen.findByRole("button", { name: "Add Jayson Tatum to comparison" });
+    expect(within(screen.getByRole("table")).getAllByRole("row")[1]).toHaveTextContent(
+      "Rookie Sample",
+    );
+  });
+
+  it("migrates old preferences and rejects corrupt minutes settings", async () => {
+    window.localStorage.setItem(
+      "nba-terminal.fantasy.preferences.v1",
+      JSON.stringify({ minimumGames: 5, minimumMinutesPerGame: -20, minimumTotalMinutes: "bad" }),
+    );
+    mount();
+    await screen.findByRole("button", { name: "Add Jayson Tatum to comparison" });
+    expect(screen.getByRole("spinbutton", { name: "Minimum games played" })).toHaveValue(5);
+    expect(screen.getByRole("spinbutton", { name: "Minimum minutes per game" })).toHaveValue(0);
+    expect(screen.getByRole("spinbutton", { name: "Minimum total minutes" })).toHaveValue(0);
   });
 });

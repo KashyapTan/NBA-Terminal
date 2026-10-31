@@ -74,6 +74,29 @@ test("Fantasy supports season stats, sample filters, player comparison and short
 
   await page.goto("/fantasy");
   await expect(page.getByRole("heading", { name: "Find your next edge." })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Dashboard" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByRole("heading", { name: "Your fantasy workspace" })).toBeVisible();
+  await expect(page.getByText("Connect your ESPN league")).toBeVisible();
+  const evidenceDir = resolve(process.cwd(), "../../visual-evidence");
+  mkdirSync(evidenceDir, { recursive: true });
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.screenshot({
+    path: resolve(evidenceDir, "fantasy-dashboard-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 1024 });
+  await page.screenshot({
+    path: resolve(evidenceDir, "fantasy-dashboard-mobile.png"),
+    fullPage: true,
+  });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+  await page.getByRole("tab", { name: "Leaders" }).click();
+  await expect(page).toHaveURL(/fantasyTab=leaders/);
   await expect(page.getByRole("table").first().getByText("Jayson Tatum")).toBeVisible();
   await expect(page.getByText("NBA Stats · regular season actuals")).toBeVisible();
   await page.getByRole("button", { name: "Add Jayson Tatum to comparison" }).click();
@@ -81,8 +104,6 @@ test("Fantasy supports season stats, sample filters, player comparison and short
   await page.getByRole("button", { name: "Add Luka Doncic to comparison" }).click();
   await expect(page.getByRole("table").last().getByText("Jayson Tatum")).toBeVisible();
 
-  const evidenceDir = resolve(process.cwd(), "../../visual-evidence");
-  mkdirSync(evidenceDir, { recursive: true });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.setViewportSize({ width: 1600, height: 1400 });
   await page.screenshot({ path: resolve(evidenceDir, "fantasy-desktop.png") });
@@ -98,4 +119,20 @@ test("Fantasy supports season stats, sample filters, player comparison and short
   await expect(page.getByLabel("Minimum field-goal attempts")).toBeVisible();
   await page.getByLabel("Minimum field-goal attempts").fill("200");
   await expect(leaderboard.getByRole("row")).toHaveCount(2);
+  await page.getByLabel("Minimum minutes per game", { exact: true }).fill("35");
+  await page.getByLabel("Minimum field-goal attempts").fill("0");
+  await expect(leaderboard.getByRole("row")).toHaveCount(2);
+  await page.reload();
+  await expect(page.getByLabel("Minimum minutes per game", { exact: true })).toHaveValue("35");
+  await expect(page.getByRole("table").first().getByRole("row")).toHaveCount(2);
+  await page.getByRole("tab", { name: "Matchups" }).click();
+  await expect(page.getByRole("tab", { name: "Matchups" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByLabel("Fantasy season").selectOption("2024-25");
+  await expect(page).toHaveURL(/fantasyTab=matchups&season=2024-25/);
+  await expect(page.getByRole("tabpanel", { name: "Matchups" })).toContainText(
+    "No league is linked",
+  );
 });

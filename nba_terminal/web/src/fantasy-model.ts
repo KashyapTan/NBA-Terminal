@@ -22,6 +22,8 @@ export type FantasyPreferences = {
   statView: StatView;
   minimumGames: number;
   minimumAttempts: number;
+  minimumMinutesPerGame: number;
+  minimumTotalMinutes: number;
   weights: FantasyWeights;
   shortlist: number[];
 };
@@ -141,6 +143,8 @@ export const DEFAULT_PREFERENCES: FantasyPreferences = {
   statView: "perGame",
   minimumGames: 0,
   minimumAttempts: 0,
+  minimumMinutesPerGame: 0,
+  minimumTotalMinutes: 0,
   weights: DEFAULT_WEIGHTS,
   shortlist: [],
 };
@@ -166,9 +170,9 @@ export function statValue(
     return ratio(player.threes_made, player.three_attempts);
 
   const raw = player[category];
-  if (raw === null) return null;
+  if (raw === null || !Number.isFinite(raw)) return null;
   if (view === "totals") return raw;
-  if (player.games === null || player.games <= 0) return null;
+  if (player.games === null || !Number.isFinite(player.games) || player.games <= 0) return null;
   return raw / player.games;
 }
 
@@ -248,6 +252,44 @@ export function formatStat(value: number | null, category: FantasyCategoryKey): 
 }
 
 function ratio(made: number | null, attempts: number | null): number | null {
-  if (made === null || attempts === null || attempts <= 0) return null;
+  if (
+    made === null ||
+    attempts === null ||
+    !Number.isFinite(made) ||
+    !Number.isFinite(attempts) ||
+    made < 0 ||
+    attempts <= 0 ||
+    made > attempts
+  )
+    return null;
   return made / attempts;
+}
+
+export function minutesPerGame(player: FantasyPlayer): number | null {
+  if (
+    player.minutes_total === null ||
+    !Number.isFinite(player.minutes_total) ||
+    player.minutes_total < 0 ||
+    player.games === null ||
+    !Number.isFinite(player.games) ||
+    player.games <= 0
+  )
+    return null;
+  return player.minutes_total / player.games;
+}
+
+export function meetsPlayingTime(
+  player: FantasyPlayer,
+  limits: Pick<
+    FantasyPreferences,
+    "minimumGames" | "minimumMinutesPerGame" | "minimumTotalMinutes"
+  >,
+): boolean {
+  const meets = (value: number | null, minimum: number) =>
+    minimum <= 0 || (value !== null && Number.isFinite(value) && value >= minimum);
+  return (
+    meets(player.games, limits.minimumGames) &&
+    meets(minutesPerGame(player), limits.minimumMinutesPerGame) &&
+    meets(player.minutes_total, limits.minimumTotalMinutes)
+  );
 }
