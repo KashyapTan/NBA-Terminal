@@ -179,6 +179,19 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     else:
         counts = [None, None, None]
         provenance["counts"] = "unknown; daily acquisition rules are not modeled"
+    fallback = preferences.get("matchup_add_limit_fallback")
+    if (
+        settings.get("weekly_add_limit") is None
+        and _integer(fallback)
+        and settings.get("limit_per_scoring_period") is False
+        and user.get("weekly_usage_complete") is True
+        and _integer(user.get("weekly_used_adds"))
+        and preferences.get("user_confirmed_counts") is not True
+    ):
+        used = user["weekly_used_adds"]
+        counts = [fallback, used, max(0, fallback - used)]
+        provenance["counts"] = "scoped user-declared matchup cap; ESPN complete matchup usage"
+        provenance["matchup_add_limit"] = {"value": fallback, "source": "user-declared fallback", **expected}
     if settings.get("limit_per_scoring_period") is True or settings.get("daily_add_limit") is not None:
         # An additional daily cap needs a day-specific ledger; do not call a weekly plan feasible.
         counts = [None, None, None]
@@ -354,8 +367,11 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "used_adds": counts[1],
         "available_adds": counts[2],
         "max_stream_slots": slots,
-        "candidate_limit": min(100, max(1, len(candidates))),
-        "evaluation_limit": 1000,
+        "candidate_limit": min(1000, max(1, len(candidates))),
+        "evaluation_limit": 5000,
+        "selected_categories": preferences.get("selected_categories"),
+        "as_of": now.isoformat(),
+        "matchup_end": max(snapshot["period"].get("dates", []) or remaining, default=None),
         "prior_week_margins": history,
         "previous_comparison": previous,
         "data_gaps": forecast_gaps,
@@ -378,6 +394,13 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "uncertainty",
         "protected_players",
         "score_basis",
+        "selected_categories",
+        "safe_categories",
+        "improvement_categories",
+        "category_selection_source",
+        "horizon",
+        "recommendation_groups",
+        "alternatives_explanation",
     ):
         if key in planned:
             result[key] = planned[key]
@@ -390,7 +413,9 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     provenance["availability"] = (
         f"{assumed} players assumed available unless explicitly out; user toggles take precedence"
     )
-    provenance["transactions"] = "Known locks/undroppable and core value protected; unknown locks assumed open"
+    provenance["transactions"] = (
+        "Known locks/undroppable and explicit user Protect enforced; all other roster players evaluated"
+    )
     if forecast_gaps:
         result["status"] = "incomplete"
         result["reasons"] = list(forecast_gaps)

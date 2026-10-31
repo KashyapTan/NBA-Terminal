@@ -85,13 +85,13 @@ def prefs():
     return {"context": {"league_id": "synthetic", "team_id": 1, "matchup_period_id": 4, "fetched_at": "fixture-v1"}}
 
 
-def test_top_seven_are_unique_pickup_alternatives_not_seven_budgeted_moves():
+def test_all_positive_pairs_are_alternatives_not_budgeted_moves():
     data = payload()
     data["players"] += [player(str(n), current_rates=rates(ast=3 + n / 10)) for n in range(12)]
     result = plan_waivers(data)
-    assert len(result["recommendations"]) == 7
-    assert len({r["add_id"] for r in result["recommendations"]}) == 7
-    assert [r["rank"] for r in result["recommendations"]] == list(range(1, 8))
+    assert len(result["recommendations"]) == 12
+    assert len({r["add_id"] for r in result["recommendations"]}) == 12
+    assert [r["rank"] for r in result["recommendations"]] == list(range(1, 13))
     assert result["recommendation_kind"] == "alternatives"
     assert len(result["plan"]) == len(result["actions"]) == 1
     assert result["remaining_adds"] == 0
@@ -149,9 +149,7 @@ def test_missing_rate_fields_get_targeted_prior_fallback_with_provenance():
     assert "prior fallback" in result["provenance"]["starter"]
 
 
-@pytest.mark.parametrize(
-    "evidence", [{"undroppable": True}, {"droppable": False}, {"draft_round": 1}, {"draft_pick": 5}, {"season_rank": 9}]
-)
+@pytest.mark.parametrize("evidence", [{"undroppable": True}, {"droppable": False}])
 def test_elites_cannot_be_dropped_even_with_unprotect_toggle(evidence):
     data = payload()
     data["players"][0].update(**evidence, protected=False)
@@ -165,7 +163,7 @@ def test_default_season_protection_has_explicit_override_but_long_term_cost_rema
     data = payload()
     data["players"][0].update(season_rank=25, current_rates=rates(pts=24, reb=8), protected=None)
     data["players"].append(player("add", current_rates=rates(ast=6)))
-    assert not plan_waivers(data)["recommendations"]
+    assert "drop" not in plan_waivers(data)["protected_players"]
     data["players"][0]["protected"] = False
     result = plan_waivers(data)
     if result["recommendations"]:
@@ -299,7 +297,7 @@ def test_observed_core_production_is_protected_without_draft_or_rank():
     data["players"].append(player("add", current_rates=rates(ast=5)))
     result = plan_waivers(data)
     assert not result["recommendations"]
-    assert result["protected_players"]["drop"] == "Core production and established minutes"
+    assert "drop" not in result["protected_players"]
 
 
 def test_full_season_opportunity_cost_rejects_tiny_weekly_gain_after_unprotect():
