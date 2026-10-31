@@ -1,4 +1,10 @@
-import type { ConnectLeague, LeagueSnapshot, LeagueStatus } from "./league-fantasy-model";
+import type {
+  ConnectLeague,
+  LeagueSnapshot,
+  LeagueStatus,
+  PlannerPreferences,
+  WaiverPlan,
+} from "./league-fantasy-model";
 const BASE = "/api/fantasy/espn";
 async function request<T>(
   path: string,
@@ -43,3 +49,6 @@ export const leagueFantasyApi = {
   },
 };
 export type LeagueFantasyApi = typeof leagueFantasyApi;
+
+export const requestWaiverPlan = (preferences: PlannerPreferences) =>
+  request<WaiverPlan>("/plan", "POST", preferences);

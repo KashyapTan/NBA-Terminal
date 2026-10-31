@@ -70,6 +70,7 @@ export type LeagueFantasyState = ReturnType<typeof useLeagueFantasy>;
 
 export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
   const [privateLeague, setPrivateLeague] = useState(false);
+  const localHost = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(window.location.hostname);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -88,6 +89,17 @@ export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
     delete input.swid;
     delete input.espn_s2;
   }
+  if (!localHost)
+    return (
+      <section className="league-panel" aria-label="ESPN league connection">
+        <h2>ESPN connection requires local access</h2>
+        <p>
+          Open NBA Terminal on localhost or 127.0.0.1 using its single-process local server. Remote
+          hosting does not support ESPN sessions. Keep private cookies in your own local connection
+          form; never send them in chat or issue reports.
+        </p>
+      </section>
+    );
   return (
     <section className="league-panel" aria-label="ESPN league connection">
       <h2>Connect your ESPN league</h2>
@@ -402,9 +414,15 @@ const probability = (value: number | null | undefined) =>
 export function WaiverWire({
   snapshot,
   onPlan,
+  loading = false,
+  error: leagueError,
+  onRefresh,
 }: {
   snapshot: LeagueSnapshot | null;
   onPlan?: (preferences: PlannerPreferences) => Promise<WaiverPlan>;
+  loading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
 }) {
   const [preferences, setPreferences] = useState<PlannerPreferences>({
     user_confirmed_eligibility: false,
@@ -482,7 +500,7 @@ export function WaiverWire({
   const candidates = eligibleCandidates(snapshot);
   const actualOpponent = snapshot.teams.find((team) => team.id === snapshot.opponent_team_id);
   const knownLimit =
-    snapshot.league.acquisition_settings.limit_per_scoring_period === true
+    snapshot.league.acquisition_settings.limit_per_scoring_period === false
       ? snapshot.league.acquisition_settings.weekly_add_limit
       : null;
   const players = new Map(
@@ -507,7 +525,9 @@ export function WaiverWire({
   const planReady = plan?.status === "ready";
   return (
     <section className="league-panel">
-      <SnapshotHeading snapshot={snapshot} />
+      <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
+      {leagueError && <p role="alert">{leagueError}</p>}
+      {!snapshot.league.supported && <p role="alert">{snapshot.league.unsupported_reason}</p>}
       <h2>Waiver Wire</h2>
       <p>
         Build a rotating shortlist, select roster slots to stream, then request a recommendation.
@@ -571,7 +591,8 @@ export function WaiverWire({
         <legend>User-confirmed weekly constraints</legend>
         <p>
           Enter only verified counts from your league. These inputs are user supplied, not reported
-          by ESPN.
+          by ESPN. If your league allows seven weekly adds, enter 7 only after checking the current
+          matchup's settings in ESPN.
         </p>
         <div className="league-fields">
           {(["weekly_add_limit", "used_adds", "available_adds"] as const).map((key, index) => (
@@ -602,7 +623,8 @@ export function WaiverWire({
             checked={preferences.user_confirmed_counts}
             onChange={(event) => edit({ user_confirmed_counts: event.target.checked })}
           />
-          I verified these weekly counts and remaining adds in ESPN.
+          I verified these weekly counts and remaining adds in ESPN for this whole matchup,
+          including any additional acquisition restrictions.
         </label>
         {preferences.user_confirmed_counts && !validCounts && (
           <p role="alert">
@@ -627,6 +649,163 @@ export function WaiverWire({
           }
         />
       </label>
+      <details className="league-gaps">
+        <summary>Complete missing schedules and availability</summary>
+        <p>
+          Corrections below are your confirmed inputs for this snapshot, not ESPN data. Review both
+          full rosters and your shortlist. Enter only remaining games that have not started and for
+          which an acquisition can take effect. An empty confirmed schedule means no remaining
+          games. Flagged injured players are modeled out unless you explicitly confirm availability
+          for these dates. Refresh clears all confirmations.
+        </p>
+        <label>
+          Verified remaining matchup dates (optional override, comma separated YYYY-MM-DD)
+          <input
+            type="text"
+            value={preferences.remaining_dates?.join(", ") ?? ""}
+            placeholder={snapshot.period.remaining_dates.join(", ")}
+            onChange={(event) =>
+              edit({
+                remaining_dates: event.target.value.trim()
+                  ? event.target.value.split(",").map((value) => value.trim())
+                  : undefined,
+              })
+            }
+          />
+        </label>
+        {[
+          ...(user?.roster ?? []),
+          ...(actualOpponent?.roster ?? []),
+          ...candidates.filter((player) => preferences.candidate_ids.includes(player.id)),
+        ].map((player) => {
+          const correction = preferences.player_overrides?.[player.id] ?? {};
+          const update = (patch: typeof correction) =>
+            edit({
+              player_overrides: {
+                ...preferences.player_overrides,
+                [player.id]: { ...correction, ...patch },
+              },
+            });
+          return (
+            <fieldset key={player.id}>
+              <legend>{player.name}</legend>
+              <p>
+                Schedule:{" "}
+                {player.schedule === null
+                  ? "Unknown"
+                  : player.schedule
+                      .filter((game) => !game.started)
+                      .map((game) => game.date)
+                      .join(", ") || "No unstarted games reported"}
+                . Availability:{" "}
+                {player.injured === null
+                  ? "Unknown"
+                  : player.injured
+                    ? "Flagged injured"
+                    : "Reported available"}
+                .
+              </p>
+              <label>
+                Confirm {player.name} availability
+                <select
+                  value={
+                    correction.injured === undefined
+                      ? "reported"
+                      : correction.injured
+                        ? "out"
+                        : "available"
+                  }
+                  onChange={(event) =>
+                    update({
+                      injured:
+                        event.target.value === "reported"
+                          ? undefined
+                          : event.target.value === "out",
+                    })
+                  }
+                >
+                  <option value="reported">Use reported status (unknown stays unknown)</option>
+                  <option value="available">I verified available for modeled dates</option>
+                  <option value="out">I verified out for modeled dates</option>
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={correction.schedule !== undefined}
+                  onChange={(event) => update({ schedule: event.target.checked ? [] : undefined })}
+                />
+                I am supplying {player.name} remaining unstarted game dates
+              </label>
+              {correction.schedule !== undefined && (
+                <label>
+                  {player.name} verified game dates (comma separated YYYY-MM-DD; empty means none)
+                  <input
+                    type="text"
+                    value={correction.schedule.join(", ")}
+                    onChange={(event) =>
+                      update({
+                        schedule: event.target.value.trim()
+                          ? event.target.value.split(",").map((value) => value.trim())
+                          : [],
+                      })
+                    }
+                  />
+                </label>
+              )}
+            </fieldset>
+          );
+        })}
+      </details>
+      <fieldset>
+        <legend>Uncertainty evidence</legend>
+        <label>
+          Uncertainty mode
+          <select
+            value={preferences.uncertainty_mode ?? "history"}
+            onChange={(event) =>
+              edit({ uncertainty_mode: event.target.value as "history" | "sensitivity" })
+            }
+          >
+            <option value="history">
+              Use complete historical matchup variation when available
+            </option>
+            <option value="sensitivity">Explore my explicit sensitivity assumptions</option>
+          </select>
+        </label>
+        <p>
+          At least three complete, varying prior weekly comparisons are required for historical
+          estimates. Otherwise baseline comparisons remain available. Sensitivity estimates are
+          uncalibrated and depend on the values you enter.
+        </p>
+        {preferences.uncertainty_mode === "sensitivity" && (
+          <div className="league-fields">
+            {LEAGUE_CATEGORIES.map((category) => (
+              <label key={category.key}>
+                {category.label} margin standard deviation
+                {category.key.endsWith("pct")
+                  ? " (fraction: 0.01 = one percentage point)"
+                  : " (category total units)"}
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={preferences.margin_sd?.[category.key] ?? ""}
+                  onChange={(event) =>
+                    edit({
+                      margin_sd: {
+                        ...preferences.margin_sd,
+                        [category.key]:
+                          event.target.value === "" ? undefined : Number(event.target.value),
+                      },
+                    })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
       <fieldset>
         <legend>Roster players available to drop</legend>
         <p>
@@ -638,7 +817,11 @@ export function WaiverWire({
           <label className="league-check" key={player.id}>
             <input
               type="checkbox"
-              disabled={player.locked === true}
+              disabled={
+                player.locked === true ||
+                player.lineup_slot === "IR" ||
+                player.lineup_slot === "IR+"
+              }
               checked={preferences.droppable_ids.includes(player.id)}
               onChange={(event) =>
                 edit({
@@ -649,11 +832,13 @@ export function WaiverWire({
               }
             />
             {player.name} ·{" "}
-            {player.locked === null
-              ? "Lock unknown: I verified this player is unlocked"
-              : player.locked
-                ? "Locked"
-                : "Reported unlocked"}
+            {player.lineup_slot === "IR" || player.lineup_slot === "IR+"
+              ? "IR moves are not modeled"
+              : player.locked === null
+                ? "Lock unknown: I verified this player is unlocked"
+                : player.locked
+                  ? "Locked"
+                  : "Reported unlocked"}
           </label>
         ))}
       </fieldset>
@@ -790,6 +975,8 @@ export function WaiverWire({
         disabled={
           !onPlan ||
           busy ||
+          loading ||
+          !!leagueError ||
           (!serverCounts && !validCounts) ||
           preferences.candidate_ids.length === 0 ||
           preferences.droppable_ids.length === 0 ||
@@ -807,8 +994,8 @@ export function WaiverWire({
           : serverCounts
             ? "ESPN weekly counts"
             : "Missing verified weekly counts"}
-        . Maximum five-category win probability is an estimate only when supported uncertainty data
-        exists.
+        . Five-category estimates require historical uncertainty evidence or your explicitly
+        selected sensitivity assumptions. No probabilities are calibrated guarantees.
       </p>
       {error && <p role="alert">{error}</p>}
       {plan && (
@@ -820,7 +1007,7 @@ export function WaiverWire({
             ))}
           </ul>
           <p>
-            Probability of winning at least five categories: baseline{" "}
+            Uncalibrated model probability of winning at least five categories: baseline{" "}
             {probability(planReady ? plan.baseline?.probability_five_wins : null)} → recommended{" "}
             {probability(planReady ? plan.projected?.probability_five_wins : null)}. Ties do not
             count as wins.
@@ -834,7 +1021,11 @@ export function WaiverWire({
           </p>
           <div className="league-table-wrap">
             <table>
-              <caption>Projected end-of-period category totals and gains</caption>
+              <caption>
+                {plan.baseline?.basis === "recorded"
+                  ? "Recorded baseline totals; projections withheld"
+                  : "Projected end-of-period category totals and gains"}
+              </caption>
               <thead>
                 <tr>
                   <th>Category</th>

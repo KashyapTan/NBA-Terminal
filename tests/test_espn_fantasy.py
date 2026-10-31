@@ -55,7 +55,8 @@ def test_nine_cat_totals_schedule_and_sample_rates(data):
     assert len(result["matchup_history"]) == 7
     assert result["period"]["dates"] == ["2026-10-31", "2026-11-01"]
     assert result["fetched_at"] == NOW.isoformat()
-    assert result["optimizer"]["status"] == "unavailable"
+    assert result["optimizer"]["status"] == "requires_inputs"
+    assert result["optimizer"]["endpoint"] == "/api/fantasy/espn/plan"
 
 
 def test_rostered_filter_waivers_and_duplicates(data):

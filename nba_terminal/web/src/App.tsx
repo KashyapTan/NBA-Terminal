@@ -3,6 +3,8 @@ import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "re
 import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./api";
 import { groupGamesByDate } from "./game-groups";
 import FantasyPage from "./FantasyPage";
+import { LeagueDashboardSummary, Matchups, useLeagueFantasy, WaiverWire } from "./LeagueFantasy";
+import { requestWaiverPlan } from "./league-fantasy-api";
 import type {
   BoxScore,
   Game,
@@ -733,6 +735,35 @@ function PlayerDetails() {
   return <PlayerAnalysisView analysis={analysis} season={season} phase={phase} />;
 }
 
+function FantasyWorkspace({ meta }: { meta: Meta }) {
+  const league = useLeagueFantasy();
+  return (
+    <FantasyPage
+      meta={meta}
+      league={{
+        dashboard: <LeagueDashboardSummary state={league} />,
+        matchups: (
+          <Matchups
+            snapshot={league.snapshot}
+            loading={league.loading}
+            error={league.error}
+            onRefresh={() => void league.refresh()}
+          />
+        ),
+        waiver: (
+          <WaiverWire
+            snapshot={league.snapshot}
+            onPlan={requestWaiverPlan}
+            loading={league.loading}
+            error={league.error}
+            onRefresh={() => void league.refresh()}
+          />
+        ),
+      }}
+    />
+  );
+}
+
 export function AppRoutes() {
   const { meta, error } = useMeta();
   if (error)
@@ -751,7 +782,7 @@ export function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/fantasy" element={<FantasyPage meta={meta} />} />
+        <Route path="/fantasy" element={<FantasyWorkspace meta={meta} />} />
         <Route path="/game/:gameId" element={<GameDetails />} />
         <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
         <Route

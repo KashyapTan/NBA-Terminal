@@ -214,3 +214,44 @@ it("rejects inconsistent weekly confirmations and clears eligibility after chang
   expect(screen.getByRole("button", { name: "Calculate recommendation" })).toBeDisabled();
   expect(onPlan).not.toHaveBeenCalled();
 });
+
+it("sends explicit schedule, availability and sensitivity edits with snapshot context", async () => {
+  const user = userEvent.setup();
+  const snapshot = testSnapshot();
+  snapshot.league.acquisition_settings.limit_per_scoring_period = false;
+  snapshot.teams[0].weekly_used_adds = 5;
+  snapshot.teams[0].remaining_adds = 2;
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await user.click(screen.getByLabelText(/Test player rostered · Reported unlocked/));
+  await user.click(screen.getByRole("button", { name: "Shortlist Test player free" }));
+  await user.click(screen.getByLabelText(/I verified the shortlisted players/));
+  await user.click(
+    screen.getByText("Complete missing schedules and availability", { exact: true }),
+  );
+  await user.type(screen.getByLabelText(/Verified remaining matchup dates/), "2026-11-01");
+  await user.selectOptions(
+    screen.getByLabelText("Confirm Test player rostered availability"),
+    "available",
+  );
+  await user.click(
+    screen.getByLabelText("I am supplying Test player rostered remaining unstarted game dates"),
+  );
+  await user.type(screen.getByLabelText(/Test player rostered verified game dates/), "2026-11-01");
+  await user.selectOptions(screen.getByLabelText("Uncertainty mode"), "sensitivity");
+  await user.type(
+    screen.getByLabelText("PTS margin standard deviation (category total units)"),
+    "5",
+  );
+  await user.click(screen.getByRole("button", { name: "Calculate recommendation" }));
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  expect(onPlan.mock.calls[0][0]).toMatchObject({
+    remaining_dates: ["2026-11-01"],
+    player_overrides: { rostered: { injured: false, schedule: ["2026-11-01"] } },
+    uncertainty_mode: "sensitivity",
+    margin_sd: { pts: 5 },
+    context: { league_id: 1, team_id: 1, matchup_period_id: 1 },
+  });
+  await user.selectOptions(screen.getByLabelText("Uncertainty mode"), "history");
+  expect(screen.queryByRole("heading", { name: "Recommendation · ready" })).not.toBeInTheDocument();
+});

@@ -351,3 +351,50 @@ def snapshot_sync(conn: Connection, refresh: bool, compare_team_id: int | None) 
             )
         ensure_active(conn)
         return result
+
+
+@router.post("/plan")
+async def waiver_plan(request: Request, response: Response) -> dict:
+    """Read-only modeling using this session's server-owned snapshot and bounded pool."""
+    guard(request, response)
+    conn = connection(request)
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > 65_536:
+            raise fail("body_too_large", "Planner inputs exceed the safe size limit.", 413)
+    try:
+        preferences = json.loads(content)
+    except (ValueError, UnicodeError):
+        raise fail("invalid_json", "Send valid planner preferences.") from None
+    allowed = {
+        "context",
+        "user_confirmed_counts",
+        "user_confirmed_eligibility",
+        "candidate_ids",
+        "droppable_ids",
+        "max_stream_slots",
+        "weekly_add_limit",
+        "used_adds",
+        "available_adds",
+        "uncertainty_mode",
+        "margin_sd",
+        "player_overrides",
+        "remaining_dates",
+    }
+    if not isinstance(preferences, dict) or set(preferences) - allowed:
+        raise fail("invalid_fields", "Send planner preferences only; league facts come from the server.")
+    return await worker(request, plan_sync, conn, preferences)
+
+
+def plan_sync(conn: Connection, preferences: dict) -> dict:
+    from nba_terminal.services.fantasy_planner_adapter import plan_snapshot_waivers
+
+    current = snapshot_sync(conn, False, None)
+    with session_lock(conn):
+        # Team selection/refresh could have raced the preceding snapshot read.
+        if conn.team_id != current["selected_team_id"] or conn.cached != current:
+            raise EspnError("snapshot_changed", "League data changed. Refresh and reconfirm planner inputs.", 409)
+        result = plan_snapshot_waivers(current, preferences)
+        ensure_active(conn)
+        return result

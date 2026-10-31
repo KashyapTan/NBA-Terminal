@@ -42,3 +42,31 @@ it("uses documented team, disconnect and snapshot routes", async () => {
     "/api/fantasy/espn/snapshot?refresh=true&compare_team_id=4",
   );
 });
+
+it("posts scoped plan preferences to the authenticated production route", async () => {
+  const { requestWaiverPlan } = await import("./league-fantasy-api");
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue({ ok: true, json: async () => ({ status: "incomplete", actions: [] }) });
+  vi.stubGlobal("fetch", fetcher);
+  const preferences = {
+    user_confirmed_counts: false,
+    user_confirmed_eligibility: false,
+    candidate_ids: [],
+    droppable_ids: [],
+    max_stream_slots: 1,
+    weekly_add_limit: null,
+    used_adds: null,
+    available_adds: null,
+  };
+  await requestWaiverPlan(preferences);
+  expect(fetcher.mock.calls[0]).toEqual([
+    "/api/fantasy/espn/plan",
+    expect.objectContaining({
+      method: "POST",
+      credentials: "same-origin",
+      body: JSON.stringify(preferences),
+      headers: { "X-Fantasy-Request": "1", "Content-Type": "application/json" },
+    }),
+  ]);
+});

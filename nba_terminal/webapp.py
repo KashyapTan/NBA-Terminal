@@ -104,6 +104,7 @@ app.include_router(espn_fantasy_router)
 
 
 @app.get("/")
+@app.get("/fantasy")
 async def index() -> FileResponse:
     if not (WEB_DIST / "index.html").is_file():
         raise HTTPException(status_code=503, detail="Web client is not built. Run `bun run build` in nba_terminal/web.")

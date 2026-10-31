@@ -49,7 +49,7 @@ export function testSnapshot(): LeagueSnapshot {
       lineup_slots: ["PG", "UTIL"],
       acquisition_settings: {
         weekly_add_limit: 7,
-        limit_per_scoring_period: true,
+        limit_per_scoring_period: false,
         season_add_limit: null,
       },
     },

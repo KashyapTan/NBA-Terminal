@@ -107,6 +107,11 @@ export interface PlannerPreferences {
   used_adds: number | null;
   available_adds: number | null;
   user_confirmed_counts: boolean;
+  uncertainty_mode?: "history" | "sensitivity";
+  margin_sd?: Partial<Record<Category, number>>;
+  /** Explicit, snapshot-bound corrections confirmed by the user, never ESPN assertions. */
+  player_overrides?: Record<string, { schedule?: string[]; injured?: boolean }>;
+  remaining_dates?: string[];
 }
 /** UI boundary for the later optimizer adapter; never compute probabilities in the browser. */
 export interface WaiverPlan {
@@ -119,15 +124,17 @@ export interface WaiverPlan {
     date: string;
     add_id: string;
     drop_id: string;
-    stream_slot: number;
+    stream_slot: string | number;
     gains: Partial<Record<Category, number | null>>;
     probability_gain: number | null;
   }[];
   assumptions: string[];
   limitations: string[];
   data_gaps: string[];
+  provenance?: Record<string, unknown>;
 }
 export interface PlanForecast {
+  basis?: "recorded" | "forecast";
   totals: Stats;
   games: number | null;
   minutes: number | null;

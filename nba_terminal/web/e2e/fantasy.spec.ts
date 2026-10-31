@@ -52,6 +52,8 @@ test("Fantasy supports season stats, sample filters, player comparison and short
 }) => {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname === "/api/fantasy/espn/status")
+      return route.fulfill({ json: { connected: false } });
     if (url.pathname === "/api/meta")
       return route.fulfill({
         json: {
@@ -157,6 +159,6 @@ test("Fantasy supports season stats, sample filters, player comparison and short
   await page.getByLabel("Fantasy season").selectOption("2024-25");
   await expect(page).toHaveURL(/fantasyTab=matchups&season=2024-25/);
   await expect(page.getByRole("tabpanel", { name: "Matchups" })).toContainText(
-    "No league is linked",
+    "Connect ESPN and select your team",
   );
 });

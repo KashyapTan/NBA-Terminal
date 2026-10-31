@@ -546,5 +546,9 @@ def normalize(
         if "transactions" in transactions
         else None,
         "data_gaps": gaps,
-        "optimizer": {"status": "unavailable", "reason": "Waiver optimizer integration is not installed."},
+        "optimizer": {
+            "status": "requires_inputs",
+            "reason": "Submit snapshot-bound confirmed constraints to the read-only planner.",
+            "endpoint": "/api/fantasy/espn/plan",
+        },
     }

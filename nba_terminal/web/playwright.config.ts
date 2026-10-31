@@ -4,6 +4,7 @@ const port = process.env.E2E_PORT || "4173";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "league-production.spec.ts",
   fullyParallel: true,
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:" + port, ...devices["Desktop Chrome"] },
