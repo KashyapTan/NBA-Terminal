@@ -5,12 +5,11 @@ as a production entry point; no fixture code is imported by nba_terminal.
 """
 
 import copy
-import json
 import os
 from datetime import datetime, timezone
-from pathlib import Path
 
 import uvicorn
+from fantasy_v2_fixture import league_payload
 
 from nba_terminal import webapp
 from nba_terminal.services import espn_fantasy as espn
@@ -18,7 +17,7 @@ from nba_terminal.services import fantasy as fantasy_stats
 from nba_terminal.services import fantasy_planner_adapter as adapter
 
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
-RAW = json.loads((Path(__file__).parent / "fixtures/espn_fantasy_synthetic.json").read_text())
+RAW = league_payload()
 
 
 class Clock(datetime):

@@ -286,3 +286,26 @@ def test_query_errors_are_static_and_uncached(query):
             assert response.json()["detail"]["code"] == "invalid_query"
 
     asyncio.run(scenario())
+
+
+def test_planner_accepts_protection_preferences_but_never_client_owned_league_facts(monkeypatch):
+    observed = []
+
+    def capture(conn, preferences):
+        observed.append(preferences)
+        return {"status": "incomplete"}
+
+    monkeypatch.setattr(api, "plan_sync", capture)
+
+    async def scenario():
+        async with client() as browser:
+            await browser.post(PREFIX + "/connect", headers=HEADERS, json=connect_body())
+            preferences = {"protected_ids": ["1"], "player_overrides": {"1": {"injured": False, "protected": True}}}
+            response = await browser.post(PREFIX + "/plan", headers=HEADERS, json=preferences)
+            assert response.status_code == 200
+            assert observed == [preferences]
+            denied = await browser.post(PREFIX + "/plan", headers=HEADERS, json={"teams": []})
+            assert denied.status_code == 400
+            assert len(observed) == 1
+
+    asyncio.run(scenario())

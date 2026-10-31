@@ -220,12 +220,19 @@ function SnapshotHeading({
         </span>
         <p>
           Matchup period {snapshot.period.matchup_period_id} ·{" "}
-          {snapshot.period.dates[0] ?? "Date unavailable"} –{" "}
-          {snapshot.period.dates.at(-1) ?? "Date unavailable"}
+          {snapshot.period.start_date ?? snapshot.period.dates[0] ?? "Date unavailable"} –{" "}
+          {snapshot.period.end_date ?? snapshot.period.dates.at(-1) ?? "Date unavailable"}
         </p>
         <small>
           ESPN unofficial · Updated{" "}
-          <time dateTime={snapshot.fetched_at}>{snapshot.fetched_at}</time>
+          <time dateTime={snapshot.fetched_at}>
+            {new Date(snapshot.fetched_at).toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </time>
           {loading ? " · Refreshing…" : ""}
         </small>
       </div>
@@ -282,9 +289,12 @@ export function Matchups({
   onRefresh?: () => void;
 }) {
   const [comparisonId, setComparisonId] = useState<number | null>(null);
+  useEffect(() => {
+    setComparisonId(null);
+  }, [snapshot?.league.id, snapshot?.selected_team_id, snapshot?.period.matchup_period_id]);
   if (!snapshot)
     return (
-      <section className="league-panel">
+      <section className="league-panel league-matchups">
         <h2>Matchups</h2>
         <p role={error ? "alert" : "status"}>
           {error ??
@@ -311,8 +321,7 @@ export function Matchups({
     { winning: 0, tied: 0, losing: 0, unknown: 0 },
   );
   return (
-    <section className="league-panel">
-      <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
+    <section className="league-panel league-matchups">
       <h2>Current opponent: {opponent?.name ?? "Not available"}</h2>
       {error && <p role="alert">{error}</p>}
       {!snapshot.league.supported && (
@@ -320,34 +329,52 @@ export function Matchups({
           {snapshot.league.unsupported_reason ?? "This league format is unsupported."}
         </p>
       )}
-      <label>
-        Compare same-period totals
-        <select
-          aria-label="Compare league team"
-          value={comparison?.id ?? ""}
-          onChange={(event) => setComparisonId(Number(event.target.value))}
-        >
-          {!comparison && <option value="">Select a team</option>}
-          {snapshot.teams
-            .filter((team) => team.id !== snapshot.selected_team_id)
-            .sort(
-              (a, b) =>
-                Number(b.id === snapshot.opponent_team_id) -
-                Number(a.id === snapshot.opponent_team_id),
-            )
-            .map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-                {team.id === snapshot.opponent_team_id ? " · current opponent" : ""}
-              </option>
-            ))}
-        </select>
-      </label>
-      <p className="league-score" aria-live="polite">
-        {comparison?.id !== opponent?.id ? "Hypothetical comparison" : "Current matchup"}:{" "}
-        {tally.winning} winning · {tally.tied} tied · {tally.losing} losing · {tally.unknown}{" "}
-        unknown
-      </p>
+      <div className="matchup-scoreboard" aria-live="polite">
+        <div>
+          <span className="league-kicker">
+            {comparison?.id !== opponent?.id ? "Hypothetical comparison" : "Current matchup"}
+          </span>
+          <h3>
+            {user?.name ?? "Your team"} <span>vs {comparison?.name ?? "Unavailable"}</span>
+          </h3>
+          <p>Category score · live cumulative totals</p>
+        </div>
+        <div className="matchup-record">
+          <strong aria-label={`${tally.winning} wins, ${tally.losing} losses, ${tally.tied} ties`}>
+            <span className="league-winning">{tally.winning}</span>-
+            <span className="league-losing">{tally.losing}</span>-
+            <span className="league-tied">{tally.tied}</span>
+          </strong>
+          <span>WINS · LOSSES · TIES</span>
+          {tally.unknown > 0 && <small>{tally.unknown} categories unavailable</small>}
+        </div>
+      </div>
+      <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
+      <div className="matchup-controls">
+        <label>
+          Compare same-period totals
+          <select
+            aria-label="Compare league team"
+            value={comparison?.id ?? ""}
+            onChange={(event) => setComparisonId(Number(event.target.value))}
+          >
+            {!comparison && <option value="">Select a team</option>}
+            {snapshot.teams
+              .filter((team) => team.id !== snapshot.selected_team_id)
+              .sort(
+                (a, b) =>
+                  Number(b.id === snapshot.opponent_team_id) -
+                  Number(a.id === snapshot.opponent_team_id),
+              )
+              .map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                  {team.id === snapshot.opponent_team_id ? " · current opponent" : ""}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
       <div className="league-table-wrap">
         <table>
           <caption>
@@ -357,8 +384,8 @@ export function Matchups({
           <thead>
             <tr>
               <th>Category</th>
-              <th>Your totals</th>
-              <th>Compared totals</th>
+              <th>{user?.name ?? "Your totals"}</th>
+              <th>{comparison?.name ?? "Compared totals"}</th>
               <th>Standing</th>
             </tr>
           </thead>
@@ -366,14 +393,24 @@ export function Matchups({
             {results.map((row) => {
               const state = compareCategory(row.user, row.opponent, row.key);
               return (
-                <tr key={row.key}>
+                <tr key={row.key} className={`category-row category-${state}`}>
                   <th scope="row">
                     {row.label}
                     <small>{row.key === "to" ? "Lower is better" : "Higher is better"}</small>
                   </th>
                   <td>{formatCategory(row.user, row.key)}</td>
                   <td>{formatCategory(row.opponent, row.key)}</td>
-                  <td className={`league-${state}`}>{state}</td>
+                  <td className={`league-${state}`}>
+                    <span className="category-status">
+                      {state === "winning"
+                        ? "↑ Leading"
+                        : state === "losing"
+                          ? "↓ Trailing"
+                          : state === "tied"
+                            ? "= Tied"
+                            : "— Unknown"}
+                    </span>
+                  </td>
                 </tr>
               );
             })}
@@ -415,7 +452,7 @@ export function WaiverWire({
   snapshot,
   onPlan,
   loading = false,
-  error: leagueError,
+  error,
   onRefresh,
 }: {
   snapshot: LeagueSnapshot | null;
@@ -424,194 +461,521 @@ export function WaiverWire({
   error?: string | null;
   onRefresh?: () => void;
 }) {
-  const [preferences, setPreferences] = useState<PlannerPreferences>({
-    user_confirmed_eligibility: false,
-    candidate_ids: [],
-    droppable_ids: [],
-    max_stream_slots: 1,
-    weekly_add_limit: null,
-    used_adds: null,
-    available_adds: null,
-    user_confirmed_counts: false,
-  });
-  const [plan, setPlan] = useState<WaiverPlan | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const generation = useRef(0);
-  useEffect(() => {
-    generation.current++;
-    setPlan(null);
-    setBusy(false);
-    setError(null);
-    setPreferences({
-      user_confirmed_eligibility: false,
-      candidate_ids: [],
-      droppable_ids: [],
-      max_stream_slots: 1,
-      weekly_add_limit: null,
-      used_adds: null,
-      available_adds: null,
-      user_confirmed_counts: false,
-    });
-  }, [snapshot]);
-  function edit(patch: Partial<PlannerPreferences>) {
-    generation.current++;
-    setBusy(false);
-    setPreferences((current) => ({
-      ...current,
-      ...patch,
-      ...(patch.candidate_ids || patch.droppable_ids ? { user_confirmed_eligibility: false } : {}),
-    }));
-    setPlan(null);
-    setError(null);
-  }
-  async function generate() {
-    if (!onPlan) return;
-    const current = ++generation.current;
-    setBusy(true);
-    setPlan(null);
-    setError(null);
-    try {
-      const result = await onPlan({
-        ...preferences,
-        context: {
-          league_id: snapshot!.league.id,
-          team_id: snapshot!.selected_team_id,
-          matchup_period_id: snapshot!.period.matchup_period_id,
-          fetched_at: snapshot!.fetched_at,
-        },
-      });
-      if (generation.current === current) setPlan(result);
-    } catch {
-      if (generation.current === current)
-        setError("The recommendation could not be calculated. No roster changes were made.");
-    } finally {
-      if (generation.current === current) setBusy(false);
-    }
-  }
   if (!snapshot)
     return (
       <section className="league-panel">
         <h2>Waiver Wire</h2>
-        <p>Connect ESPN and select your team to inspect eligible unrostered players.</p>
+        <p role={error ? "alert" : "status"}>
+          {error ??
+            (loading
+              ? "Loading your league…"
+              : "Connect ESPN and select your team to find matchup opportunities.")}
+        </p>
       </section>
     );
+  const contextKey = `${snapshot.league.id}:${snapshot.league.season_id}:${snapshot.selected_team_id}:${snapshot.period.matchup_period_id}`;
+  return (
+    <WaiverStrategy
+      key={contextKey}
+      snapshot={snapshot}
+      onPlan={onPlan}
+      loading={loading}
+      error={error}
+      onRefresh={onRefresh}
+    />
+  );
+}
+
+function WaiverStrategy({
+  snapshot,
+  onPlan,
+  loading,
+  error: leagueError,
+  onRefresh,
+}: {
+  snapshot: LeagueSnapshot;
+  onPlan?: (preferences: PlannerPreferences) => Promise<WaiverPlan>;
+  loading: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
+}) {
+  const [preferences, setPreferences] = useState<PlannerPreferences>({});
+  const [plan, setPlan] = useState<WaiverPlan | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const generation = useRef(0);
+  useEffect(() => {
+    const current = ++generation.current;
+    setPlan(null);
+    setError(null);
+    if (!onPlan || !snapshot.league.supported) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    void onPlan({
+      ...preferences,
+      context: {
+        league_id: snapshot.league.id,
+        team_id: snapshot.selected_team_id,
+        matchup_period_id: snapshot.period.matchup_period_id,
+        fetched_at: snapshot.fetched_at,
+      },
+    })
+      .then((result) => {
+        if (current === generation.current) setPlan(result);
+      })
+      .catch(() => {
+        if (current === generation.current)
+          setError("Analysis could not be loaded. Retry after checking your league connection.");
+      })
+      .finally(() => {
+        if (current === generation.current) setBusy(false);
+      });
+    return () => {
+      generation.current++;
+    };
+  }, [snapshot, preferences, onPlan, attempt]);
+  function edit(patch: Partial<PlannerPreferences>) {
+    generation.current++;
+    setPlan(null);
+    setPreferences((current) => ({ ...current, ...patch }));
+  }
+  function override(id: string, patch: { injured?: boolean; protected?: boolean }) {
+    edit({
+      player_overrides: {
+        ...preferences.player_overrides,
+        [id]: { ...preferences.player_overrides?.[id], ...patch },
+      },
+    });
+  }
   const user = snapshot.teams.find((team) => team.id === snapshot.selected_team_id);
+  const opponent = snapshot.teams.find((team) => team.id === snapshot.opponent_team_id);
   const candidates = eligibleCandidates(snapshot);
-  const actualOpponent = snapshot.teams.find((team) => team.id === snapshot.opponent_team_id);
-  const knownLimit =
-    snapshot.league.acquisition_settings.limit_per_scoring_period === false
-      ? snapshot.league.acquisition_settings.weekly_add_limit
-      : null;
   const players = new Map(
     [...snapshot.teams.flatMap((team) => team.roster), ...candidates].map((player) => [
       player.id,
       player,
     ]),
   );
-  const validCounts =
-    preferences.user_confirmed_counts &&
-    preferences.weekly_add_limit !== null &&
-    preferences.used_adds !== null &&
-    preferences.available_adds !== null &&
-    preferences.used_adds + preferences.available_adds <= preferences.weekly_add_limit;
-  const serverCounts =
-    knownLimit !== null &&
-    user?.weekly_used_adds != null &&
-    user.remaining_adds != null &&
-    user.weekly_used_adds >= 0 &&
-    user.remaining_adds >= 0 &&
-    user.weekly_used_adds + user.remaining_adds <= knownLimit;
-  const planReady = plan?.status === "ready";
+  const recommendations = plan?.recommendations?.slice(0, 7) ?? [];
+  const actions = plan?.plan ?? plan?.actions ?? [];
+  const recommendedTargets = [
+    ...new Set(recommendations.flatMap((item) => item.target_categories)),
+  ];
+  const strategyTargets = LEAGUE_CATEGORIES.filter(({ key }) =>
+    ["swing", "reachable"].includes(plan?.strategy?.[key]?.classification ?? ""),
+  )
+    .sort(
+      (a, b) =>
+        (plan?.strategy?.[b.key]?.target_priority ?? 0) -
+        (plan?.strategy?.[a.key]?.target_priority ?? 0),
+    )
+    .map(({ key }) => key);
+  const targetCategories = [...new Set([...recommendedTargets, ...strategyTargets])].slice(0, 3);
+  const targetKeys = targetCategories.map(
+    (key) => LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key,
+  );
+  const favoredCount = LEAGUE_CATEGORIES.filter(
+    ({ key }) => plan?.strategy?.[key]?.classification === "favored",
+  ).length;
+  const relevantIds = new Set(recommendations.map((item) => item.add_id));
+  const relevant = [
+    ...(user?.roster ?? []),
+    ...candidates.filter((player) => relevantIds.has(player.id)),
+  ];
+  const knownLimit =
+    snapshot.league.acquisition_settings.limit_per_scoring_period === false
+      ? snapshot.league.acquisition_settings.weekly_add_limit
+      : null;
+  const signed = (
+    value: number | null | undefined,
+    key?: (typeof LEAGUE_CATEGORIES)[number]["key"],
+  ) =>
+    value == null
+      ? "Unavailable"
+      : `${value > 0 ? "+" : ""}${key?.endsWith("pct") ? `${(value * 100).toFixed(2)} pp` : value.toLocaleString(undefined, { maximumFractionDigits: 1 })}`;
+  function controls(rows: typeof relevant) {
+    return rows.map((player) => {
+      const out =
+        preferences.player_overrides?.[player.id]?.injured ??
+        (player.health_status === "out" ||
+          player.injured === true ||
+          ["OUT", "O", "INJURY_RESERVE", "SUSPENSION"].includes(player.injury_status ?? ""));
+      const hardProtected =
+        player.undroppable === true ||
+        player.droppable === false ||
+        player.draft_round === 1 ||
+        (player.draft_rank != null && player.draft_rank <= snapshot.league.team_count) ||
+        (player.draft_pick != null && player.draft_pick <= snapshot.league.team_count);
+      const protectedPlayer = preferences.player_overrides?.[player.id]?.protected ?? hardProtected;
+      return (
+        <div className="player-control" key={player.id}>
+          <div>
+            <b>{player.name}</b>
+            <small>
+              {player.current_rates?.minutes == null
+                ? "Minutes unavailable"
+                : `${player.current_rates.minutes.toFixed(1)} MPG`}{" "}
+              · {player.remaining_games ?? "?"} games left{player.locked ? " · Locked" : ""}
+              {hardProtected ? " · Core protection" : ""}
+            </small>
+          </div>
+          <div className="player-switches">
+            <button
+              type="button"
+              className={out ? "availability-out" : "availability-in"}
+              aria-label={`${player.name} availability: ${out ? "Out" : "Available"}`}
+              aria-pressed={out}
+              onClick={() => override(player.id, { injured: !out })}
+            >
+              {out ? "Out" : "Available"}
+            </button>
+            {user?.roster.some((row) => row.id === player.id) && (
+              <button
+                type="button"
+                aria-label={`Protect ${player.name}`}
+                aria-pressed={protectedPlayer}
+                disabled={hardProtected}
+                onClick={() => override(player.id, { protected: !protectedPlayer })}
+              >
+                {protectedPlayer ? "◆ Protected" : "◇ Protect"}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    });
+  }
   return (
-    <section className="league-panel">
+    <section className="league-panel league-waiver">
       <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
-      {leagueError && <p role="alert">{leagueError}</p>}
-      {!snapshot.league.supported && <p role="alert">{snapshot.league.unsupported_reason}</p>}
-      <h2>Waiver Wire</h2>
-      <p>
-        Build a rotating shortlist, select roster slots to stream, then request a recommendation.
-        Suggestions only; make any approved changes yourself in ESPN.
-      </p>
-      <div className="league-metrics">
-        <p>
-          Weekly cap <b>{knownLimit ?? "Unknown"}</b>
-        </p>
-        <p>
-          Used this week <b>{user?.weekly_used_adds ?? "Unknown"}</b>
-        </p>
-        <p>
-          Remaining adds <b>{user?.remaining_adds ?? "Unknown"}</b>
-        </p>
+      <div className="waiver-verdict">
+        <div>
+          <span className="league-kicker">YOUR PATH TO FIVE CATEGORIES</span>
+          <h2>
+            {busy
+              ? "Finding your matchup edge…"
+              : targetKeys.length
+                ? `Focus on ${targetKeys.join(" · ")}`
+                : "Your matchup strategy"}
+          </h2>
+          <p>
+            Against {opponent?.name ?? "opponent unavailable"}. Compare the net benefit of a pickup
+            after the player you drop.
+          </p>
+        </div>
+        <div className="waiver-budget">
+          <b>{plan?.remaining_adds ?? user?.remaining_adds ?? "?"}</b>
+          <span>adds remaining</span>
+          <small>
+            {knownLimit ?? "Unknown"} cap · {user?.weekly_used_adds ?? "Unknown"} used
+          </small>
+        </div>
       </div>
-      <p>
-        ESPN season acquisitions are not weekly usage. No seven-add allowance is assumed. Remaining
-        dates: {snapshot.period.remaining_dates.join(", ") || "Unavailable or none remaining"}.
-        Lineup slots: {snapshot.league.lineup_slots.join(", ") || "Unavailable"}.
-      </p>
-      <details className="league-gaps">
-        <summary>Current matchup gaps vs {actualOpponent?.name ?? "opponent unavailable"}</summary>
-        <p>
-          Current results only. A deficit is not proof a category is attainable; projected
-          schedules, minutes and uncertainty are required before making that judgment.
+      {leagueError && <p role="alert">{leagueError}</p>}
+      {!snapshot.league.supported && (
+        <p role="alert">
+          {snapshot.league.unsupported_reason ?? "This league format is unsupported."}
         </p>
+      )}
+      {busy && <p role="status">Analyzing current rates, remaining games and your opponent…</p>}
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={() => setAttempt((value) => value + 1)}>
+            Retry analysis
+          </button>
+        </div>
+      )}
+      {!onPlan && (
+        <p role="status">
+          Optimizer integration is unavailable. Current category totals remain visible.
+        </p>
+      )}
+      {plan?.strategy && (
+        <p className="five-category-path">
+          <b>{favoredCount} favored</b> · {Math.max(0, 5 - favoredCount)} more categories needed for
+          five.{" "}
+          {targetKeys.length
+            ? `Prioritize ${targetKeys.join(" / ")}; defend the existing leads.`
+            : "Review the outlook before using an add."}
+        </p>
+      )}
+      <div className="strategy-legend">
+        <span className="league-winning">● Favored: defend</span>
+        <span className="league-tied">◆ Swing / reachable: target</span>
+        <span className="league-losing">↓ Likely punt: lower priority</span>
+        <span>— Unknown: missing evidence</span>
+      </div>
+      <div className="category-strategy-grid" aria-label="Category opportunities">
+        {targetCategories
+          .flatMap((key) => LEAGUE_CATEGORIES.filter((category) => category.key === key))
+          .map(({ key, label }) => {
+            const strategy = plan?.strategy?.[key];
+            const own = categoryValue(user?.totals ?? null, key);
+            const other = categoryValue(opponent?.totals ?? null, key);
+            const state = compareCategory(own, other, key);
+            const share =
+              own != null && other != null && own + other > 0
+                ? Math.max(0, Math.min(100, (own / (own + other)) * 100))
+                : null;
+            return (
+              <article
+                className={`strategy-category strategy-${strategy?.classification ?? "unknown"}`}
+                key={key}
+              >
+                <header>
+                  <b>{label}</b>
+                  <span>
+                    {strategy?.classification === "punt"
+                      ? "Likely punt"
+                      : (strategy?.classification ?? "Awaiting analysis")}
+                  </span>
+                </header>
+                <div className="strategy-actuals">
+                  <strong className={`league-${state}`}>{formatCategory(own, key)}</strong>
+                  <span>vs {formatCategory(other, key)}</span>
+                </div>
+                <div className="category-gap-bar" aria-hidden="true">
+                  {share != null && <span style={{ width: `${share}%` }} />}
+                </div>
+                <small>This week · {key === "to" ? "fewer wins" : "higher wins"}</small>
+                <p>
+                  {strategy?.explanation ??
+                    "Projection needs schedule and rate evidence; current totals alone do not establish a winnable category."}
+                </p>
+                {strategy && (
+                  <small>
+                    Projected gap {signed(strategy.projected_margin, key)}
+                    <br />
+                    Prior-week gap {signed(strategy.historical_margin, key)}
+                  </small>
+                )}
+              </article>
+            );
+          })}
+      </div>
+      <details className="category-overview">
+        <summary>
+          All nine categories ·{" "}
+          {LEAGUE_CATEGORIES.filter(
+            ({ key }) => plan?.strategy?.[key]?.classification === "favored",
+          )
+            .map(({ label }) => label)
+            .join(" · ") || "No confirmed favorites"}{" "}
+          favored
+        </summary>
         <div className="league-table-wrap">
           <table>
-            <caption>Current matchup category gaps</caption>
             <thead>
               <tr>
                 <th>Category</th>
-                <th>Your current total</th>
-                <th>Opponent current total</th>
-                <th>Standing</th>
+                <th>Outlook</th>
+                <th>This week: you / opponent</th>
+                <th>Projected / prior gap</th>
+                <th>Why</th>
               </tr>
             </thead>
             <tbody>
-              {LEAGUE_CATEGORIES.map((category) => {
-                const own = categoryValue(user?.totals ?? null, category.key);
-                const other = categoryValue(actualOpponent?.totals ?? null, category.key);
-                const standing = compareCategory(own, other, category.key);
-                return (
-                  <tr key={category.key}>
-                    <th scope="row">
-                      {category.label}
-                      {category.key === "to" ? " · lower is better" : ""}
-                    </th>
-                    <td>{formatCategory(own, category.key)}</td>
-                    <td>{formatCategory(other, category.key)}</td>
-                    <td className={`league-${standing}`}>{standing}</td>
-                  </tr>
-                );
-              })}
+              {LEAGUE_CATEGORIES.map(({ key, label }) => (
+                <tr key={key}>
+                  <th>{label}</th>
+                  <td>{plan?.strategy?.[key]?.classification ?? "Unknown"}</td>
+                  <td>
+                    {formatCategory(categoryValue(user?.totals ?? null, key), key)} /{" "}
+                    {formatCategory(categoryValue(opponent?.totals ?? null, key), key)}
+                  </td>
+                  <td>
+                    {signed(plan?.strategy?.[key]?.projected_margin, key)} /{" "}
+                    {signed(plan?.strategy?.[key]?.historical_margin, key)}
+                  </td>
+                  <td>{plan?.strategy?.[key]?.explanation ?? "Evidence unavailable"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </details>
-      <fieldset>
-        <legend>User-confirmed weekly constraints</legend>
+      <section className="pickup-section" aria-label="Ranked pickup alternatives">
+        <div className="strategy-section-heading">
+          <div>
+            <span className="league-kicker">PICK ONE TO REVIEW</span>
+            <h3>Best pickup + drop alternatives</h3>
+          </div>
+          <span>{recommendations.length} / 7 opportunities</span>
+        </div>
         <p>
-          Enter only verified counts from your league. These inputs are user supplied, not reported
-          by ESPN. If your league allows seven weekly adds, enter 7 only after checking the current
-          matchup's settings in ESPN.
+          Each option is compared with keeping your roster. These alternatives are not seven moves
+          to make together. Transactions remain manual in ESPN.
+        </p>
+        {plan && plan.remaining_adds == null && (
+          <p className="league-tied">
+            Conditional alternatives: weekly adds are unknown. Verify your remaining budget in ESPN
+            before choosing a move.
+          </p>
+        )}
+        {recommendations.length > 0 ? (
+          <ol className="pickup-list">
+            {recommendations.map((item, index) => (
+              <li key={`${item.add_id}:${item.drop_id}`}>
+                <div className="pickup-rank">{index + 1}</div>
+                <div className="pickup-body">
+                  <div className="pickup-pair">
+                    <div>
+                      <span className="league-winning">ADD</span>
+                      <h4>{players.get(item.add_id)?.name ?? "Player unavailable"}</h4>
+                    </div>
+                    <span className="pickup-arrow">→</span>
+                    <div>
+                      <span className="league-losing">DROP</span>
+                      <h4>{players.get(item.drop_id)?.name ?? "Player unavailable"}</h4>
+                    </div>
+                  </div>
+                  <div className="pickup-tags">
+                    <b>
+                      Target{" "}
+                      {item.target_categories
+                        .map(
+                          (key) =>
+                            LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ??
+                            key,
+                        )
+                        .join(" · ") || "overall balance"}
+                    </b>
+                    <span>{signed(item.games_gain)} net games</span>
+                    <span>{signed(item.minutes_gain)} net minutes</span>
+                    <span>1 add · {item.date}</span>
+                  </div>
+                  <div className="pickup-net pickup-target-gains">
+                    {item.target_categories.map((key) => (
+                      <span key={key}>
+                        {LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key}{" "}
+                        <b>{signed(item.gains[key], key)} net</b>
+                      </span>
+                    ))}
+                  </div>
+                  <details className="pickup-details">
+                    <summary>Why this move · rates & tradeoffs</summary>
+                    <p>{item.rationale}</p>
+                    <p>
+                      Pickup:{" "}
+                      {players.get(item.add_id)?.current_rates?.minutes?.toFixed(1) ?? "Unknown"}{" "}
+                      current MPG · {players.get(item.add_id)?.remaining_games ?? "Unknown"}{" "}
+                      remaining games. Drop:{" "}
+                      {players.get(item.drop_id)?.current_rates?.minutes?.toFixed(1) ?? "Unknown"}{" "}
+                      current MPG · {players.get(item.drop_id)?.remaining_games ?? "Unknown"}{" "}
+                      remaining games.
+                    </p>
+                    <div className="pickup-net">
+                      {Object.entries(item.gains).map(([key, value]) => (
+                        <span key={key}>
+                          {LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key}{" "}
+                          <b>{signed(value, key as (typeof LEAGUE_CATEGORIES)[number]["key"])}</b>
+                        </span>
+                      ))}
+                    </div>
+                    <small>
+                      Five-category estimate change{" "}
+                      {item.probability_gain == null
+                        ? "unavailable"
+                        : `${signed(item.probability_gain * 100)} pp`}
+                    </small>
+                    <p>
+                      Long-term roster value and protected core players are considered before
+                      recommending this drop.
+                    </p>
+                  </details>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          !busy && (
+            <div className="strategy-empty">
+              <h4>No supported pickup improvement yet</h4>
+              <p>
+                {plan?.reasons.join(" ") ||
+                  "The analysis needs usable current rates, remaining schedules and an eligible add/drop pair. No pickups have been invented."}
+              </p>
+            </div>
+          )
+        )}
+      </section>
+      <details className="weekly-plan">
+        <summary>
+          Combined weekly plan · {actions.length} moves · {plan?.remaining_adds ?? "unknown"} adds
+          available
+        </summary>
+        {actions.length > 0 ? (
+          <>
+            <p>
+              Sequential plan within the reported budget. Review dates and lineup eligibility in
+              ESPN before acting.
+            </p>
+            <ol>
+              {actions.map((action, index) => (
+                <li key={`${index}:${action.add_id}`}>
+                  <b>{action.date}</b> · Add {players.get(action.add_id)?.name ?? action.add_id} →
+                  drop {players.get(action.drop_id)?.name ?? action.drop_id}
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <p>
+            {plan?.remaining_adds == null
+              ? "Weekly acquisition counts are unknown. Alternatives can be evaluated, but a budget-constrained sequence cannot be confirmed."
+              : "Keeping the current roster is preferred, or no supported sequence is available."}
+          </p>
+        )}
+        {plan?.baseline && (
+          <p>
+            Five-category estimate: keeping roster{" "}
+            {probability(plan.baseline.probability_five_wins)} → combined plan{" "}
+            {probability(plan.projected?.probability_five_wins)}. Estimates are uncalibrated.
+          </p>
+        )}
+      </details>
+      <details className="availability-controls">
+        <summary>Edit availability & roster protection</summary>
+        <p>
+          Assume Available unless explicitly reported Out. Change a player below to recalculate
+          immediately. Known locks, undroppable players and core protection are respected.
+        </p>
+        {controls(relevant)}
+        <details>
+          <summary>
+            Other eligible free agents (
+            {candidates.filter((player) => !relevantIds.has(player.id)).length})
+          </summary>
+          {controls(candidates.filter((player) => !relevantIds.has(player.id)))}
+        </details>
+      </details>
+      <details className="waiver-advanced">
+        <summary>Advanced inputs & data notes</summary>
+        <p>
+          Only override acquisition counts with verified weekly values. Unknown usage is never
+          treated as zero.
         </p>
         <div className="league-fields">
-          {(["weekly_add_limit", "used_adds", "available_adds"] as const).map((key, index) => (
+          {(
+            [
+              ["weekly_add_limit", "Weekly add cap"],
+              ["used_adds", "Adds used this week"],
+              ["available_adds", "Adds remaining"],
+            ] as const
+          ).map(([key, label]) => (
             <label key={key}>
-              {["Verified weekly cap", "Verified adds used", "Verified adds remaining"][index]}
+              {label}
               <input
                 type="number"
                 min="0"
-                max="100"
                 step="1"
                 value={preferences[key] ?? ""}
                 onChange={(event) =>
-                  edit({
-                    [key]:
-                      event.target.value === ""
-                        ? null
-                        : Math.max(0, Math.min(100, Math.floor(Number(event.target.value)))),
-                    user_confirmed_counts: false,
-                  })
+                  edit({ [key]: event.target.value === "" ? null : Number(event.target.value) })
                 }
               />
             </label>
@@ -620,487 +984,38 @@ export function WaiverWire({
         <label className="league-check">
           <input
             type="checkbox"
-            checked={preferences.user_confirmed_counts}
+            checked={preferences.user_confirmed_counts ?? false}
             onChange={(event) => edit({ user_confirmed_counts: event.target.checked })}
           />
-          I verified these weekly counts and remaining adds in ESPN for this whole matchup,
-          including any additional acquisition restrictions.
+          Use my verified weekly counts
         </label>
-        {preferences.user_confirmed_counts && !validCounts && (
-          <p role="alert">
-            Enter all three counts; used plus remaining must not exceed the weekly cap.
+        <p>
+          Current-season per-game rates and remaining lineup opportunity drive estimates. Prior
+          season is fallback when the current sample is too small. Extra turnovers can hurt;
+          shooting percentages use makes and attempts.
+        </p>
+        {snapshot.free_agents_truncated && (
+          <p>
+            The returned free-agent pool is limited; these are the best supported alternatives
+            within that pool.
           </p>
         )}
-      </fieldset>
-      <label>
-        Maximum stream slots
-        <input
-          type="number"
-          min="1"
-          max="4"
-          value={preferences.max_stream_slots}
-          onChange={(event) =>
-            edit({
-              max_stream_slots: Math.max(
-                1,
-                Math.min(4, Math.floor(Number(event.target.value) || 1)),
-              ),
-            })
-          }
-        />
-      </label>
-      <details className="league-gaps">
-        <summary>Complete missing schedules and availability</summary>
-        <p>
-          Corrections below are your confirmed inputs for this snapshot, not ESPN data. Review both
-          full rosters and your shortlist. Enter only remaining games that have not started and for
-          which an acquisition can take effect. An empty confirmed schedule means no remaining
-          games. Flagged injured players are modeled out unless you explicitly confirm availability
-          for these dates. Refresh clears all confirmations.
-        </p>
-        <label>
-          Verified remaining matchup dates (optional override, comma separated YYYY-MM-DD)
-          <input
-            type="text"
-            value={preferences.remaining_dates?.join(", ") ?? ""}
-            placeholder={snapshot.period.remaining_dates.join(", ")}
-            onChange={(event) =>
-              edit({
-                remaining_dates: event.target.value.trim()
-                  ? event.target.value.split(",").map((value) => value.trim())
-                  : undefined,
-              })
-            }
-          />
-        </label>
-        {[
-          ...(user?.roster ?? []),
-          ...(actualOpponent?.roster ?? []),
-          ...candidates.filter((player) => preferences.candidate_ids.includes(player.id)),
-        ].map((player) => {
-          const correction = preferences.player_overrides?.[player.id] ?? {};
-          const update = (patch: typeof correction) =>
-            edit({
-              player_overrides: {
-                ...preferences.player_overrides,
-                [player.id]: { ...correction, ...patch },
-              },
-            });
-          return (
-            <fieldset key={player.id}>
-              <legend>{player.name}</legend>
-              <p>
-                Schedule:{" "}
-                {player.schedule === null
-                  ? "Unknown"
-                  : player.schedule
-                      .filter((game) => !game.started)
-                      .map((game) => game.date)
-                      .join(", ") || "No unstarted games reported"}
-                . Availability:{" "}
-                {player.injured === null
-                  ? "Unknown"
-                  : player.injured
-                    ? "Flagged injured"
-                    : "Reported available"}
-                .
-              </p>
-              <label>
-                Confirm {player.name} availability
-                <select
-                  value={
-                    correction.injured === undefined
-                      ? "reported"
-                      : correction.injured
-                        ? "out"
-                        : "available"
-                  }
-                  onChange={(event) =>
-                    update({
-                      injured:
-                        event.target.value === "reported"
-                          ? undefined
-                          : event.target.value === "out",
-                    })
-                  }
-                >
-                  <option value="reported">Use reported status (unknown stays unknown)</option>
-                  <option value="available">I verified available for modeled dates</option>
-                  <option value="out">I verified out for modeled dates</option>
-                </select>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={correction.schedule !== undefined}
-                  onChange={(event) => update({ schedule: event.target.checked ? [] : undefined })}
-                />
-                I am supplying {player.name} remaining unstarted game dates
-              </label>
-              {correction.schedule !== undefined && (
-                <label>
-                  {player.name} verified game dates (comma separated YYYY-MM-DD; empty means none)
-                  <input
-                    type="text"
-                    value={correction.schedule.join(", ")}
-                    onChange={(event) =>
-                      update({
-                        schedule: event.target.value.trim()
-                          ? event.target.value.split(",").map((value) => value.trim())
-                          : [],
-                      })
-                    }
-                  />
-                </label>
-              )}
-            </fieldset>
-          );
-        })}
-      </details>
-      <fieldset>
-        <legend>Uncertainty evidence</legend>
-        <label>
-          Uncertainty mode
-          <select
-            value={preferences.uncertainty_mode ?? "history"}
-            onChange={(event) =>
-              edit({ uncertainty_mode: event.target.value as "history" | "sensitivity" })
-            }
-          >
-            <option value="history">
-              Use complete historical matchup variation when available
-            </option>
-            <option value="sensitivity">Explore my explicit sensitivity assumptions</option>
-          </select>
-        </label>
-        <p>
-          At least three complete, varying prior weekly comparisons are required for historical
-          estimates. Otherwise baseline comparisons remain available. Sensitivity estimates are
-          uncalibrated and depend on the values you enter.
-        </p>
-        {preferences.uncertainty_mode === "sensitivity" && (
-          <div className="league-fields">
-            {LEAGUE_CATEGORIES.map((category) => (
-              <label key={category.key}>
-                {category.label} margin standard deviation
-                {category.key.endsWith("pct")
-                  ? " (fraction: 0.01 = one percentage point)"
-                  : " (category total units)"}
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={preferences.margin_sd?.[category.key] ?? ""}
-                  onChange={(event) =>
-                    edit({
-                      margin_sd: {
-                        ...preferences.margin_sd,
-                        [category.key]:
-                          event.target.value === "" ? undefined : Number(event.target.value),
-                      },
-                    })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-        )}
-      </fieldset>
-      <fieldset>
-        <legend>Roster players available to drop</legend>
-        <p>
-          Select only players you have verified can be dropped now in ESPN. Unknown locks remain
-          unknown unless you explicitly confirm each selected player is unlocked. Reported locked
-          players are excluded.
-        </p>
-        {user?.roster.map((player) => (
-          <label className="league-check" key={player.id}>
-            <input
-              type="checkbox"
-              disabled={
-                player.locked === true ||
-                player.lineup_slot === "IR" ||
-                player.lineup_slot === "IR+"
-              }
-              checked={preferences.droppable_ids.includes(player.id)}
-              onChange={(event) =>
-                edit({
-                  droppable_ids: event.target.checked
-                    ? [...preferences.droppable_ids, player.id]
-                    : preferences.droppable_ids.filter((id) => id !== player.id),
-                })
-              }
-            />
-            {player.name} ·{" "}
-            {player.lineup_slot === "IR" || player.lineup_slot === "IR+"
-              ? "IR moves are not modeled"
-              : player.locked === null
-                ? "Lock unknown: I verified this player is unlocked"
-                : player.locked
-                  ? "Locked"
-                  : "Reported unlocked"}
-          </label>
-        ))}
-      </fieldset>
-      <h3>Eligible unrostered candidates</h3>
-      <p>
-        Only eligible free agents are listed. Waiver claims and rostered players are excluded.{" "}
-        {snapshot.free_agents_truncated &&
-          "ESPN returned a limited candidate pool; this is not the entire free-agent market."}
-      </p>
-      {candidates.length === 0 && <p>No eligible free agents were returned.</p>}
-      <div className="league-table-wrap">
-        <table>
-          <caption>
-            Current and prior-season per-game actuals; no future production is implied
-          </caption>
-          <thead>
-            <tr>
-              <th>Candidate</th>
-              <th>Remaining games / minutes</th>
-              <th>Current / prior sample</th>
-              <th>Category averages · current / prior</th>
-              <th>Shortlist</th>
-            </tr>
-          </thead>
-          <tbody>
-            {candidates.map((player) => (
-              <tr key={player.id}>
-                <th scope="row">
-                  {player.name}
-                  <small>
-                    {player.positions.join(", ")} · {player.injury_status ?? "Injury unknown"}
-                  </small>
-                </th>
-                <td>
-                  {player.remaining_games ?? "Unknown"} games
-                  <small>
-                    {player.current_rates?.minutes ?? "Unknown"} current minutes/game · future
-                    minutes unavailable
-                  </small>
-                  <small>
-                    {player.schedule?.map((game) => game.date).join(", ") ?? "Schedule unknown"}
-                  </small>
-                </td>
-                <td>
-                  {player.current_games ?? "Unknown"} / {player.prior_games ?? "Unknown"} games
-                </td>
-                <td className="league-averages">
-                  {LEAGUE_CATEGORIES.map((category) => (
-                    <span key={category.key}>
-                      {category.label}:{" "}
-                      {formatCategory(
-                        categoryValue(player.current_rates, category.key),
-                        category.key,
-                      )}{" "}
-                      /{" "}
-                      {formatCategory(
-                        categoryValue(player.prior_rates, category.key),
-                        category.key,
-                      )}
-                    </span>
-                  ))}
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    aria-pressed={preferences.candidate_ids.includes(player.id)}
-                    onClick={() =>
-                      edit({
-                        user_confirmed_eligibility: false,
-                        candidate_ids: preferences.candidate_ids.includes(player.id)
-                          ? preferences.candidate_ids.filter((id) => id !== player.id)
-                          : [...preferences.candidate_ids, player.id],
-                      })
-                    }
-                  >
-                    {preferences.candidate_ids.includes(player.id) ? "Remove" : "Shortlist"}{" "}
-                    {player.name}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <label className="league-check">
-        <input
-          type="checkbox"
-          checked={preferences.user_confirmed_eligibility}
-          onChange={(event) => edit({ user_confirmed_eligibility: event.target.checked })}
-        />
-        I verified the shortlisted players can be added now and the selected roster players can be
-        dropped now in this matchup.
-      </label>
-      <h3>Editable rotation shortlist</h3>
-      <p>
-        Order expresses your preference; the optimizer may select fewer adds or a different order to
-        respect dates and constraints. Editing clears the old recommendation.
-      </p>
-      <ol>
-        {preferences.candidate_ids.map((id, index) => (
-          <li key={id}>
-            {players.get(id)?.name ?? id}{" "}
-            <button
-              type="button"
-              disabled={index === 0}
-              aria-label={`Move ${players.get(id)?.name ?? id} earlier`}
-              onClick={() => {
-                const ids = [...preferences.candidate_ids];
-                [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-                edit({ candidate_ids: ids });
-              }}
-            >
-              Earlier
-            </button>{" "}
-            <button
-              type="button"
-              onClick={() =>
-                edit({ candidate_ids: preferences.candidate_ids.filter((item) => item !== id) })
-              }
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ol>
-      {!onPlan && (
-        <p role="status">
-          Optimizer integration is unavailable. No recommendations or probabilities have been
-          generated.
-        </p>
-      )}
-      <button
-        type="button"
-        disabled={
-          !onPlan ||
-          busy ||
-          loading ||
-          !!leagueError ||
-          (!serverCounts && !validCounts) ||
-          preferences.candidate_ids.length === 0 ||
-          preferences.droppable_ids.length === 0 ||
-          !preferences.user_confirmed_eligibility ||
-          !snapshot.league.supported
-        }
-        onClick={() => void generate()}
-      >
-        {busy ? "Calculating…" : "Calculate recommendation"}
-      </button>
-      <p>
-        Counts source:{" "}
-        {validCounts
-          ? "User-confirmed weekly inputs"
-          : serverCounts
-            ? "ESPN weekly counts"
-            : "Missing verified weekly counts"}
-        . Five-category estimates require historical uncertainty evidence or your explicitly
-        selected sensitivity assumptions. No probabilities are calibrated guarantees.
-      </p>
-      {error && <p role="alert">{error}</p>}
-      {plan && (
-        <section aria-label="Waiver recommendation">
-          <h3>Recommendation · {plan.status}</h3>
-          <ul>
-            {plan.reasons.map((reason) => (
-              <li key={reason}>{reason}</li>
-            ))}
-          </ul>
-          <p>
-            Uncalibrated model probability of winning at least five categories: baseline{" "}
-            {probability(planReady ? plan.baseline?.probability_five_wins : null)} → recommended{" "}
-            {probability(planReady ? plan.projected?.probability_five_wins : null)}. Ties do not
-            count as wins.
-          </p>
-          <p>
-            Projected games: {plan.baseline?.games ?? "Unknown"} →{" "}
-            {planReady ? (plan.projected?.games ?? "Unknown") : "Unavailable"}; minutes:{" "}
-            {plan.baseline?.minutes ?? "Unknown"} →{" "}
-            {planReady ? (plan.projected?.minutes ?? "Unknown") : "Unavailable"}. Adds remaining:{" "}
-            {plan.remaining_adds ?? "Unknown"}.
-          </p>
-          <div className="league-table-wrap">
-            <table>
-              <caption>
-                {plan.baseline?.basis === "recorded"
-                  ? "Recorded baseline totals; projections withheld"
-                  : "Projected end-of-period category totals and gains"}
-              </caption>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Baseline</th>
-                  <th>Recommended</th>
-                  <th>Change</th>
-                </tr>
-              </thead>
-              <tbody>
-                {LEAGUE_CATEGORIES.map((category) => {
-                  const base = categoryValue(plan.baseline?.totals ?? null, category.key);
-                  const next = categoryValue(
-                    planReady ? (plan.projected?.totals ?? null) : null,
-                    category.key,
-                  );
-                  return (
-                    <tr key={category.key}>
-                      <th scope="row">
-                        {category.label}
-                        {category.key === "to" ? " · lower is better" : ""}
-                      </th>
-                      <td>{formatCategory(base, category.key)}</td>
-                      <td>{formatCategory(next, category.key)}</td>
-                      <td>
-                        {base === null || next === null
-                          ? "Unavailable"
-                          : `${next >= base ? "+" : ""}${category.key.endsWith("pct") ? `${((next - base) * 100).toFixed(2)} pp` : (next - base).toFixed(2)}`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {planReady ? (
-            <ol>
-              {plan.actions.map((action, index) => (
-                <li key={`${index}-${action.date}-${action.add_id}`}>
-                  <b>
-                    {action.date}: add {players.get(action.add_id)?.name ?? action.add_id}, drop{" "}
-                    {players.get(action.drop_id)?.name ?? action.drop_id}
-                  </b>
-                  <p>
-                    Stream slot {action.stream_slot} · modeled probability gain{" "}
-                    {action.probability_gain === null
-                      ? "Unavailable"
-                      : `${(action.probability_gain * 100).toFixed(1)} percentage points`}
-                  </p>
-                  <p>
-                    {Object.entries(action.gains)
-                      .map(([key, gain]) => `${key}: ${gain ?? "Unknown"}`)
-                      .join(" · ")}
-                  </p>
-                </li>
+        {plan && (
+          <>
+            <p>
+              Uncertainty source: {plan.uncertainty?.source ?? "Unavailable"} · uncalibrated
+              estimates, not guarantees.
+            </p>
+            <ul>
+              {[...plan.assumptions, ...plan.limitations, ...plan.reasons].map((item, index) => (
+                <li key={`${index}:${item}`}>{item}</li>
               ))}
-            </ol>
-          ) : (
-            <p>No actions are available with incomplete or unavailable inputs.</p>
-          )}
-          <h4>Assumptions and tradeoffs</h4>
-          <ul>
-            {[...plan.assumptions, ...plan.limitations].map((item, index) => (
-              <li key={`${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
-          <p>
-            Probabilities are model sensitivity estimates, not calibrated guarantees. Category
-            correlations, injuries, role changes and uncertain schedules can change results. FG/FT
-            use makes and attempts; extra turnovers can hurt. Review each add/drop and lineup
-            eligibility before acting.
-          </p>
-          <DataGaps gaps={plan.data_gaps} />
-        </section>
-      )}
-      <DataGaps gaps={snapshot.data_gaps} />
+            </ul>
+            <DataGaps gaps={plan.data_gaps} />
+          </>
+        )}
+        <DataGaps gaps={snapshot.data_gaps} />
+      </details>
     </section>
   );
 }

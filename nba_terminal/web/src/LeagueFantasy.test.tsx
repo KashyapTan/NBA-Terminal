@@ -35,16 +35,12 @@ it("shows actual opponent, nine categories, 13 comparison teams and hypothetical
   expect(
     screen.getByRole("heading", { name: "Current opponent: Test opponent" }),
   ).toBeInTheDocument();
-  expect(
-    screen.getByText("Current matchup: 2 winning · 7 tied · 0 losing · 0 unknown"),
-  ).toBeInTheDocument();
+  expect(screen.getByLabelText("2 wins, 0 losses, 7 ties")).toBeInTheDocument();
   expect(screen.getAllByRole("option")).toHaveLength(13);
   expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(10);
   expect(screen.getByText("Test player rostered")).toBeInTheDocument();
   await user.selectOptions(screen.getByRole("combobox"), "3");
-  expect(
-    screen.getByText("Hypothetical comparison: 0 winning · 9 tied · 0 losing · 0 unknown"),
-  ).toBeInTheDocument();
+  expect(screen.getByLabelText("0 wins, 0 losses, 9 ties")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Refresh league" }));
   expect(refresh).toHaveBeenCalledOnce();
 });
@@ -52,7 +48,7 @@ it("does not turn absent totals into zeroes or inject fixtures into empty states
   const snapshot = testSnapshot();
   snapshot.teams[1].totals = null;
   const view = render(<Matchups snapshot={snapshot} />);
-  expect(screen.getByText(/0 winning · 0 tied · 0 losing · 9 unknown/)).toBeInTheDocument();
+  expect(screen.getByText("9 categories unavailable")).toBeInTheDocument();
   view.rerender(
     <>
       <Matchups snapshot={null} />
@@ -123,45 +119,31 @@ const readyPlan: WaiverPlan = {
   limitations: ["Uncalibrated"],
   data_gaps: [],
 };
-it("requires scoped confirmations, shows recommendations and invalidates on edit or refresh", async () => {
-  const user = userEvent.setup();
+it("automatically analyzes and preserves availability across harmless refresh", async () => {
   const onPlan = vi.fn().mockResolvedValue(readyPlan);
   const snapshot = testSnapshot();
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  expect(
-    screen.queryByRole("button", { name: "Shortlist Test player waivers" }),
-  ).not.toBeInTheDocument();
-  const calculate = screen.getByRole("button", { name: "Calculate recommendation" });
-  expect(calculate).toBeDisabled();
-  await user.type(screen.getByLabelText("Verified weekly cap"), "7");
-  await user.type(screen.getByLabelText("Verified adds used"), "1");
-  await user.type(screen.getByLabelText("Verified adds remaining"), "6");
-  await user.click(screen.getByLabelText(/I verified these weekly counts/));
-  await user.click(screen.getByLabelText(/Test player rostered · Reported unlocked/));
-  await user.click(screen.getByRole("button", { name: "Shortlist Test player free" }));
-  await user.click(screen.getByLabelText(/I verified the shortlisted players/));
-  await user.click(calculate);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
-  expect(onPlan.mock.calls[0][0]).toMatchObject({
-    candidate_ids: ["free"],
-    droppable_ids: ["rostered"],
-    user_confirmed_counts: true,
-    user_confirmed_eligibility: true,
-    context: { league_id: 1, team_id: 1, matchup_period_id: 1 },
-  });
-  expect(screen.getByText(/baseline 30.0% → recommended 40.0%/)).toBeInTheDocument();
-  await user.clear(screen.getByLabelText("Maximum stream slots"));
-  expect(screen.queryByRole("region", { name: "Waiver recommendation" })).not.toBeInTheDocument();
+  expect(onPlan.mock.calls[0][0]).not.toHaveProperty("candidate_ids");
+  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  await userEvent.click(
+    screen.getByRole("button", { name: "Test player rostered availability: Available" }),
+  );
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
+  expect(onPlan.mock.calls[1][0].player_overrides).toEqual({ rostered: { injured: true } });
   view.rerender(
     <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-10-31T13:00:00Z" }} onPlan={onPlan} />,
   );
-  expect(screen.getByLabelText(/I verified these weekly counts/)).not.toBeChecked();
-  expect(screen.getByLabelText("Verified weekly cap")).toHaveValue(null);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(3));
+  expect(onPlan.mock.calls[2][0].player_overrides.rostered.injured).toBe(true);
+  view.rerender(<WaiverWire snapshot={{ ...snapshot, selected_team_id: 2 }} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(4));
+  expect(onPlan.mock.calls[3][0]).not.toHaveProperty("player_overrides");
 });
 it("explains unavailable optimizer instead of inventing probabilities", () => {
   render(<WaiverWire snapshot={testSnapshot()} />);
   expect(screen.getByText(/Optimizer integration is unavailable/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Calculate recommendation" })).toBeDisabled();
+  expect(screen.queryByText(/30.0%/)).not.toBeInTheDocument();
 });
 it("does not restore a late snapshot after disconnect", async () => {
   let resolveSnapshot!: (value: ReturnType<typeof testSnapshot>) => void;
@@ -197,61 +179,62 @@ it("does not restore a late snapshot after disconnect", async () => {
   await waitFor(() => expect(screen.getByText("Empty")).toBeInTheDocument());
 });
 
-it("rejects inconsistent weekly confirmations and clears eligibility after changing drops", async () => {
-  const user = userEvent.setup();
-  const onPlan = vi.fn();
-  const snapshot = testSnapshot();
-  snapshot.teams[0].roster[0].locked = null;
-  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await user.type(screen.getByLabelText("Verified weekly cap"), "7");
-  await user.type(screen.getByLabelText("Verified adds used"), "2");
-  await user.type(screen.getByLabelText("Verified adds remaining"), "7");
-  await user.click(screen.getByLabelText(/I verified these weekly counts/));
-  expect(screen.getByRole("alert")).toHaveTextContent("used plus remaining must not exceed");
-  await user.click(screen.getByLabelText(/I verified the shortlisted players/));
-  await user.click(screen.getByLabelText(/Lock unknown: I verified this player is unlocked/));
-  expect(screen.getByLabelText(/I verified the shortlisted players/)).not.toBeChecked();
-  expect(screen.getByRole("button", { name: "Calculate recommendation" })).toBeDisabled();
-  expect(onPlan).not.toHaveBeenCalled();
+it("ignores late analysis after a protection edit", async () => {
+  const resolvers: ((plan: WaiverPlan) => void)[] = [];
+  const onPlan = vi
+    .fn()
+    .mockImplementation(() => new Promise<WaiverPlan>((resolve) => resolvers.push(resolve)));
+  render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
+  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  await userEvent.click(screen.getByRole("button", { name: "Protect Test player rostered" }));
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
+  resolvers[1]({ ...readyPlan, reasons: ["Newest analysis"] });
+  await screen.findAllByText("Newest analysis");
+  resolvers[0]({ ...readyPlan, reasons: ["Stale analysis"] });
+  await waitFor(() => expect(screen.queryByText("Stale analysis")).not.toBeInTheDocument());
+  expect(onPlan.mock.calls[1][0].player_overrides).toEqual({ rostered: { protected: true } });
 });
-
-it("sends explicit schedule, availability and sensitivity edits with snapshot context", async () => {
-  const user = userEvent.setup();
+it("renders seven alternatives separately from combined plan and protects core players", async () => {
   const snapshot = testSnapshot();
-  snapshot.league.acquisition_settings.limit_per_scoring_period = false;
-  snapshot.teams[0].weekly_used_adds = 5;
-  snapshot.teams[0].remaining_adds = 2;
-  const onPlan = vi.fn().mockResolvedValue(readyPlan);
-  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await user.click(screen.getByLabelText(/Test player rostered · Reported unlocked/));
-  await user.click(screen.getByRole("button", { name: "Shortlist Test player free" }));
-  await user.click(screen.getByLabelText(/I verified the shortlisted players/));
-  await user.click(
-    screen.getByText("Complete missing schedules and availability", { exact: true }),
-  );
-  await user.type(screen.getByLabelText(/Verified remaining matchup dates/), "2026-11-01");
-  await user.selectOptions(
-    screen.getByLabelText("Confirm Test player rostered availability"),
-    "available",
-  );
-  await user.click(
-    screen.getByLabelText("I am supplying Test player rostered remaining unstarted game dates"),
-  );
-  await user.type(screen.getByLabelText(/Test player rostered verified game dates/), "2026-11-01");
-  await user.selectOptions(screen.getByLabelText("Uncertainty mode"), "sensitivity");
-  await user.type(
-    screen.getByLabelText("PTS margin standard deviation (category total units)"),
-    "5",
-  );
-  await user.click(screen.getByRole("button", { name: "Calculate recommendation" }));
-  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
-  expect(onPlan.mock.calls[0][0]).toMatchObject({
-    remaining_dates: ["2026-11-01"],
-    player_overrides: { rostered: { injured: false, schedule: ["2026-11-01"] } },
-    uncertainty_mode: "sensitivity",
-    margin_sd: { pts: 5 },
-    context: { league_id: 1, team_id: 1, matchup_period_id: 1 },
+  snapshot.teams[0].roster[0].undroppable = true;
+  const recommendation = {
+    add_id: "free",
+    drop_id: "rostered",
+    date: "2026-11-01",
+    probability_gain: 0.05,
+    gains: { pts: 15 },
+    games_gain: 1,
+    minutes_gain: 25,
+    season_cost: 0,
+    net_score: 1,
+    target_categories: ["pts"],
+    rationale: "A net scoring upgrade.",
+  };
+  const onPlan = vi.fn().mockResolvedValue({
+    ...readyPlan,
+    recommendations: Array.from({ length: 9 }, (_, i) => ({
+      ...recommendation,
+      add_id: `free${i}`,
+    })),
+    strategy: {
+      pts: {
+        classification: "swing",
+        explanation: "Scoring is close.",
+        projected_margin: -3,
+        historical_margin: 2,
+        target_priority: 1,
+      },
+    },
   });
-  await user.selectOptions(screen.getByLabelText("Uncertainty mode"), "history");
-  expect(screen.queryByRole("heading", { name: "Recommendation · ready" })).not.toBeInTheDocument();
+  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await screen.findByText("Focus on PTS");
+  expect(
+    within(screen.getByRole("region", { name: "Ranked pickup alternatives" })).getAllByRole(
+      "listitem",
+    ),
+  ).toHaveLength(7);
+  expect(screen.getByText(/Combined weekly plan · 1 moves/)).toBeInTheDocument();
+  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeDisabled();
+  expect(screen.getByText(/Prior-week gap/)).toBeInTheDocument();
 });

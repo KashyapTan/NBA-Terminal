@@ -18,112 +18,81 @@ async function connect(page: Page, league = 123) {
     await expect(page.getByText("Current opponent: Fixture Team 2", { exact: true })).toBeVisible();
   }
 }
-async function constraints(page: Page) {
-  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await page.getByLabel("Verified weekly cap").fill("7");
-  await page.getByLabel("Verified adds used").fill("5");
-  await page.getByLabel("Verified adds remaining").fill("2");
-  await page.getByLabel("I verified these weekly counts").check();
-  await page.getByLabel(/Fixture Player 1 · Lock unknown/).check();
-  await page.getByRole("button", { name: "Shortlist Fixture Player 100", exact: true }).click();
-  await page.getByLabel("I verified the shortlisted players").check();
-}
-async function sensitivity(page: Page) {
-  await page.getByLabel("Uncertainty mode").selectOption("sensitivity");
-  const fields = page.getByLabel(/margin standard deviation/);
-  for (let index = 0; index < 9; index++) await fields.nth(index).fill(index >= 7 ? "0.05" : "5");
-}
-
-test("production chain connects, compares 14 teams and calculates an editable plan", async ({
+test("production chain automatically ranks seven net pickup alternatives and preserves edits", async ({
   page,
 }, info) => {
   await connect(page);
-  await expect(page.getByText(/Team ownership unverified/)).toBeVisible();
   await page.getByRole("tab", { name: "Matchups", exact: true }).click();
   const compared = page.getByLabel("Compare league team");
   await expect(compared.locator("option")).toHaveCount(13);
-  await expect(page.getByText("Fixture Player 1", { exact: true })).toBeVisible();
-  await expect(page.getByText("Fixture Player 2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(10);
   await expect(
     page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: /TO/ }) }),
-  ).toContainText("winning");
-  await expect(page.getByRole("table").getByRole("row")).toHaveCount(10);
+  ).toContainText("Leading");
   await compared.selectOption("14");
-  await expect(
-    page.getByText("Hypothetical comparison: 0 winning · 9 tied · 0 losing · 0 unknown"),
-  ).toBeVisible();
+  await expect(page.getByLabel("0 wins, 0 losses, 9 ties")).toBeVisible();
   await compared.selectOption("2");
-  await constraints(page);
-  await page.getByRole("button", { name: "Calculate recommendation" }).click();
-  await expect(page.getByRole("heading", { name: "Recommendation · incomplete" })).toBeVisible();
-  await expect(page.getByText(/Insufficient historical variance/).first()).toBeVisible();
-  await sensitivity(page);
-  await expect(page.getByRole("heading", { name: "Recommendation · incomplete" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Calculate recommendation" }).click();
-  await expect(page.getByRole("heading", { name: "Recommendation · ready" })).toBeVisible();
-  await expect(page.getByText(/add Fixture Player 100, drop Fixture Player 1/)).toBeVisible();
-  const evidence = resolve(process.cwd(), "../../code_review/fantasy-integration-evidence");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v2");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({
+    path: resolve(evidence, `${info.project.name}-matchups-desktop.png`),
+    fullPage: true,
+  });
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  const alternatives = page.getByRole("region", { name: "Ranked pickup alternatives" });
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await expect(page.locator(".category-overview tbody > tr")).toHaveCount(9);
+  await expect(page.getByText(/Combined weekly plan/)).toBeVisible();
+  await expect(page.locator(".waiver-budget")).toContainText("5 used");
   await page.screenshot({
     path: resolve(evidence, `${info.project.name}-waiver-desktop.png`),
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
   await page.screenshot({
     path: resolve(evidence, `${info.project.name}-waiver-mobile.png`),
     fullPage: true,
   });
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "Remove Fixture Player 100", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Recommendation · ready" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Calculate recommendation" })).toBeDisabled();
-  await page.getByRole("button", { name: "Shortlist Fixture Player 100", exact: true }).click();
-  await page.getByLabel("I verified the shortlisted players").check();
-  await page.route("**/api/fantasy/espn/plan", (route) =>
-    route.fulfill({ status: 503, json: { detail: "test-only busy" } }),
-  );
-  await page.getByRole("button", { name: "Calculate recommendation" }).click();
-  await expect(page.getByRole("alert")).toContainText("could not be calculated");
-  await page.unroute("**/api/fantasy/espn/plan");
-  await page.getByRole("button", { name: "Refresh league" }).click();
-  await expect(page.getByLabel("Verified adds used")).toHaveValue("");
-  await expect(page.getByLabel("I verified the shortlisted players")).not.toBeChecked();
-  await page.getByRole("tab", { name: "Leaders", exact: true }).click();
-  await page.getByLabel("Minimum minutes per game", { exact: true }).fill("33");
-  await expect(page.getByRole("table").first().getByText("Synthetic season starter")).toHaveCount(
-    0,
-  );
-  await page.getByLabel("Minimum minutes per game", { exact: true }).fill("30");
-  await expect(page.getByRole("table").first().getByText("Synthetic season starter")).toBeVisible();
-  await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  await expect(page.getByRole("button", { name: "Expand sidebar" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
-  await page.screenshot({
-    path: resolve(evidence, `${info.project.name}-connected-desktop.png`),
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByText("Edit availability & roster protection", { exact: true }).click();
   await expect(
-    page
-      .getByRole("navigation", { name: "Workspace" })
-      .getByRole("link", { name: "Fantasy", exact: true }),
+    page.getByRole("button", { name: "Protect Fixture Player 1001", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true }),
   ).toBeVisible();
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
-    .toBe(true);
-  await page.screenshot({
-    path: resolve(evidence, `${info.project.name}-connected-mobile.png`),
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Disconnect ESPN" }).click();
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await page.getByRole("button", { name: "Refresh league", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true })
+    .click();
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(0);
+  await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
+  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(7);
+  await page.route("**/api/fantasy/espn/plan", (route) =>
+    route.fulfill({ status: 503, json: { detail: "test busy" } }),
+  );
+  await page
+    .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Analysis could not be loaded");
+  await page.unroute("**/api/fantasy/espn/plan");
+  await page.getByRole("button", { name: "Retry analysis", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your fantasy workspace" })).toBeVisible();
+  await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
   await expect(page.getByLabel("League ID", { exact: true })).toBeVisible();
 });
 
@@ -159,38 +128,22 @@ test("private cookie flow uses the local session and enforces selectable ownersh
   await page.getByRole("button", { name: "Disconnect ESPN" }).click();
 });
 
-test("missing schedules recover explicitly; unsupported and failed connections stay honest", async ({
+test("missing schedules, unsupported formats and failed connections stay honest", async ({
   page,
 }) => {
   await connect(page, 124);
-  await constraints(page);
-  await sensitivity(page);
-  await page.getByRole("button", { name: "Calculate recommendation" }).click();
-  await expect(page.getByRole("heading", { name: "Recommendation · incomplete" })).toBeVisible();
-  await expect(page.getByText(/remaining schedule is unknown/).first()).toBeVisible();
-  await expect(page.getByText(/No actions are available/)).toBeVisible();
-  await page.getByText("Complete missing schedules and availability", { exact: true }).click();
-  await page.getByLabel("Verified remaining matchup dates").fill("2026-11-01");
-  for (const id of [1, 2, 100]) {
-    await page
-      .getByLabel(`I am supplying Fixture Player ${id} remaining unstarted game dates`, {
-        exact: true,
-      })
-      .check();
-    await page
-      .getByLabel(`Fixture Player ${id} verified game dates`, { exact: false })
-      .fill("2026-11-01");
-  }
-  await page.getByRole("button", { name: "Calculate recommendation" }).click();
-  await expect(page.getByRole("heading", { name: "Recommendation · ready" })).toBeVisible();
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Ranked pickup alternatives" }).locator(".pickup-list > li"),
+  ).toHaveCount(0);
   await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
-  await page.getByRole("button", { name: "Disconnect ESPN" }).click();
+  await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
   await connect(page, 125);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Only head-to-head standard nine-category");
-  await expect(page.getByRole("button", { name: "Calculate recommendation" })).toBeDisabled();
   await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
-  await page.getByRole("button", { name: "Disconnect ESPN" }).click();
+  await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
   await connect(page, 126);
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   await expect(page.getByLabel("Your ESPN team")).toHaveCount(0);
