@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
+
+from nba_terminal.services import fantasy_nba
 
 BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba"
 STAT_IDS = {
@@ -176,7 +178,7 @@ class EspnClient:
         return data
 
     def league(self) -> dict:
-        raw = self.get(["mSettings", "mTeam", "mRoster", "mMatchup", "mMatchupScore", "mScoreboard"])
+        raw = self.get(["mSettings", "mTeam", "mRoster", "mMatchup", "mMatchupScore", "mScoreboard", "mDraftDetail"])
         if (
             raw.get("id") != self.league_id
             or raw.get("seasonId") != self.season_id
@@ -228,7 +230,7 @@ class EspnClient:
                         "players": {
                             "filterIds": {"value": sorted(ids)},
                             "filterStatsForTopScoringPeriodIds": {
-                                "value": 0,
+                                "value": period or 0,
                                 "additionalValue": [f"00{self.season_id}", f"00{self.season_id - 1}"],
                             },
                         }
@@ -248,7 +250,41 @@ class EspnClient:
                 scoring_period=period,
             ),
         )
-        return normalize(raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps)
+        # One prior-period batch repairs missing cumulative history for every team together.
+        previous = (count(raw.get("status", {}).get("currentMatchupPeriod")) or 1) - 1
+        previous_rows = [m for m in raw.get("schedule", []) if m.get("matchupPeriodId") == previous]
+        covered = {
+            side.get("teamId")
+            for match in previous_rows
+            for side in (match.get("home", {}), match.get("away", {}))
+            if total_stats(side) is not None
+        }
+        if previous > 0 and covered != {team["id"] for team in raw["teams"]}:
+            previous_raw = raw | {"status": raw.get("status", {}) | {"currentMatchupPeriod": previous}}
+            previous_days, _ = matchup_scoring_periods(
+                previous_raw, normalize_schedule(schedule, datetime.now(timezone.utc))
+            )
+            history = optional(
+                "Prior matchup totals",
+                lambda: self.get(
+                    ["mMatchupScore", "mScoreboard"],
+                    {"schedule": {"filterMatchupPeriodIds": {"value": [previous]}}},
+                    scoring_period=max(previous_days) if previous_days else None,
+                ),
+            )
+            replacements = [m for m in history.get("schedule", []) if m.get("matchupPeriodId") == previous]
+            if replacements:
+                raw = raw | {"schedule": merge_history(raw.get("schedule", []), replacements)}
+        bundle = fantasy_nba.load(
+            self.season_id,
+            need_schedule=sum(
+                bool(games) for games in normalize_schedule(schedule, datetime.now(timezone.utc)).values()
+            )
+            < 30,
+        )
+        return normalize(
+            raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps, nba=bundle
+        )
 
 
 def player_body(entry: dict) -> dict:
@@ -276,10 +312,13 @@ def samples(player: dict, year: int) -> tuple[dict | None, float | None]:
     totals = stats(split.get("stats"))
     games = totals.get("games") if totals else None
     averages = stats(split.get("averageStats"))
-    if averages is None and totals and games and games > 0:
+    if totals and games and games > 0:
         averages = {key: value / games if value is not None else None for key, value in totals.items()}
         for key in ("fg_pct", "ft_pct"):
             averages[key] = totals[key]
+        # Preserve explicit averages for fields absent from cumulative stats.
+        supplied = stats(split.get("averageStats")) or {}
+        averages = {key: value if value is not None else supplied.get(key) for key, value in averages.items()}
     return averages, games
 
 
@@ -294,10 +333,18 @@ def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
                 timestamp = number(game.get("date"))
                 if timestamp is None:
                     continue
-                start = datetime.fromtimestamp(timestamp / 1000, timezone.utc)
+                try:
+                    start = datetime.fromtimestamp(timestamp / 1000, timezone.utc)
+                    scoring_id = int(period)
+                except (ValueError, OverflowError, OSError):
+                    continue
+                if game.get("startTimeTBD") or game.get("validForLocking") is False:
+                    continue
                 games.append(
                     {
-                        "scoring_period_id": int(period),
+                        "game_id": game.get("id"),
+                        "source": "espn_schedule",
+                        "scoring_period_id": scoring_id,
                         "date": start.astimezone(NY).date().isoformat(),
                         "start_at": start.isoformat(),
                         "started": start <= now,
@@ -306,7 +353,8 @@ def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
                         else game.get("homeProTeamId"),
                     }
                 )
-        result[team["id"]] = games
+        if games:
+            result[team["id"]] = sorted(games, key=lambda game: game["start_at"])
     return result
 
 
@@ -315,27 +363,51 @@ def normalize_player(
 ) -> dict:
     pool = entry.get("playerPoolEntry", entry)
     original = player_body(entry)
-    player = original | cards.get(original.get("id"), {})
+    card = cards.get(original.get("id"), {})
+    player = original | card
+    # A sparse card response must not erase usable actual samples already in the roster/pool.
+    splits = {}
+    for split in original.get("stats", []) + card.get("stats", []):
+        key = tuple(split.get(field) for field in ("seasonId", "statSourceId", "statSplitTypeId", "scoringPeriodId"))
+        old = splits.get(key, {})
+        splits[key] = old | split
+        for field in ("stats", "averageStats"):
+            if field in old or field in split:
+                splits[key][field] = (old.get(field) or {}) | (split.get(field) or {})
+    player["stats"] = list(splits.values())
     current, games = samples(player, year)
     prior, prior_games = samples(player, year - 1)
     schedule = schedules.get(player.get("proTeamId")) if periods else None
     schedule = [game for game in schedule if game["scoring_period_id"] in periods] if schedule is not None else None
     availability = "ONTEAM" if rostered else pool.get("status", "UNKNOWN")
     positions = [SLOTS.get(slot, f"UNKNOWN_{slot}") for slot in player.get("eligibleSlots", [])]
-    # ESPN's inspected read API does not establish drop-lock semantics. Never infer unlocked.
+    injury = player.get("injuryStatus")
+    out = injury in {"OUT", "INJURY_RESERVE", "SUSPENSION", "RESERVE_RETIRED"}
+    droppable = player.get("droppable") if isinstance(player.get("droppable"), bool) else None
     return {
         "id": str(player.get("id", original.get("id"))),
         "name": player.get("fullName"),
         "pro_team_id": player.get("proTeamId"),
         "positions": positions,
         "lineup_slot": SLOTS.get(entry.get("lineupSlotId")),
-        "injury_status": player.get("injuryStatus"),
+        "injury_status": injury,
+        "health_status": "out" if out else "available",
+        "health_source": "espn" if out or injury == "ACTIVE" else "assumed_available",
+        "droppable": droppable,
+        "undroppable": not droppable if droppable is not None else None,
+        "lock_source": None,
+        "undroppable_source": "espn_player_droppable" if droppable is not None else None,
+        "draft_rank": number(player.get("draftRanksByRankType", {}).get("STANDARD", {}).get("rank")),
+        "draft_pick": None,
+        "draft_round": None,
         "injured": player.get("injured"),
         "locked": None,
         "availability": availability,
         "eligible": availability == "FREEAGENT"
         and any(position in set(SLOTS.values()) - {"BENCH", "IR", "Rookie"} for position in positions),
         "current_rates": current,
+        "current_rates_source": "espn_actual_season" if current is not None else None,
+        "schedule_source": schedule[0].get("source") if schedule else None,
         "current_games": games,
         "prior_rates": prior,
         "prior_games": prior_games,
@@ -366,6 +438,73 @@ def compare_categories(user: dict | None, opponent: dict | None, categories: lis
     }
 
 
+def merge_history(existing: list[dict], incoming: list[dict]) -> list[dict]:
+    def key(match):
+        return match.get("matchupPeriodId"), match.get("home", {}).get("teamId"), match.get("away", {}).get("teamId")
+
+    rows = {key(match): match for match in existing}
+    for match in incoming:
+        old = rows.get(key(match), {})
+        merged = old | match
+        for side in ("home", "away"):
+            if total_stats(match.get(side, {})) is None and total_stats(old.get(side, {})) is not None:
+                merged[side] = old[side]
+        rows[key(match)] = merged
+    return list(rows.values())
+
+
+def count(value: Any) -> int | None:
+    value = number(value)
+    return int(value) if value is not None and value >= 0 and value.is_integer() else None
+
+
+def scoring_date_anchors(schedules: dict) -> set[date]:
+    return {
+        date.fromisoformat(game["date"]) - timedelta(days=game["scoring_period_id"])
+        for games in schedules.values()
+        for game in games
+    }
+
+
+def matchup_scoring_periods(raw: dict, schedules: dict) -> tuple[list[int], str]:
+    settings = raw["settings"].get("scheduleSettings", {})
+    matchup = raw.get("status", {}).get("currentMatchupPeriod")
+    values = settings.get("matchupPeriods", {}).get(str(matchup), [])
+    if settings.get("periodTypeId") != 2:
+        return [int(period) for period in values], "espn_scoring_periods"
+    # WEEKLY maps matchup IDs to week indices, not to daily scoring IDs. Week 1 can be short.
+    anchors = scoring_date_anchors(schedules)
+    if len(anchors) == 1 and values:
+        day_zero = next(iter(anchors))
+        first = day_zero + timedelta(days=1)
+        monday = first - timedelta(days=first.weekday())
+        days = []
+        for week in values:
+            start = max(first, monday + timedelta(weeks=int(week) - 1))
+            end = monday + timedelta(weeks=int(week), days=-1)
+            days.extend(range((start - day_zero).days, (end - day_zero).days + 1))
+        # Reject calendar drift instead of silently assigning a different live matchup.
+        observed = {
+            int(key)
+            for match in raw.get("schedule", [])
+            if match.get("matchupPeriodId") == matchup
+            for side in (match.get("home", {}), match.get("away", {}))
+            for key in side.get("pointsByScoringPeriod", {})
+        }
+        if observed.issubset(days):
+            return days, "espn_weekly_calendar"
+    observed = sorted(
+        {
+            int(key)
+            for match in raw.get("schedule", [])
+            if match.get("matchupPeriodId") == matchup
+            for side in (match.get("home", {}), match.get("away", {}))
+            for key in side.get("pointsByScoringPeriod", {})
+        }
+    )
+    return observed, "espn_observed_scoring_periods_partial"
+
+
 def normalize(
     raw: dict,
     schedule: dict,
@@ -378,6 +517,7 @@ def normalize(
     *,
     now: datetime | None = None,
     gaps: list[str] | None = None,
+    nba: dict | None = None,
 ) -> dict:
     now = now or datetime.now(timezone.utc)
     gaps = list(gaps or [])
@@ -400,12 +540,19 @@ def normalize(
         and {item["key"] for item in categories} == set(CATEGORIES)
     )
     matchup = raw.get("status", {}).get("currentMatchupPeriod")
-    periods = settings.get("scheduleSettings", {}).get("matchupPeriods", {}).get(str(matchup), [])
-    periods = [int(period) for period in periods]
     schedules = normalize_schedule(schedule, now)
+    if nba is not None:
+        fallback = fantasy_nba.schedule_games(nba.get("schedule"), raw["seasonId"], now)
+        schedules = fallback | schedules  # ESPN data wins for every team it actually covers.
+    periods, period_source = matchup_scoring_periods(raw, schedules)
     dates = sorted(
         {game["date"] for games in schedules.values() for game in games if game["scoring_period_id"] in periods}
     )
+    if period_source == "espn_weekly_calendar" and periods:
+        anchors = scoring_date_anchors(schedules)
+        if len(anchors) == 1:
+            anchor = next(iter(anchors))
+            dates = [(anchor + timedelta(days=period)).isoformat() for period in periods]
     remaining = sorted(
         {
             game["date"]
@@ -414,7 +561,16 @@ def normalize(
             if game["scoring_period_id"] in periods and not game["started"]
         }
     )
+    # Calendar remaining dates include off days; per-player schedules still count only real games.
+    if dates:
+        today = now.astimezone(NY).date().isoformat()
+        remaining = [day for day in dates if day >= today]
     card_map = {player_id(entry): player_body(entry) for entry in cards.get("players", [])}
+    draft = {pick.get("playerId"): pick for pick in raw.get("draftDetail", {}).get("picks", [])}
+    acquisition = settings.get("acquisitionSettings", {})
+    raw_cap = count(acquisition.get("matchupAcquisitionLimit"))
+    per_day = acquisition.get("matchupLimitPerScoringPeriod")
+    cap = raw_cap if per_day is False else None
     totals, opponent, history = {}, None, []
     for match in raw.get("schedule", []):
         home, away = match.get("home", {}), match.get("away", {})
@@ -446,6 +602,19 @@ def normalize(
             for entry in team.get("roster", {}).get("entries", [])
             if player_id(entry) is not None
         ]
+        for player in roster:
+            if settings.get("rosterSettings", {}).get("isUsingUndroppableList") is False:
+                player["undroppable"] = False
+                player["undroppable_source"] = "espn_league_undroppable_disabled"
+            pick = draft.get(int(player["id"]), {})
+            player["draft_pick"] = count(pick.get("overallPickNumber"))
+            player["draft_round"] = count(pick.get("roundId"))
+            player["draft_source"] = "espn_draft_detail" if pick else None
+            if team.get("isTransactionLocked") is True:
+                player["locked"], player["lock_source"] = True, "espn_team_transaction_lock"
+        counter = team.get("transactionCounter", {})
+        matchup_counts = counter.get("matchupAcquisitionTotals")
+        used = count(matchup_counts.get(str(matchup))) if isinstance(matchup_counts, dict) else None
         roster_ids.update(player["id"] for player in roster)
         teams.append(
             {
@@ -455,8 +624,10 @@ def normalize(
                 "roster": roster,
                 "totals": totals.get(team["id"]),
                 "season_acquisitions": team.get("transactionCounter", {}).get("acquisitions"),
-                "weekly_used_adds": None,
-                "remaining_adds": None,
+                "weekly_used_adds": used,
+                "weekly_usage_source": "espn_matchup_acquisition_totals" if used is not None else None,
+                "weekly_usage_complete": used is not None,
+                "remaining_adds": max(0, cap - used) if cap is not None and used is not None else None,
             }
         )
     free_agents, seen = [], set(roster_ids)
@@ -467,10 +638,6 @@ def normalize(
         player = normalize_player(entry, card_map, schedules, raw["seasonId"], periods, now)
         if player["availability"] in {"FREEAGENT", "WAIVERS"}:
             free_agents.append(player)
-    acquisition = settings.get("acquisitionSettings", {})
-    cap = acquisition.get("matchupAcquisitionLimit")
-    per_day = acquisition.get("matchupLimitPerScoringPeriod")
-    cap = cap if isinstance(cap, int) and not isinstance(cap, bool) and cap >= 0 and per_day is False else None
     lineup_counts = settings.get("rosterSettings", {}).get("lineupSlotCounts", {})
     lineup = [
         SLOTS.get(int(slot), f"UNKNOWN_{slot}")
@@ -478,12 +645,12 @@ def normalize(
         if int(slot) not in (12, 13)
         for _ in range(min(max(int(count), 0), 50))
     ]
+    if any(team["weekly_used_adds"] is None for team in teams):
+        gaps.append("Some matchup acquisition totals are unavailable; season/day counts are not weekly usage.")
     gaps.extend(
         [
-            "Weekly used/remaining adds are unverified; season acquisitions are not weekly usage. Confirm in ESPN.",
-            "Droppable/transaction locks are unavailable; confirm each proposed drop and add in ESPN.",
-            "Transaction rows cover only the current scoring day; complete weekly accounting is not established.",
-            "Prior-season samples and injury status may be absent; future minutes are not supplied.",
+            "Player game-start drop locks are not exposed; ESPN transaction validation remains authoritative.",
+            "Transaction rows cover the requested scoring day; matchup usage uses ESPN's separate matchup counter.",
         ]
     )
     if not periods or not dates:
@@ -498,7 +665,7 @@ def normalize(
     if not swid:
         gaps.append("Public league team selection does not verify ownership.")
     compare_id = comparison if comparison is not None else opponent
-    return {
+    result = {
         "schema_version": 1,
         "source": "espn_unofficial",
         "fetched_at": now.isoformat(),
@@ -517,6 +684,10 @@ def normalize(
             "acquisition_settings": {
                 "weekly_add_limit": cap,
                 "limit_per_scoring_period": per_day,
+                "matchup_add_limit": cap,
+                "daily_add_limit": raw_cap if per_day is True else None,
+                "cap_source": "espn_acquisition_settings" if raw_cap is not None else None,
+                "unlimited": acquisition.get("matchupAcquisitionLimit") == -1,
                 "season_add_limit": acquisition.get("acquisitionLimit"),
             },
         },
@@ -526,12 +697,29 @@ def normalize(
             "scoring_period_ids": periods,
             "dates": dates,
             "remaining_dates": remaining,
+            "source": period_source,
+            "start_date": dates[0] if dates else None,
+            "end_date": dates[-1] if dates else None,
         },
         "selected_team_id": selected,
         "opponent_team_id": opponent,
         "teams": teams,
         "comparison": compare_categories(totals.get(selected), totals.get(compare_id), categories, compare_id),
         "matchup_history": history,
+        "history_coverage": [
+            {
+                "team_id": team["id"],
+                "prior_periods": sorted(
+                    {
+                        row["matchup_period_id"]
+                        for row in history
+                        if (row["home_team_id"] == team["id"] and row["home_totals"] is not None)
+                        or (row["away_team_id"] == team["id"] and row["away_totals"] is not None)
+                    }
+                ),
+            }
+            for team in teams
+        ],
         "free_agents": free_agents,
         "free_agents_truncated": len(pool.get("players", [])) >= 100,
         "transactions": [
@@ -552,3 +740,7 @@ def normalize(
             "endpoint": "/api/fantasy/espn/plan",
         },
     }
+
+    if nba is not None:
+        fantasy_nba.enrich_players(result, nba)
+    return result
