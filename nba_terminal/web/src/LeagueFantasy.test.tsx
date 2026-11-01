@@ -148,7 +148,11 @@ it("automatically analyzes and preserves availability across harmless refresh", 
 });
 it("explains unavailable optimizer instead of inventing probabilities", () => {
   render(<WaiverWire snapshot={testSnapshot()} />);
-  expect(screen.getByText(/Optimizer integration is unavailable/)).toBeInTheDocument();
+  expect(
+    within(screen.getByRole("region", { name: "Recommended ordered plan" })).getByText(
+      /Optimizer integration is unavailable/,
+    ),
+  ).toBeInTheDocument();
   expect(screen.queryByText(/30.0%/)).not.toBeInTheDocument();
 });
 it("does not restore a late snapshot after disconnect", async () => {
@@ -516,6 +520,8 @@ it("shows current lead becoming a projected loss and clears incomplete cushion l
   expect(screen.getByText(/Modeled cushions: None established/)).toBeInTheDocument();
   expect(container.querySelector(".strategy-favored")).toBeNull();
   expect(
-    screen.getByText(/Today’s useful available players are not yet determinable/),
+    within(screen.getByRole("region", { name: "Waiver evaluation status" })).getByText(
+      /Today’s useful available players are not yet determinable/,
+    ),
   ).toBeInTheDocument();
 });

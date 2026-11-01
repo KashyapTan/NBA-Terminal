@@ -72,6 +72,56 @@ def test_real_adapter_ready_budget_direction_weighting_and_immutable(snapshot):
     assert "sensitivity" in result["provenance"]["uncertainty"]
 
 
+@pytest.mark.parametrize("missing", ["usage", "period", "cap", "conflict"])
+def test_budget_diagnostics_identify_the_rejected_field_without_inventing_usage(snapshot, missing):
+    prefs = preferences(snapshot) | {"user_confirmed_counts": False}
+    settings = snapshot["league"]["acquisition_settings"]
+    settings.update(weekly_add_limit=7, limit_per_scoring_period=False)
+    user = snapshot["teams"][0]
+    # Deliberately use a different count from the user's historical observation.
+    user.update(weekly_used_adds=4, remaining_adds=3, weekly_usage_complete=True)
+    expected = {
+        "usage": "Current matchup acquisitions used unknown",
+        "period": "Acquisition limit period unknown",
+        "cap": "Matchup acquisition cap unknown",
+        "conflict": "Acquisition counts conflict",
+    }[missing]
+    if missing == "usage":
+        user.update(weekly_used_adds=None, remaining_adds=None, weekly_usage_complete=False)
+        prefs["matchup_add_limit_fallback"] = 7
+    elif missing == "period":
+        settings["limit_per_scoring_period"] = None
+    elif missing == "cap":
+        settings["weekly_add_limit"] = None
+    else:
+        user["remaining_adds"] = 4
+    result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert result["evaluation_state"] == "conditional_opportunities"
+    assert not result["actions"]
+    assert result["recommendations"]
+    assert any(expected in gap for gap in result["data_gaps"])
+    assert result["recommended_plan"]["budget_before"] is None
+
+
+def test_authorized_cap_fallback_uses_current_provider_usage_without_hardcoded_count(snapshot):
+    settings = snapshot["league"]["acquisition_settings"]
+    settings.update(weekly_add_limit=None, limit_per_scoring_period=False)
+    snapshot["teams"][0].update(weekly_used_adds=4, remaining_adds=None, weekly_usage_complete=True)
+    prefs = preferences(snapshot) | {"user_confirmed_counts": False, "matchup_add_limit_fallback": 7}
+    result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert result["recommended_plan"]["budget_before"] == 3
+    assert result["evaluation_state"] == "confirmed_ordered_plan"
+    assert "ESPN complete matchup usage" in result["provenance"]["counts"]
+
+
+def test_daily_guard_does_not_mislabel_valid_user_counts_as_invalid(snapshot):
+    snapshot["league"]["acquisition_settings"]["daily_add_limit"] = 2
+    result = adapter.plan_snapshot_waivers(snapshot, preferences(snapshot), NOW)
+    assert result["evaluation_state"] == "conditional_opportunities"
+    assert any("daily ledger" in gap for gap in result["data_gaps"])
+    assert not any("enter a nonnegative whole count" in gap for gap in result["data_gaps"])
+
+
 @pytest.mark.parametrize(
     "change",
     [

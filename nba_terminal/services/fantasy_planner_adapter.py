@@ -204,6 +204,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         counts = [fallback, used, max(0, fallback - used)]
         provenance["counts"] = "scoped user-declared matchup cap; ESPN complete matchup usage"
         provenance["matchup_add_limit"] = {"value": fallback, "source": "user-declared fallback", **expected}
+    supplied_counts = list(counts)
     if settings.get("limit_per_scoring_period") is True or settings.get("daily_add_limit") is not None:
         # An additional daily cap needs a day-specific ledger; do not call a weekly plan feasible.
         counts = [None, None, None]
@@ -211,6 +212,29 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             "Per-day acquisition limits require a daily ledger; alternatives are conditional, not a weekly plan."
         )
     if not all(_integer(n) for n in counts) or counts[1] + counts[2] > counts[0]:
+        # Explain the exact rejected input, without substituting season/day totals or
+        # a previously observed usage count for the current matchup ledger.
+        if preferences.get("user_confirmed_counts") is True:
+            for label, value in zip(("cap", "used", "remaining"), supplied_counts):
+                if not _integer(value):
+                    gaps.append(f"User-confirmed matchup acquisitions {label}: enter a nonnegative whole count.")
+        else:
+            if settings.get("limit_per_scoring_period") is None:
+                gaps.append(
+                    "Acquisition limit period unknown: ESPN matchupLimitPerScoringPeriod is missing; "
+                    "a matchup cap alone does not verify whether a daily limit applies."
+                )
+            if not _integer(settings.get("weekly_add_limit")) and not _integer(fallback):
+                gaps.append("Matchup acquisition cap unknown: ESPN cap unavailable and no user cap fallback supplied.")
+            if user.get("weekly_usage_complete") is False or not _integer(user.get("weekly_used_adds")):
+                gaps.append(
+                    "Current matchup acquisitions used unknown: ESPN's current-matchup counter is unavailable "
+                    "or invalid. Season/day totals and yesterday's count are not substitutes."
+                )
+            if not _integer(user.get("remaining_adds")) and all(_integer(n) for n in counts[:2]):
+                gaps.append("Matchup acquisitions remaining unknown: no verified remaining count was supplied.")
+        if all(_integer(n) for n in counts) and counts[1] + counts[2] > counts[0]:
+            gaps.append("Acquisition counts conflict: used plus remaining exceeds the matchup cap.")
         counts = [None, None, None]
         gaps.append(
             "Weekly adds remaining are unknown; enter the actual weekly cap, used and remaining counts for a plan."

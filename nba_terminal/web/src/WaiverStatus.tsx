@@ -72,3 +72,83 @@ export function WaiverStatus({
     </section>
   );
 }
+
+/** Keep the decisive cause beside the empty sequence, where users look for moves. */
+export function EmptyOrderedPlan({
+  plan,
+  unavailableReason,
+  onRecover,
+}: {
+  plan: WaiverPlan | null;
+  unavailableReason?: string | null;
+  onRecover: () => void;
+}) {
+  const status = waiverStatus(plan);
+  const diagnostics = [...new Set([...(plan?.data_gaps ?? []), ...(plan?.reasons ?? [])])];
+  const conditional = status.state === "conditional_opportunities";
+  const actions = {
+    required_inputs_unknown:
+      "Refresh league data, then review the missing inputs below. Unknown inputs are not a no-benefit result.",
+    conditional_opportunities:
+      "Verify the current matchup cap, used and remaining counts in ESPN, then enter and confirm them below. Yesterday’s usage is not current confirmation.",
+    known_zero_acquisitions:
+      "Keep the roster unless ESPN shows a different current allowance; correct the verified counts before recalculating.",
+    evaluated_no_material_benefit:
+      "Review the selected five, remaining dates, roster protection and explored market before recalculating. No guard-passing improvement was found within these bounds.",
+    confirmed_ordered_plan: "Refresh the analysis to load the ordered moves.",
+  };
+  return (
+    <div className="strategy-empty" aria-label="Why no ordered moves are confirmed">
+      <h4>{conditional ? "Ordered plan withheld: acquisition budget unverified" : status.title}</h4>
+      <p>
+        {unavailableReason ||
+          (conditional
+            ? "Forecast inputs support pickup/drop comparisons; acquisition verification prevents an ordered plan."
+            : status.explanation)}
+      </p>
+      {conditional && (
+        <p>
+          {plan?.recommendations?.length ?? 0} beneficial conditional alternative
+          {plan?.recommendations?.length === 1 ? "" : "s"} found. Each is a competing single move,
+          subject to verifying at least one acquisition; they are not an executable sequence.
+        </p>
+      )}
+      {diagnostics.length > 0 && (
+        <>
+          <ul>
+            {diagnostics.slice(0, 3).map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+          {diagnostics.length > 3 && (
+            <details>
+              <summary>More evaluation reasons ({diagnostics.length - 3})</summary>
+              <ul>
+                {diagnostics.slice(3).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
+      )}
+      {plan?.search && (
+        <p>
+          Explored {plan.search.candidate_pool ?? "unknown"} candidates · {plan.search.evaluations}{" "}
+          evaluations · {plan.search.evaluated_drop_ids?.length ?? "unknown"} of{" "}
+          {plan.search.legal_drop_ids?.length ?? "unknown"} legal drops. Market coverage and search
+          bounds limit this comparison independently of acquisition verification.
+        </p>
+      )}
+      <p>
+        <b>Next step:</b>{" "}
+        {unavailableReason ? "Resolve the analysis error above and retry." : actions[status.state]}
+      </p>
+      {(status.state === "required_inputs_unknown" || conditional) && (
+        <button type="button" onClick={onRecover}>
+          Review acquisition counts & required inputs
+        </button>
+      )}
+    </div>
+  );
+}

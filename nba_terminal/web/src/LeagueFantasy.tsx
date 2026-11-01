@@ -21,7 +21,7 @@ import "./league-fantasy.css";
 import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
-import { WaiverStatus } from "./WaiverStatus";
+import { EmptyOrderedPlan, WaiverStatus } from "./WaiverStatus";
 
 /** Mount once in the integrating app; pass the returned state to the named components. */
 export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
@@ -655,6 +655,27 @@ function WaiverStrategy({
       ? Object.values(requiredMetadata).length > 0 &&
         Object.values(requiredMetadata).every((part) => part.complete)
       : plan.data_gaps.length === 0);
+  const evaluationPlan: WaiverPlan | null =
+    plan &&
+    (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
+      [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
+      ? {
+          ...plan,
+          evaluation_state: "required_inputs_unknown",
+          data_gaps: [
+            ...plan.data_gaps,
+            ...Object.entries(snapshot.projection_metadata ?? {})
+              .filter(([, part]) => !part.complete)
+              .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
+          ],
+        }
+      : plan;
+  function reviewInputs() {
+    if (advancedPanel.current) {
+      advancedPanel.current.open = true;
+      advancedPanel.current.scrollIntoView?.({ block: "start" });
+    }
+  }
   const safeCategories = confidenceComplete
     ? (plan?.safe_categories ?? []).filter((key) => selectedCategories.includes(key))
     : [];
@@ -794,32 +815,7 @@ function WaiverStrategy({
           </small>
         </div>
       </div>
-      {!busy && (
-        <WaiverStatus
-          plan={
-            plan &&
-            (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
-              [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
-              ? {
-                  ...plan,
-                  evaluation_state: "required_inputs_unknown",
-                  data_gaps: [
-                    ...plan.data_gaps,
-                    ...Object.entries(snapshot.projection_metadata ?? {})
-                      .filter(([, part]) => !part.complete)
-                      .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
-                  ],
-                }
-              : plan
-          }
-          onRecover={() => {
-            if (advancedPanel.current) {
-              advancedPanel.current.open = true;
-              advancedPanel.current.scrollIntoView?.({ block: "start" });
-            }
-          }}
-        />
-      )}
+      {!busy && <WaiverStatus plan={evaluationPlan} onRecover={reviewInputs} />}
       {leagueError && <p role="alert">{leagueError}</p>}
       {!snapshot.league.supported && (
         <p role="alert">
@@ -1151,9 +1147,20 @@ function WaiverStrategy({
           </>
         ) : (
           !busy && (
-            <p className="strategy-empty">
-              No ordered moves confirmed. See the evaluation status and any conditional pairs below.
-            </p>
+            <EmptyOrderedPlan
+              plan={evaluationPlan}
+              unavailableReason={
+                error ??
+                leagueError ??
+                (!onPlan
+                  ? "Optimizer integration is unavailable; no comparison ran."
+                  : !snapshot.league.supported
+                    ? (snapshot.league.unsupported_reason ??
+                      "League scoring format is unsupported.")
+                    : null)
+              }
+              onRecover={reviewInputs}
+            />
           )
         )}
       </section>
