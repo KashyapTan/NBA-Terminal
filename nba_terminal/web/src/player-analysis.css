@@ -1399,3 +1399,42 @@
     box-sizing: border-box;
   }
 }
+
+/* Color reinforces the named metric or state; every state retains text. */
+.player-browser .metric-positive strong {
+  color: var(--player-green);
+}
+.player-browser .metric-negative strong {
+  color: var(--player-red);
+}
+.player-browser article > header {
+  border-left: 3px solid var(--player-green);
+  padding-left: 14px;
+}
+.player-browser h3 {
+  color: #e6edf7;
+}
+.player-browser p[role="alert"] {
+  border-left: 3px solid var(--player-red);
+  padding: 9px 12px;
+  background: #ff7f8b0a;
+  color: #ffc0c7;
+}
+.player-browser p[role="status"] {
+  color: #b2bfd0;
+}
+.player-analysis__comparison-sample {
+  margin-top: 18px;
+  border-top: 1px solid var(--player-line);
+  padding-top: 12px;
+}
+.player-analysis__comparison-sample h4 {
+  color: #e7c468;
+}
+.player-browser .player-analysis__history-controls input[type="search"] {
+  width: 190px;
+  max-width: 100%;
+}
+.player-browser .player-analysis__history-controls select {
+  max-width: 100%;
+}

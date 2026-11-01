@@ -62,7 +62,7 @@ function mount(path: string, enablePlayers = true, enableTools = false) {
     <MemoryRouter initialEntries={[path]}>
       <MetaProvider>
         <AppRoutes
-          playerBrowser={enablePlayers ? BrowserContract : undefined}
+          playerBrowser={enablePlayers ? BrowserContract : null}
           analyticsTools={enableTools ? ToolsContract : undefined}
         />
         <HistoryControls />

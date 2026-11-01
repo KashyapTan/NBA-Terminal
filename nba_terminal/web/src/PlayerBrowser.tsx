@@ -56,6 +56,12 @@ export function PlayerBrowser({ season, phase, playerId, onPlayerSelect }: Playe
     setSelectedId(playerId);
   }, [playerId]);
   useEffect(() => {
+    if (selectedId && !query.trim()) {
+      setResults([]);
+      setSearchLoading(false);
+      setSearchError("");
+      return;
+    }
     const controller = new AbortController();
     setSearchLoading(true);
     const timer = setTimeout(() => {
@@ -75,7 +81,7 @@ export function PlayerBrowser({ season, phase, playerId, onPlayerSelect }: Playe
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, selectedId]);
   useEffect(() => {
     if (!selectedId) {
       setProfile(null);
@@ -101,12 +107,6 @@ export function PlayerBrowser({ season, phase, playerId, onPlayerSelect }: Playe
   }, [selectedId, season, phase, attempt]);
   return (
     <div className="player-analysis player-browser">
-      <header>
-        <h1>Players</h1>
-        <p>
-          Search active and historical NBA players. Season and phase apply to every sample below.
-        </p>
-      </header>
       <section className="player-analysis__section" aria-label="Player search">
         <label htmlFor="player-search">Search NBA players</label>
         <input
@@ -134,7 +134,7 @@ export function PlayerBrowser({ season, phase, playerId, onPlayerSelect }: Playe
           ))}
         </ul>
         {searchLoading && <p role="status">Searching player directory…</p>}
-        {!results.length && !searchError && !searchLoading && (
+        {!results.length && !searchError && !searchLoading && (!selectedId || query.trim()) && (
           <p role="status">No matching players in the bundled directory.</p>
         )}
         <small>
@@ -182,7 +182,10 @@ export function PlayerProfileView({ profile }: { profile: PlayerProfile }) {
         ) : (
           <div className="player-analysis__advanced-grid">
             {ADVANCED.map(([key, label, percent]) => (
-              <div key={key} className="player-analysis__advanced-cell">
+              <div
+                key={key}
+                className={`player-analysis__advanced-cell${key === "NET_RATING" && profile.advanced[key] != null ? (Number(profile.advanced[key]) > 0 ? " metric-positive" : Number(profile.advanced[key]) < 0 ? " metric-negative" : "") : ""}`}
+              >
                 <span>{label}</span>
                 <strong>{value(profile.advanced[key], percent)}</strong>
               </div>

@@ -24,6 +24,6 @@ Generated incremental screenshots retained locally at `code_review/v5_app/genera
 
 ## Remaining prerequisites and genuine limits
 
-PLAYER **revision 2** exact-current source/evidence and current Qt parity inventory; LEGACY revision 1 exact-current source/evidence. Final combined route registration, player component binding, six analytics ports, full parity reconciliation, high-risk review and all requested Python/frontend/browser gates remain pending. No final task evidence or publication has been claimed.
+PLAYER revision 2 is now verified and integrated; see [player integration](player-integration.md) and the retained original completion artifact. LEGACY revision 1 exact-current source/evidence, actual analytics router/component binding, six analytics ports, full parity reconciliation and final requested Python/frontend/browser gates remain pending. No final task evidence or publication has been claimed.
 
 User-private current waiver benefit is still undetermined: Firefox inspection timed out on the source worker; user-pasted diagnostics establish optional reconstruction failure alongside complete official banked totals, not complete required private future-plan inputs. Public ESPN/NBA observations cannot supply league ownership, eligibility or acquisition counters. Current NBA CDN success and source-worker per-request 403 are explicitly separate observations; Stats ScheduleLeagueV2 primary and CDN fallback are retained.

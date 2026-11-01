@@ -30,6 +30,7 @@ import type {
   UpcomingResponse,
 } from "./model";
 import { PlayerAnalysisView } from "./PlayerAnalysis";
+import { PlayerBrowser as IntegratedPlayerBrowser } from "./PlayerBrowser";
 
 type MetaState = { meta: Meta | null; error: string | null };
 const MetaContext = createContext<MetaState>({ meta: null, error: null });
@@ -818,10 +819,10 @@ function FantasyWorkspace({ meta }: { meta: Meta }) {
 }
 
 export function AppRoutes({
-  playerBrowser: PlayerBrowser,
+  playerBrowser: PlayerBrowser = IntegratedPlayerBrowser,
   analyticsTools: AnalyticsTools,
 }: {
-  playerBrowser?: ComponentType<PlayerBrowserContentProps>;
+  playerBrowser?: ComponentType<PlayerBrowserContentProps> | null;
   analyticsTools?: ComponentType<AnalyticsToolsContentProps>;
 } = {}) {
   const { meta, error } = useMeta();

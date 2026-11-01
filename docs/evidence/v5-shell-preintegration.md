@@ -19,3 +19,7 @@ The initial inventory's remaining usable Player Profile dashboard/shooting/oppon
 ## Validation scope
 
 Three focused shell tests cover season/phase selection, keyboard selection, browser-back restoration, direct reload context, malformed IDs, hidden unintegrated destinations and unchanged Fantasy deep links. These validate composition only. Whole-frontend lint/format/type/build passed after preparation, along with all 72 unit tests and six existing desktop/mobile schedule/game/player browser checks. Current screenshots are retained in `v5-game-center/desktop.png` and `v5-game-center/mobile.png`. Full combined provider/player/fantasy/legacy validation and publication remain pending exact dependency handoffs.
+
+## Subsequent verified integration
+
+PLAYER revision 2 source d7e9aec was integrated as 0b083ac. The real production Players routes are now enabled; see `code_review/v5_app/player-integration.md` for current production-route validation and the added two-player sample comparison. Analytics Tools remains gated pending exact LEGACY source. Earlier paragraphs preserve the preparation-stage facts, not current completion claims.

@@ -5,6 +5,8 @@ import {
   getPlayerHistory,
   getPlayerMeasure,
   getPlayerShooting,
+  searchPlayers,
+  type PlayerSearchResult,
   type PlayerProfile,
   type ProfileMeasureData,
   type ShootingTables,
@@ -67,9 +69,8 @@ export function PlayerSeasonMeasures({ profile }: { profile: PlayerProfile }) {
         </select>
       </label>
       <p className="player-analysis__formula">
-        One selected league batch at a time, shared across players for 15 minutes. Base =
-        production/shooting, Misc = scoring situations/fouls, Scoring = scoring mix, Usage = team
-        shares, Defense = defensive box-score measures. Values are per game unless labeled %,
+        Base = production/shooting, Misc = scoring situations/fouls, Scoring = scoring mix, Usage =
+        team shares, Defense = defensive box-score measures. Values are per game unless labeled %,
         rating, ratio, or count. Double/triple doubles and wins/losses are counts. Usage MIN is
         total minutes even with PerGame requested; other displayed MIN fields are minutes per game.
         NBA Fantasy points use NBA scoring, not private-league scoring.
@@ -349,6 +350,34 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
     return `${start}-${String(start + 1).slice(-2)}`;
   });
   const [requested, setRequested] = useState<string | null>(null);
+  const self = { player_id: profile.player_id, name: profile.player_name, active: true };
+  const [comparisonPlayer, setComparisonPlayer] = useState<PlayerSearchResult>(self);
+  const [requestedPlayer, setRequestedPlayer] = useState<PlayerSearchResult>(self);
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [playerResults, setPlayerResults] = useState<PlayerSearchResult[]>([]);
+  const [playerSearchError, setPlayerSearchError] = useState("");
+  useEffect(() => {
+    if (playerQuery.trim().length < 2) {
+      setPlayerResults([]);
+      setPlayerSearchError("");
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setPlayerSearchError("");
+      searchPlayers(playerQuery, controller.signal)
+        .then((data) => {
+          if (!controller.signal.aborted) setPlayerResults(data.players);
+        })
+        .catch((err) => {
+          if (!controller.signal.aborted) setPlayerSearchError(err.message);
+        });
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [playerQuery]);
   const [comparison, setComparison] = useState<PlayerProfile["history"] | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -357,7 +386,7 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
     const controller = new AbortController();
     setComparison(null);
     setError("");
-    getPlayerHistory(profile.player_id, requested, profile.phase, controller.signal)
+    getPlayerHistory(requestedPlayer.player_id, requested, profile.phase, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) setComparison(data.history);
       })
@@ -365,7 +394,7 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
         if (!controller.signal.aborted) setError(err.message);
       });
     return () => controller.abort();
-  }, [profile.player_id, profile.phase, requested, attempt]);
+  }, [requestedPlayer.player_id, profile.phase, requested, attempt]);
   const teams = useMemo(
     () =>
       Array.from(
@@ -378,13 +407,15 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
   const rows = filtered(profile.history.games, team, window);
   const comparisonRows = filtered(comparison?.games || [], team, window);
   const samples = [
-    { name: profile.season, history: profile.history, rows },
-    ...(comparison ? [{ name: requested!, history: comparison, rows: comparisonRows }] : []),
+    { name: profile.season, player: self, history: profile.history, rows },
+    ...(comparison
+      ? [{ name: requested!, player: requestedPlayer, history: comparison, rows: comparisonRows }]
+      : []),
   ];
   const label = SAMPLE_STATS.find(([key]) => key === stat)?.[1] || "Points";
   return (
     <section className="player-analysis__section" aria-label="Opponent and season comparison">
-      <h3>Opponent &amp; season comparison</h3>
+      <h3>Player, opponent &amp; season comparison</h3>
       <div className="player-analysis__history-controls">
         <label>
           Opponent{" "}
@@ -440,6 +471,39 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
           />
         </label>
         <label>
+          Find comparison player
+          <input
+            aria-label="Find comparison player"
+            type="search"
+            value={playerQuery}
+            placeholder="Name (2+ letters)"
+            onChange={(e) => setPlayerQuery(e.target.value)}
+          />
+        </label>
+        <label>
+          Compare player
+          <select
+            aria-label="Comparison player"
+            value={comparisonPlayer.player_id}
+            onChange={(e) => {
+              const chosen = [self, comparisonPlayer, ...playerResults].find(
+                (item) => item.player_id === Number(e.target.value),
+              );
+              if (chosen) setComparisonPlayer(chosen);
+            }}
+          >
+            {Array.from(
+              new Map(
+                [self, comparisonPlayer, ...playerResults].map((item) => [item.player_id, item]),
+              ).values(),
+            ).map((item) => (
+              <option key={item.player_id} value={item.player_id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Compare season{" "}
           <input
             aria-label="Comparison season"
@@ -451,8 +515,12 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
         </label>
         <button
           type="button"
-          disabled={!/^\d{4}-\d{2}$/.test(season) || season === profile.season}
+          disabled={
+            !/^\d{4}-\d{2}$/.test(season) ||
+            (season === profile.season && comparisonPlayer.player_id === profile.player_id)
+          }
           onClick={() => {
+            setRequestedPlayer(comparisonPlayer);
             setRequested(season);
             setAttempt((v) => v + 1);
           }}
@@ -462,13 +530,13 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
       </div>
       <p className="player-analysis__formula">
         {label} · {team || "All opponents"} · {profile.phase}. Opponent filter applies before the
-        most recent game window in both seasons. Valid stat counts exclude unknown values. Hit = at
+        most recent game window in both samples. Valid stat counts exclude unknown values. Hit = at
         or above line; descriptive historical frequency, not a forecast. Percentiles use linear
-        interpolation at (n−1) × p; this is a newly explicit definition because the archived helper
-        implementation is absent.
+        interpolation at (n−1) × p; each sample retains its own source games.
       </p>
       {requested && !comparison && !error && <p role="status">Loading {requested} comparison…</p>}
       {error && <p role="alert">{error}</p>}
+      {playerSearchError && <p role="alert">Comparison search: {playerSearchError}</p>}
       <div className="player-analysis__table-wrap">
         <table
           className="player-analysis__table player-analysis__profile-table"
@@ -476,6 +544,7 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
         >
           <thead>
             <tr>
+              <th>Player</th>
               <th>Season / phase</th>
               <th>Valid n</th>
               <th>Mean</th>
@@ -493,10 +562,11 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
             {samples.map((sample) => {
               const s = summarizePlayerSample(sample.rows, stat, line);
               return (
-                <tr key={sample.name}>
-                  <th>
+                <tr key={`${sample.player.player_id}:${sample.name}`}>
+                  <th>{sample.player.name}</th>
+                  <td>
                     {sample.name} · {profile.phase}
-                  </th>
+                  </td>
                   <td>{s.n}</td>
                   <td>{format(s.mean)}</td>
                   <td>{format(s.sd)}</td>
@@ -518,12 +588,15 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
       <p className="player-analysis__formula">
         Sample SD uses ddof=1; one observation gives SD 0 by the retained convention. CV = SD /
         positive mean, otherwise 0 (legacy convention). Small or zero samples do not establish
-        consistency. Seasons and phases stay separate.
+        consistency. Players, seasons and phases stay separate.
       </p>
       {samples
         .filter((s) => s.history.state !== "available")
         .map((s) => (
-          <p key={s.name} role={s.history.state === "error" ? "alert" : "status"}>
+          <p
+            key={`${s.player.player_id}:${s.name}`}
+            role={s.history.state === "error" ? "alert" : "status"}
+          >
             {s.name}: {s.history.note}
           </p>
         ))}
@@ -541,17 +614,34 @@ export function PlayerSampleExplorer({ profile }: { profile: PlayerProfile }) {
         />
       </details>
       {comparison && (
-        <details>
-          <summary>
-            {requested} comparison game log · {comparisonRows.length} games
-          </summary>
-          <GameLogTable
-            rows={comparisonRows}
-            season={requested!}
-            phase={profile.phase}
-            playerId={profile.player_id}
-          />
-        </details>
+        <div className="player-analysis__comparison-sample">
+          <h4>
+            {requestedPlayer.name} · {requested} · {profile.phase}
+          </h4>
+          <div className="player-analysis__visuals">
+            <StatTrend
+              rows={comparisonRows}
+              statKey={stat}
+              statLabel={`${requestedPlayer.name} ${label}`}
+            />
+            <StatDistribution
+              rows={comparisonRows}
+              statKey={stat}
+              statLabel={`${requestedPlayer.name} ${label}`}
+            />
+          </div>
+          <details>
+            <summary>
+              {requested} comparison game log · {comparisonRows.length} games
+            </summary>
+            <GameLogTable
+              rows={comparisonRows}
+              season={requested!}
+              phase={profile.phase}
+              playerId={requestedPlayer.player_id}
+            />
+          </details>
+        </div>
       )}
     </section>
   );

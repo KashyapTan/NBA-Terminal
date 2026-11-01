@@ -342,6 +342,9 @@ def _fetch_game_log(player_id: int, season: str, phase: str) -> pd.DataFrame:
         return frame
 
     frame = frame.copy()
+    # Installed/reference schemas use Game_ID/Player_ID; some provider responses
+    # already use uppercase. Normalize both before required-field validation.
+    frame.columns = [str(column).upper() for column in frame.columns]
     if "GAME_ID" in frame:
         frame["GAME_ID"] = frame["GAME_ID"].map(lambda value: _game_id(value))
     if "GAME_DATE" in frame:

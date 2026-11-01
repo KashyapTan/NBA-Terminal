@@ -178,3 +178,48 @@ it("allows an on-demand season-table failure to be retried", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Retry season table" }));
   expect(await screen.findByText("29.9")).toBeInTheDocument();
 });
+
+it("compares another searched player in the same season and preserves their game-log identity", async () => {
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    if (String(input).startsWith("/api/players?"))
+      return {
+        ok: true,
+        json: async () => ({ players: [{ player_id: 8, name: "Second Player", active: true }] }),
+      };
+    return {
+      ok: true,
+      json: async () => ({
+        history: {
+          ...profile.history,
+          games: [
+            { game_id: "0042500004", game_date: "2026-04-10", matchup: "NYK vs. CLE", pts: 40 },
+          ],
+        },
+      }),
+    };
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <PlayerSampleExplorer profile={profile} />
+    </MemoryRouter>,
+  );
+  await user.type(screen.getByLabelText("Find comparison player"), "Second");
+  expect(await screen.findByRole("option", { name: "Second Player" })).toBeInTheDocument();
+  await user.selectOptions(screen.getByLabelText("Comparison player"), "8");
+  await user.clear(screen.getByLabelText("Comparison season"));
+  await user.type(screen.getByLabelText("Comparison season"), "2025-26");
+  await user.click(screen.getByRole("button", { name: "Compare season" }));
+  const table = screen.getByRole("table", { name: "Season sample comparison" });
+  expect(await within(table).findByText("Second Player")).toBeInTheDocument();
+  expect(within(table).getByText("Test")).toBeInTheDocument();
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/players/8/history?season=2025-26&phase=Playoffs",
+    expect.anything(),
+  );
+  expect(screen.getByRole("link", { name: /Open box score 2026-04-10/ })).toHaveAttribute(
+    "href",
+    "/game/0042500004?season=2025-26&phase=Playoffs&player=8",
+  );
+});

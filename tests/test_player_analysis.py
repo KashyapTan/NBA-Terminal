@@ -497,3 +497,13 @@ def test_zero_attempt_shooting_rates_remain_unknown_and_invalid_history_schema_i
     assert result["tables"]["Overall"]["rows"][0]["FG3_PCT"] is None
     monkeypatch.setattr(player_analysis, "_fetch_game_log", lambda *args: pd.DataFrame([{"PTS": 10}]))
     assert player_analysis._fetch_history(7, "2025-26", "Playoffs", {}, "")[0]["state"] == "error"
+
+
+def test_reference_game_log_mixed_case_ids_keep_profile_and_links_available(monkeypatch):
+    frame = game_log().rename(columns={"GAME_ID": "Game_ID"})
+    endpoint = type("Log", (), {"get_data_frames": lambda self: [frame]})()
+    monkeypatch.setattr(player_analysis.playergamelog, "PlayerGameLog", lambda **kwargs: endpoint)
+    profile = player_analysis.fetch_player_profile(1628983, "2024-25", "Playoffs")
+    assert profile["history"]["state"] == "available"
+    assert profile["history"]["games_played"] == 3
+    assert profile["history"]["games"][0]["game_id"] == "0022400001"
