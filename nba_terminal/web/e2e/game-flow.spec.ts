@@ -224,9 +224,9 @@ test("fans drill from season feed through box score to a player's real shot char
   await mockLeagueApi(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Every game, in focus." })).toBeVisible();
-  await expect(page.getByText("1 scheduled")).toBeVisible();
-  await expect(page.locator(".upcoming-card .game-status")).toContainText("Scheduled");
-  await expect(page.locator(".upcoming-card time")).toHaveText("7:30 PM ET");
+  await expect(page.getByText("1 game · dates in Eastern Time")).toBeVisible();
+  await expect(page.locator(".game-card--scheduled .game-status")).toContainText("Scheduled");
+  await expect(page.locator(".game-card--scheduled time")).toHaveText("7:30 PM ET");
   await page.getByLabel("Season").selectOption("2024-25");
   await expect(page).toHaveURL(/season=2024-25/);
   await page.getByLabel("Season").selectOption("2025-26");

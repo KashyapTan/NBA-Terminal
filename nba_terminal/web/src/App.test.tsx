@@ -284,7 +284,7 @@ describe("NBA Terminal screens", () => {
       await screen.findByRole("heading", { name: "Every game, in focus." }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("No games scheduled in this two-day window"),
+      await screen.findByText("No games scheduled in this three-day window"),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2025-26 season" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Sunday, November 2, 2025" })).toBeInTheDocument();
@@ -352,6 +352,55 @@ describe("NBA Terminal screens", () => {
     expect(screen.getByText("History is not available in this view")).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Season" }), "2024-25");
     expect(await screen.findByText("No completed games returned")).toBeInTheDocument();
+  });
+
+  it("groups all three dates, shows live scores, local timezone times and resilient logos", async () => {
+    mount("/", (url) => {
+      if (url === "/api/upcoming")
+        return {
+          days: ["2025-11-02", "2025-11-03", "2025-11-04"],
+          games: [
+            {
+              ...game,
+              status_id: 2,
+              status: "Q3 4:21",
+              home_score: 82,
+              away_score: 79,
+              home_team: {
+                ...home,
+                logo_url: "https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg",
+              },
+            },
+            {
+              ...game,
+              game_id: "0022500003",
+              date: "2025-11-04",
+              status_id: 1,
+              status: "Scheduled",
+              start_time: "2025-11-05T00:30:00Z",
+              home_score: 0,
+              away_score: 0,
+            },
+          ],
+        };
+      if (url.startsWith("/api/games?")) return { games: [], supported: true };
+      return defaultPayload(url);
+    });
+    expect(await screen.findByText("Q3 4:21")).toBeInTheDocument();
+    expect(screen.getByText("82")).toBeInTheDocument();
+    expect(screen.getByText("79")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Monday, November 3, 2025" })).toBeInTheDocument();
+    expect(screen.getByText("No games scheduled.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tuesday, November 4, 2025" })).toBeInTheDocument();
+    const time = document.querySelector("time");
+    expect(time).toHaveAttribute("dateTime", "2025-11-05T00:30:00Z");
+    expect(time?.textContent).toMatch(/\d.*[A-Z]/);
+    const scheduled = document.querySelector(".game-card--scheduled");
+    expect(scheduled?.querySelectorAll(".score")[0]).toHaveTextContent("—");
+    const logo = screen.getByRole("img", { name: "Boston Celtics logo" });
+    fireEvent.error(logo);
+    expect(screen.queryByRole("img", { name: "Boston Celtics logo" })).not.toBeInTheDocument();
+    expect(document.querySelector(".team-badge [title='Boston Celtics']")).toHaveTextContent("BOS");
   });
 
   it("keeps schedule and game-feed errors separate, with a retry action", async () => {

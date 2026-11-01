@@ -3,6 +3,7 @@ export type Team = {
   abbreviation: string;
   name: string;
   nickname: string;
+  logo_url?: string | null;
 };
 
 export type Game = {
@@ -10,6 +11,7 @@ export type Game = {
   date: string;
   start_time?: string;
   status: string;
+  status_id?: number;
   phase: string;
   home_team: Team;
   away_team: Team;

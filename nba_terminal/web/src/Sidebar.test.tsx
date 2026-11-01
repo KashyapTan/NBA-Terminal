@@ -39,6 +39,9 @@ describe("workspace sidebar", () => {
     const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(toggle).toHaveAttribute("aria-controls", "workspace-navigation");
+    expect(toggle).toHaveClass("brand");
+    expect(toggle).toHaveTextContent("N");
+    expect(document.querySelector(".sidebar-toggle")).toBeNull();
     toggle.focus();
     await user.keyboard("{Enter}");
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toHaveAttribute(
@@ -67,7 +70,8 @@ describe("workspace sidebar", () => {
       "aria-current",
       "page",
     );
-    await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    screen.getByRole("button", { name: "Expand sidebar" }).focus();
+    await user.keyboard(" ");
     expect(localStorage.getItem(preferenceKey)).toBe("false");
     expect(document.querySelector(".app-shell")).not.toHaveClass("sidebar-collapsed");
   });

@@ -97,7 +97,7 @@ def test_invalid_season_is_rejected(season):
         service._season_start(season)
 
 
-def test_upcoming_uses_eastern_two_day_schedule_and_keeps_source_team_fallback(monkeypatch):
+def test_upcoming_uses_eastern_three_day_schedule_and_keeps_source_team_fallback(monkeypatch):
     unassigned_cup_game = schedule_row("0022501201", "2025-12-04", status=1, away_id=0, home_id=0)
     for side in ("home", "away"):
         for field in ("teamName", "teamCity", "teamTricode"):
@@ -110,9 +110,11 @@ def test_upcoming_uses_eastern_two_day_schedule_and_keeps_source_team_fallback(m
         unassigned_cup_game,
     ])
     result = service.fetch_upcoming_games(date(2025, 11, 2))
-    assert result["days"] == ["2025-11-02", "2025-11-03"]
-    assert len(result["games"]) == 2
-    game, next_day_game = result["games"]
+    assert result["days"] == ["2025-11-02", "2025-11-03", "2025-11-04"]
+    assert len(result["games"]) == 4
+    game, live_game, next_day_game, third_day_game = result["games"]
+    assert live_game["status_id"] == 2
+    assert third_day_game["date"] == "2025-11-04"
     assert (game["game_id"], game["phase"], game["status"], game["home_score"]) == (
         "0012500001",
         "Pre Season",
@@ -367,3 +369,26 @@ def test_player_analysis_missing_player_and_shot_chart_states(monkeypatch):
     assert failed["stats"] == player
     ShotChart.get_data_frames = lambda self: [pd.DataFrame([{"LOC_X": 1, "LOC_Y": 2}])]
     assert service.fetch_player_game_analysis("0022400001", 7, "2024-25")["shot_chart_state"] == "unavailable"
+
+
+def test_schedule_window_preserves_live_final_and_special_statuses(monkeypatch):
+    rows = [
+        schedule_row("0022500001", "2025-11-02", status=2),
+        schedule_row("0022500002", "2025-11-02", status=3),
+        schedule_row("0022500003", "2025-11-04", status=1, home_id=99),
+        schedule_row("0022500004", "2025-11-05", status=1),
+        schedule_row("0022500005", "2025-11-01", status=3),
+    ]
+    rows[0].update(gameStatusText="Q3 4:21", homeTeam_score=82, awayTeam_score=79)
+    rows[1]["gameStatusText"] = "Final/OT"
+    rows[2]["gameStatusText"] = "Postponed"
+    install_schedule(monkeypatch, rows)
+    games = service.fetch_upcoming_games(date(2025, 11, 2))["games"]
+    assert [game["status"] for game in games] == ["Q3 4:21", "Final/OT", "Postponed"]
+    assert (games[0]["home_score"], games[0]["away_score"]) == (82, 79)
+    assert games[0]["home_team"]["logo_url"] == "https://cdn.nba.com/logos/nba/2/primary/L/logo.svg"
+    assert games[2]["home_team"]["logo_url"] is None
+    for status, expected in [(1, "Scheduled"), (2, "In progress"), (3, "Final"), (4, "Status unavailable")]:
+        row = schedule_row("0022500001", "2025-11-02", status=status)
+        row["gameStatusText"] = None
+        assert service._schedule_game(pd.Series(row), service._team_lookup())["status"] == expected
