@@ -44,12 +44,31 @@ export interface LeaguePlayer {
   health_status?: "available" | "out";
   health_source?: "espn" | "assumed_available";
   current_rates_source?: string | null;
+  season_rates?: Stats | null;
+  rate_provenance?: Record<string, unknown>;
+  active?: boolean;
   season_rank?: number | null;
   draft_rank?: number | null;
   draft_pick?: number | null;
   draft_round?: number | null;
 }
+export interface TeamActuals {
+  official: { totals: Stats | null; source: string; fetched_at: string | null };
+  nba_derived: {
+    totals: Stats | null;
+    complete: boolean;
+    provisional: boolean;
+    expected_player_games: number | null;
+    covered_player_games: number | null;
+    gaps: string[];
+    fetched_at: string | null;
+  };
+  forecast_source: string;
+  forecast_totals: Stats | null;
+  forecast_complete: boolean;
+}
 export interface LeagueTeam {
+  actuals?: TeamActuals;
   id: number;
   name: string;
   ownership_verified: boolean;
@@ -103,6 +122,11 @@ export interface LeagueSnapshot {
   teams: LeagueTeam[];
   free_agents: LeaguePlayer[];
   free_agents_truncated: boolean;
+  market_complete?: boolean | null;
+  projection_metadata?: Record<
+    string,
+    { complete: boolean; source?: string; as_of?: string; reason?: string }
+  >;
   data_gaps: string[];
 }
 export interface ConnectLeague {
@@ -133,6 +157,7 @@ export interface PlannerPreferences {
   remaining_dates?: string[];
   selected_categories?: Category[];
   matchup_add_limit_fallback?: number | null;
+  allow_core_drops?: boolean;
 }
 /** UI boundary for the later optimizer adapter; never compute probabilities in the browser. */
 export interface CategoryStrategy {
@@ -183,6 +208,10 @@ export interface PickupRecommendation {
         lineup_other_net: number | null;
         net_total: number | null;
         weighted?: {
+          add_makes_rate?: number | null;
+          add_attempts_rate?: number | null;
+          drop_makes_rate?: number | null;
+          drop_attempts_rate?: number | null;
           before_makes: number | null;
           before_attempts: number | null;
           after_makes: number | null;
@@ -205,7 +234,19 @@ export interface PickupRecommendation {
     >
   >;
 }
+/** Additive V4 boundary; reconciled against the exact engine handoff before delivery. */
+export interface RecommendedPlan {
+  moves: (PickupRecommendation & {
+    remaining_adds?: number | null;
+    cumulative_focus_score?: number | null;
+  })[];
+  focus_score_before?: number | null;
+  focus_score_after?: number | null;
+  remaining_adds?: number | null;
+  category_impacts?: PickupRecommendation["category_impacts"];
+}
 export interface WaiverPlan {
+  recommended_plan?: RecommendedPlan;
   search?: {
     candidate_pool?: number;
     candidate_limit?: number;

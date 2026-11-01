@@ -234,7 +234,9 @@ it("renders every beneficial alternative separately from sequential plan and res
       "listitem",
     ),
   ).toHaveLength(9);
-  expect(screen.getByText(/Sequential matchup plan · 1 moves/)).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Best explored add/drop sequence" }),
+  ).toBeInTheDocument();
   await userEvent.click(screen.getByText("Edit availability & roster protection"));
   expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeDisabled();
   expect(screen.getByText(/Prior-week gap/)).toBeInTheDocument();
@@ -325,7 +327,7 @@ it("shows total arithmetic, selected five and paginates genuine alternatives wit
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await screen.findByText("25 beneficial alternatives");
   expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(12);
-  expect(screen.getByText(/Safe wins: REB/)).toBeInTheDocument();
+  expect(screen.getByText(/Modeled cushions: REB/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /Show more alternatives/ }));
   expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(24);
   await userEvent.selectOptions(screen.getByLabelText("Review by roster drop"), "other");
@@ -336,7 +338,9 @@ it("shows total arithmetic, selected five and paginates genuine alternatives wit
     within(detail as HTMLElement).getByText("Remaining matchup arithmetic & tradeoffs"),
   );
   expect(
-    within(detail as HTMLElement).getByText(/12 × 4 starts − 10 × 4 starts = \+8 total/),
+    within(detail as HTMLElement).getByRole("row", {
+      name: /PTS.*12 × 4 starts.*10 × 4 lost starts.*\+8/,
+    }),
   ).toBeInTheDocument();
   await userEvent.click(screen.getByText("Edit availability & roster protection"));
   expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeEnabled();
@@ -409,7 +413,98 @@ it("discloses incomplete bounds and reads final weighted percentage calculation 
     "80 candidates",
   );
   await userEvent.click(screen.getByText("Remaining matchup arithmetic & tradeoffs"));
-  expect(screen.getByText(/Weighted team shooting: 40\/100 → 41\/100/)).toHaveTextContent(
-    "+1.00 pp",
+  expect(
+    screen.getByRole("row", { name: /FG%.*40 \/ 100.*41 \/ 100.*\+1.00 pp/ }),
+  ).toBeInTheDocument();
+});
+
+it.each([1, 2])(
+  "shows one ordered plan of %i moves while alternatives stay secondary",
+  async (count) => {
+    const move = {
+      add_id: "free",
+      drop_id: "rostered",
+      date: "2026-11-01",
+      probability_gain: null,
+      gains: { pts: 8 },
+      games_gain: 0,
+      minutes_gain: 0,
+      season_cost: 0,
+      net_score: 0.02,
+      target_categories: ["pts"],
+      rationale: "Full-roster improvement.",
+      remaining_adds: 1,
+      cumulative_focus_score: 64,
+    };
+    const onPlan = vi.fn().mockResolvedValue({
+      ...readyPlan,
+      recommended_plan: {
+        moves: Array.from({ length: count }, (_, i) => ({
+          ...move,
+          add_id: i ? "second" : "free",
+          drop_id: i ? "free" : "rostered",
+          remaining_adds: count - i - 1,
+        })),
+        focus_score_before: 60,
+        focus_score_after: 64,
+      },
+      recommendations: Array.from({ length: 7 }, () => move),
+    });
+    render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
+    const primary = screen.getByRole("region", { name: "Recommended ordered plan" });
+    await waitFor(() => expect(within(primary).getAllByRole("listitem")).toHaveLength(count));
+    expect(within(primary).getByText(/60 → 64/)).toHaveTextContent(
+      "heuristic, not win probability",
+    );
+    expect(within(primary).getAllByRole("table")).toHaveLength(count + 1);
+    expect(
+      screen.getByText(/Optional competing single-move alternatives/).closest("details"),
+    ).not.toHaveAttribute("open");
+  },
+);
+
+it("reruns core override independently of immutable locks", async () => {
+  const snapshot = testSnapshot();
+  snapshot.teams[0].roster[0].undroppable = true;
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  await userEvent.click(screen.getByLabelText("Allow core-player drops for this analysis"));
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
+  expect(onPlan.mock.lastCall?.[0].allow_core_drops).toBe(true);
+  expect(
+    screen.getByRole("button", { name: "Protect Test player rostered", hidden: true }),
+  ).toBeDisabled();
+});
+
+it("shows current lead becoming a projected loss and clears incomplete cushion labels", async () => {
+  const snapshot = testSnapshot();
+  snapshot.projection_metadata = {
+    actuals: { complete: false, reason: "Historical active lineup missing" },
+  };
+  const onPlan = vi.fn().mockResolvedValue({
+    ...readyPlan,
+    selected_categories: ["pts", "reb", "ast", "stl", "to"],
+    safe_categories: ["reb"],
+    strategy: {
+      reb: {
+        classification: "favored",
+        safe_win: true,
+        explanation: "Stale confidence",
+        current_user: 132,
+        current_opponent: 117,
+        projected_user: 140,
+        projected_opponent: 157,
+        projected_margin: -17,
+      },
+    },
+  });
+  const { container } = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await screen.findByText("You: 132 + 8 remaining =", { exact: false });
+  expect(screen.getByText("Opponent: 117 + 40 remaining =", { exact: false })).toHaveTextContent(
+    "157",
   );
+  expect(screen.getByText(/Modeled cushions: None established/)).toBeInTheDocument();
+  expect(container.querySelector(".strategy-favored")).toBeNull();
+  expect(screen.getByText(/Outlook unverified:/)).toBeInTheDocument();
 });
