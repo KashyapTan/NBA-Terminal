@@ -29,10 +29,10 @@ def league_payload():
                 "42": 10,
             }
         )
-    # One expendable low-minute stream slot, twelve long-term core players per team.
+    # Two legally droppable options per team, including one first-round player.
     for team in raw["league"]["teams"]:
         roster = []
-        team["transactionCounter"]["matchupAcquisitionTotals"] = {"2": 5}
+        team["transactionCounter"]["matchupAcquisitionTotals"] = {"2": 6}
         for slot in range(13):
             entry = copy.deepcopy(template)
             player = entry["playerPoolEntry"]["player"]

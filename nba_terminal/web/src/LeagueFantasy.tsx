@@ -7,6 +7,7 @@ import {
   eligibleCandidates,
   formatCategory,
   type ConnectLeague,
+  type Category,
   type LeagueSnapshot,
   type LeagueStatus,
   type LeagueTeam,
@@ -14,6 +15,7 @@ import {
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
+import { EspnBrowserConnect } from "./EspnBrowserConnect";
 
 /** Mount once in the integrating app; pass the returned state to the named components. */
 export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
@@ -55,6 +57,19 @@ export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
   useEffect(() => {
     if (status.connected && status.team_id) void run(() => api.snapshot());
   }, [api, status, run]);
+  const refreshStatus = useCallback(() => run(() => api.status()), [api, run]);
+  useEffect(() => {
+    const changed = () => void refreshStatus();
+    window.addEventListener("nba-espn-bridge", changed);
+    const timer = window.setInterval(() => {
+      if (status.connected && status.expires_at && Date.parse(status.expires_at) <= Date.now())
+        void refreshStatus();
+    }, 30000);
+    return () => {
+      window.removeEventListener("nba-espn-bridge", changed);
+      window.clearInterval(timer);
+    };
+  }, [refreshStatus, status.connected, status.expires_at]);
   return {
     status,
     snapshot,
@@ -64,9 +79,12 @@ export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
     selectTeam: (id: number) => run(() => api.selectTeam(id), true),
     disconnect: () => run(() => api.disconnect(), true),
     refresh: () => run(() => api.snapshot({ refresh: true })),
+    refreshStatus,
   };
 }
-export type LeagueFantasyState = ReturnType<typeof useLeagueFantasy>;
+export type LeagueFantasyState = Omit<ReturnType<typeof useLeagueFantasy>, "refreshStatus"> & {
+  refreshStatus?: () => Promise<void>;
+};
 
 export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
   const [privateLeague, setPrivateLeague] = useState(false);
@@ -148,56 +166,63 @@ export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
           </button>
         </>
       ) : (
-        <form onSubmit={submit} autoComplete="off">
-          <div className="league-fields">
-            <label>
-              League ID
-              <input name="league" type="number" min="1" step="1" required />
-            </label>
-            <label>
-              Season ending year
-              <input
-                name="season"
-                type="number"
-                min="2019"
-                max="2100"
-                step="1"
-                required
-                placeholder="2027"
-              />
-            </label>
-          </div>
-          <label className="league-check">
-            <input
-              type="checkbox"
-              checked={privateLeague}
-              onChange={(event) => setPrivateLeague(event.target.checked)}
-            />
-            Private league
-          </label>
-          {privateLeague && (
-            <fieldset>
-              <legend>Private ESPN cookies</legend>
-              <p>
-                While signed in to ESPN in your browser, open developer tools → Application/Storage
-                → Cookies for ESPN. Copy SWID and espn_s2 here. This is cookie-based access, not
-                OAuth; never share these values. They are sent once in the connection POST body,
-                retained only in server memory for this session, and cleared by disconnect.
-              </p>
-              <label>
-                SWID
-                <input name="swid" type="password" autoComplete="off" required />
+        <>
+          <EspnBrowserConnect onConnected={state.refreshStatus} />
+          <details className="manual-espn-connect">
+            <summary>Manual or public league fallback</summary>
+            <form onSubmit={submit} autoComplete="off">
+              <div className="league-fields">
+                <label>
+                  Manual league ID
+                  <input name="league" type="number" min="1" step="1" required />
+                </label>
+                <label>
+                  Manual season ending year
+                  <input
+                    name="season"
+                    type="number"
+                    min="2019"
+                    max="2100"
+                    step="1"
+                    required
+                    placeholder="2027"
+                  />
+                </label>
+              </div>
+              <label className="league-check">
+                <input
+                  type="checkbox"
+                  checked={privateLeague}
+                  onChange={(event) => setPrivateLeague(event.target.checked)}
+                />
+                Private league
               </label>
-              <label>
-                espn_s2
-                <input name="s2" type="password" autoComplete="off" required />
-              </label>
-            </fieldset>
-          )}
-          <button type="submit" disabled={state.loading}>
-            Connect ESPN
-          </button>
-        </form>
+              {privateLeague && (
+                <fieldset>
+                  <legend>Private ESPN cookies</legend>
+                  <p>
+                    While signed in to ESPN in your browser, open developer tools →
+                    Application/Storage → Cookies for ESPN. Copy SWID and espn_s2 here. This is
+                    cookie-based access, not OAuth; never share these values. They are sent once in
+                    the connection POST body, retained only in server memory for this session, and
+                    cleared by disconnect.
+                  </p>
+                  <label>
+                    SWID
+                    <input name="swid" type="password" autoComplete="off" required />
+                  </label>
+                  <label>
+                    espn_s2
+                    <input name="s2" type="password" autoComplete="off" required />
+                  </label>
+                </fieldset>
+              )}
+              <button type="submit" disabled={state.loading}>
+                Connect manually
+              </button>
+            </form>
+          </details>
+        </>
       )}
     </section>
   );
@@ -443,11 +468,6 @@ function DataGaps({ gaps }: { gaps: string[] }) {
     </details>
   ) : null;
 }
-const probability = (value: number | null | undefined) =>
-  value == null || !Number.isFinite(value) || value < 0 || value > 1
-    ? "Unavailable"
-    : `${(value * 100).toFixed(1)}%`;
-
 export function WaiverWire({
   snapshot,
   onPlan,
@@ -499,12 +519,26 @@ function WaiverStrategy({
   error?: string | null;
   onRefresh?: () => void;
 }) {
-  const [preferences, setPreferences] = useState<PlannerPreferences>({});
+  const capStorageKey = `nba-terminal:matchup-cap:${snapshot.league.id}:${snapshot.league.season_id}`;
+  const [preferences, setPreferences] = useState<PlannerPreferences>(() => {
+    try {
+      const saved = localStorage.getItem(capStorageKey);
+      const cap = saved === null ? null : Number(saved);
+      return cap != null && Number.isInteger(cap) && cap >= 0
+        ? { matchup_add_limit_fallback: cap }
+        : {};
+    } catch {
+      return {};
+    }
+  });
+  const [categoryDraft, setCategoryDraft] = useState<Category[] | null>(null);
   const availabilityPanel = useRef<HTMLDetailsElement>(null);
   const [plan, setPlan] = useState<WaiverPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [dropFilter, setDropFilter] = useState("");
+  const [visibleCount, setVisibleCount] = useState(12);
   const generation = useRef(0);
   useEffect(() => {
     const current = ++generation.current;
@@ -560,7 +594,12 @@ function WaiverStrategy({
       player,
     ]),
   );
-  const recommendations = plan?.recommendations?.slice(0, 7) ?? [];
+  const recommendations = plan?.recommendations ?? [];
+  const filteredRecommendations = recommendations.filter(
+    (item) => !dropFilter || item.drop_id === dropFilter,
+  );
+  const visibleRecommendations = filteredRecommendations.slice(0, visibleCount);
+  const dropIds = [...new Set(recommendations.map((item) => item.drop_id))];
   const actions = plan?.plan ?? plan?.actions ?? [];
   const recommendedTargets = [
     ...new Set(recommendations.flatMap((item) => item.target_categories)),
@@ -574,7 +613,15 @@ function WaiverStrategy({
         (plan?.strategy?.[a.key]?.target_priority ?? 0),
     )
     .map(({ key }) => key);
-  const targetCategories = [...new Set([...recommendedTargets, ...strategyTargets])].slice(0, 3);
+  const targetCategories = plan?.improvement_categories ?? [
+    ...new Set([...recommendedTargets, ...strategyTargets]),
+  ];
+  const selectedCategories = preferences.selected_categories ?? plan?.selected_categories ?? [];
+  const safeCategories = plan?.safe_categories ?? [];
+  const categoryLabels = (keys: Category[]) =>
+    keys
+      .map((key) => LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key)
+      .join(" · ");
   const targetKeys = targetCategories.map(
     (key) => LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key,
   );
@@ -586,10 +633,17 @@ function WaiverStrategy({
     ...(user?.roster ?? []),
     ...candidates.filter((player) => relevantIds.has(player.id)),
   ];
-  const knownLimit =
-    snapshot.league.acquisition_settings.limit_per_scoring_period === false
-      ? snapshot.league.acquisition_settings.weekly_add_limit
-      : null;
+  const settings = snapshot.league.acquisition_settings;
+  const espnLimit =
+    settings.matchup_add_limit ??
+    (settings.limit_per_scoring_period === false ? settings.weekly_add_limit : null);
+  const knownLimit = espnLimit ?? preferences.matchup_add_limit_fallback;
+  const capSource =
+    espnLimit != null
+      ? "ESPN matchup cap"
+      : preferences.matchup_add_limit_fallback != null
+        ? "Your saved league cap fallback"
+        : "Cap unavailable";
   const signed = (
     value: number | null | undefined,
     key?: (typeof LEAGUE_CATEGORIES)[number]["key"],
@@ -616,12 +670,7 @@ function WaiverStrategy({
               player.injury_status ?? "",
             ));
       const hardProtected =
-        player.undroppable === true ||
-        player.droppable === false ||
-        player.draft_round === 1 ||
-        (player.season_rank != null && player.season_rank > 0 && player.season_rank <= 12) ||
-        (player.draft_rank != null && player.draft_rank > 0 && player.draft_rank <= 12) ||
-        (player.draft_pick != null && player.draft_pick > 0 && player.draft_pick <= 12);
+        player.undroppable === true || player.droppable === false || player.locked === true;
       const protectedPlayer =
         preferences.player_overrides?.[player.id]?.protected ??
         (hardProtected || Boolean(plan?.protected_players?.[player.id]));
@@ -682,7 +731,12 @@ function WaiverStrategy({
           </h2>
           <p>
             Against {opponent?.name ?? "opponent unavailable"}. Compare the net benefit of a pickup
-            after the player you drop.
+            after the player you drop. Only future playable starts count; recorded stats stay
+            banked.
+          </p>
+          <p className="matchup-horizon">
+            {snapshot.period.remaining_dates.length} remaining matchup dates · through{" "}
+            {snapshot.period.end_date ?? snapshot.period.dates.at(-1) ?? "unknown end date"}
           </p>
         </div>
         <div className="waiver-budget">
@@ -691,9 +745,13 @@ function WaiverStrategy({
               ? plan.remaining_adds + actions.length
               : (user?.remaining_adds ?? "?")}
           </b>
-          <span>adds remaining</span>
+          <span>matchup acquisitions left</span>
           <small>
             {knownLimit ?? "Unknown"} cap · {user?.weekly_used_adds ?? "Unknown"} used
+          </small>
+          <small>{capSource}</small>
+          <small>
+            {user?.weekly_usage_source ? "ESPN matchup usage" : "Usage source unavailable"}
           </small>
         </div>
       </div>
@@ -719,13 +777,70 @@ function WaiverStrategy({
       )}
       {plan?.strategy && (
         <p className="five-category-path">
-          <b>{favoredCount} favored</b> · {Math.max(0, 5 - favoredCount)} more categories needed for
-          five.{" "}
+          <b>{safeCategories.length || favoredCount} projected cushions</b>.{" "}
           {targetKeys.length
-            ? `Prioritize ${targetKeys.join(" / ")}; defend the existing leads.`
+            ? `Improve ${targetKeys.join(" / ")}; safe wins already count toward five.`
             : "Review the outlook before using an add."}
         </p>
       )}
+      <section className="five-selection" aria-label="Five-category strategy">
+        <p>
+          <b>Selected five:</b>{" "}
+          {selectedCategories.length
+            ? categoryLabels(selectedCategories)
+            : "Awaiting strategy analysis"}
+        </p>
+        <p>
+          <span className="league-winning">
+            Safe wins: {categoryLabels(safeCategories) || "None established"}
+          </span>{" "}
+          · Improvement priorities: {categoryLabels(targetCategories) || "None supported"}
+        </p>
+        <small>
+          Safe wins count toward five. Close deficits and vulnerable leads receive pickup priority.
+        </small>
+        <details>
+          <summary>Edit selected five categories</summary>
+          <fieldset className="category-picker">
+            <legend>Choose exactly five categories</legend>
+            {LEAGUE_CATEGORIES.map(({ key, label }) => (
+              <label key={key}>
+                <input
+                  type="checkbox"
+                  checked={(categoryDraft ?? selectedCategories).includes(key)}
+                  onChange={(event) => {
+                    const current = categoryDraft ?? selectedCategories;
+                    setCategoryDraft(
+                      event.target.checked
+                        ? [...current, key]
+                        : current.filter((item) => item !== key),
+                    );
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <button
+            type="button"
+            disabled={(categoryDraft ?? selectedCategories).length !== 5}
+            onClick={() => {
+              edit({ selected_categories: categoryDraft ?? selectedCategories });
+            }}
+          >
+            Recalculate selected five
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCategoryDraft(null);
+              edit({ selected_categories: undefined });
+            }}
+          >
+            Use recommended five
+          </button>
+        </details>
+      </section>
       <p className="availability-assumption">
         Availability: assume Available unless explicitly reported Out.{" "}
         <button
@@ -741,8 +856,8 @@ function WaiverStrategy({
         </button>
       </p>
       <div className="strategy-legend">
-        <span className="league-winning">● Favored: defend</span>
-        <span className="league-tied">◆ Swing / reachable: target</span>
+        <span className="league-winning">● Safe wins: count toward five</span>
+        <span className="league-tied">◆ Close / vulnerable: improve</span>
         <span className="league-losing">↓ Likely punt: lower priority</span>
         <span>— Unknown: missing evidence</span>
       </div>
@@ -852,11 +967,12 @@ function WaiverStrategy({
             <span className="league-kicker">PICK ONE TO REVIEW</span>
             <h3>Best pickup + drop alternatives</h3>
           </div>
-          <span>{recommendations.length} / 7 opportunities</span>
+          <span>{recommendations.length} beneficial alternatives</span>
         </div>
         <p>
-          Each option is compared with keeping your roster. These alternatives are not seven moves
-          to make together. Transactions remain manual in ESPN.
+          Each option is compared with keeping your roster over the remaining matchup. Ranked
+          alternatives may share the same best drop; choose one, or review the feasible sequential
+          plan below. Transactions remain manual in ESPN.
         </p>
         {plan && plan.remaining_adds == null && (
           <p className="league-tied">
@@ -864,9 +980,54 @@ function WaiverStrategy({
             remaining budget in ESPN before choosing a move.
           </p>
         )}
+        {plan?.search && (
+          <p
+            className={
+              plan.search.alternatives_complete === false ? "league-tied" : "search-summary"
+            }
+          >
+            {plan.search.alternatives_complete === false
+              ? "Search incomplete: some beneficial alternatives may be omitted. "
+              : "Explored one-move pairs and timing; lineup forecasts are approximate. "}
+            {plan.search.evaluated_drop_ids?.length ?? "?"} of{" "}
+            {plan.search.legal_drop_ids?.length ?? "?"} legal roster drops evaluated ·{" "}
+            {plan.search.evaluations} evaluations · {plan.search.candidate_pool ?? "?"} candidates.
+            {plan.search.alternatives_complete === false && (
+              <>
+                {" "}
+                Bounds: {plan.search.candidate_limit ?? "unknown"} candidates /{" "}
+                {plan.search.evaluation_limit ?? "unknown"} evaluations.
+              </>
+            )}
+          </p>
+        )}
+        {snapshot.free_agents_truncated && (
+          <p className="league-tied">
+            ESPN returned a limited free-agent pool. Results cover that pool only.
+          </p>
+        )}
+        {recommendations.length > 0 && (
+          <label className="pickup-filter">
+            Review by roster drop
+            <select
+              value={dropFilter}
+              onChange={(event) => {
+                setDropFilter(event.target.value);
+                setVisibleCount(12);
+              }}
+            >
+              <option value="">All drop options ({dropIds.length})</option>
+              {dropIds.map((id) => (
+                <option key={id} value={id}>
+                  {players.get(id)?.name ?? id}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {recommendations.length > 0 ? (
           <ol className="pickup-list">
-            {recommendations.map((item, index) => (
+            {visibleRecommendations.map((item, index) => (
               <li key={`${item.add_id}:${item.drop_id}`}>
                 <div className="pickup-rank">{index + 1}</div>
                 <div className="pickup-body">
@@ -885,7 +1046,6 @@ function WaiverStrategy({
                     <b>
                       Target{" "}
                       {item.target_categories
-                        .slice(0, 3)
                         .map(
                           (key) =>
                             LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ??
@@ -893,21 +1053,61 @@ function WaiverStrategy({
                         )
                         .join(" · ") || "overall balance"}
                     </b>
-                    <span>{signed(item.games_gain)} net games</span>
+                    <span>{signed(item.games_gain)} net playable starts</span>
                     <span>{signed(item.minutes_gain)} net minutes</span>
                     <span>1 add · {item.date}</span>
                   </div>
                   <div className="pickup-net pickup-target-gains">
-                    {item.target_categories.slice(0, 3).map((key) => (
+                    {item.target_categories.map((key) => (
                       <span key={key}>
                         {LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key}{" "}
-                        <b>{signed(netCategoryGain(item, key), key)} net</b>
+                        <b>{signed(netCategoryGain(item, key), key)} net total</b>
                       </span>
                     ))}
                   </div>
                   <details className="pickup-details">
-                    <summary>Why this move · rates & tradeoffs</summary>
+                    <summary>Remaining matchup arithmetic & tradeoffs</summary>
                     <p>{item.rationale}</p>
+                    <p>
+                      Projected remaining matchup totals: current-season per-game rate × playable
+                      starts. Lineup capacity and game locks can change other players’ starts.
+                    </p>
+                    {item.calculation ? (
+                      <ul className="pickup-arithmetic">
+                        {Object.entries(item.calculation).map(
+                          ([key, calc]) =>
+                            calc && (
+                              <li key={key}>
+                                <b>
+                                  {LEAGUE_CATEGORIES.find((category) => category.key === key)
+                                    ?.label ?? key}
+                                </b>{" "}
+                                {key.endsWith("pct") ? (
+                                  <>
+                                    Weighted team shooting: {calc.weighted?.before_makes ?? "?"}/
+                                    {calc.weighted?.before_attempts ?? "?"} →{" "}
+                                    {calc.weighted?.after_makes ?? "?"}/
+                                    {calc.weighted?.after_attempts ?? "?"}; change{" "}
+                                    {signed(calc.net_total, key as Category)}
+                                  </>
+                                ) : (
+                                  <>
+                                    {calc.add_rate ?? "?"} × {calc.add_starts ?? "?"} starts −{" "}
+                                    {calc.drop_rate ?? "?"} × {calc.drop_starts ?? "?"} starts
+                                    {calc.lineup_other_net != null &&
+                                    Math.abs(calc.lineup_other_net) >= 0.05
+                                      ? ` + (${signed(calc.lineup_other_net)} other lineup changes)`
+                                      : ""}{" "}
+                                    = {signed(calc.net_total)} total
+                                  </>
+                                )}
+                              </li>
+                            ),
+                        )}
+                      </ul>
+                    ) : (
+                      <p>Per-player playable-start arithmetic is unavailable for this result.</p>
+                    )}
                     <p>
                       Pickup:{" "}
                       {players.get(item.add_id)?.current_rates?.minutes?.toFixed(1) ?? "Unknown"}{" "}
@@ -925,19 +1125,14 @@ function WaiverStrategy({
                         </span>
                       ))}
                     </div>
-                    <small>
-                      Five-category estimate change{" "}
-                      {item.probability_gain == null
-                        ? "unavailable"
-                        : `${signed(item.probability_gain * 100)} pp`}
-                    </small>
                     <p>
                       {item.season_cost == null
                         ? "Long-term roster value is considered before this drop."
                         : item.season_cost > 0
-                          ? "The weekly gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
+                          ? "The remaining-matchup gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
                           : "No long-term downgrade is estimated by the season-value model."}{" "}
-                      Core players stay protected.
+                      Any legally droppable player can be evaluated. Use Protect to keep a player
+                      out of recommendations.
                     </p>
                   </details>
                 </div>
@@ -955,11 +1150,17 @@ function WaiverStrategy({
             </div>
           )
         )}
+        {filteredRecommendations.length > visibleRecommendations.length && (
+          <button type="button" onClick={() => setVisibleCount((count) => count + 12)}>
+            Show more alternatives ({visibleRecommendations.length} of{" "}
+            {filteredRecommendations.length})
+          </button>
+        )}
       </section>
       <details className="weekly-plan">
         <summary>
-          Combined weekly plan · {actions.length} moves · {plan?.remaining_adds ?? "unknown"} adds
-          left after this plan
+          Sequential matchup plan · {actions.length} moves · {plan?.remaining_adds ?? "unknown"}{" "}
+          adds left after this plan
         </summary>
         {actions.length > 0 ? (
           <>
@@ -979,15 +1180,8 @@ function WaiverStrategy({
         ) : (
           <p>
             {plan?.remaining_adds == null
-              ? "Weekly acquisition counts are unknown. Alternatives can be evaluated, but a budget-constrained sequence cannot be confirmed."
+              ? "Matchup acquisition counts are unknown. Alternatives can be evaluated, but a budget-constrained sequence cannot be confirmed."
               : "Keeping the current roster is preferred, or no supported sequence is available."}
-          </p>
-        )}
-        {plan?.baseline && (
-          <p>
-            Five-category estimate: keeping roster{" "}
-            {probability(plan.baseline.probability_five_wins)} → combined plan{" "}
-            {probability(plan.projected?.probability_five_wins)}. Estimates are uncalibrated.
           </p>
         )}
       </details>
@@ -995,7 +1189,8 @@ function WaiverStrategy({
         <summary>Edit availability & roster protection</summary>
         <p>
           Assume Available unless explicitly reported Out. Change a player below to recalculate
-          immediately. Known locks, undroppable players and core protection are respected.
+          immediately. Known locks, undroppable players and your explicit Protect choices are
+          respected.
         </p>
         {controls(relevant)}
         <details>
@@ -1009,14 +1204,54 @@ function WaiverStrategy({
       <details className="waiver-advanced">
         <summary>Advanced inputs & data notes</summary>
         <p>
-          Only override acquisition counts with verified weekly values. Unknown usage is never
+          Only override acquisition counts with verified matchup values. Unknown usage is never
           treated as zero.
+        </p>
+        {espnLimit == null && preferences.matchup_add_limit_fallback == null && (
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem(capStorageKey, "7");
+              } catch {
+                /* Memory preference remains usable. */
+              }
+              edit({ matchup_add_limit_fallback: 7 });
+            }}
+          >
+            Save my confirmed cap of 7 for this league
+          </button>
+        )}
+        <label>
+          My league’s matchup cap fallback (used only if ESPN cap is unavailable)
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={preferences.matchup_add_limit_fallback ?? ""}
+            placeholder="7 — your confirmed league cap"
+            onChange={(event) => {
+              const cap = event.target.value === "" ? null : Number(event.target.value);
+              if (cap != null && (!Number.isInteger(cap) || cap < 0)) return;
+              try {
+                if (cap == null) localStorage.removeItem(capStorageKey);
+                else localStorage.setItem(capStorageKey, String(cap));
+              } catch {
+                /* Preferences remain usable without storage. */
+              }
+              edit({ matchup_add_limit_fallback: cap });
+            }}
+          />
+        </label>
+        <p>
+          This setting is saved only for {snapshot.league.name}, season {snapshot.league.season_id}.
+          It never replaces unknown acquisition usage.
         </p>
         <div className="league-fields">
           {(
             [
-              ["weekly_add_limit", "Weekly add cap"],
-              ["used_adds", "Adds used this week"],
+              ["weekly_add_limit", "Matchup acquisition cap"],
+              ["used_adds", "Matchup acquisitions used"],
               ["available_adds", "Adds remaining"],
             ] as const
           ).map(([key, label]) => (
@@ -1040,7 +1275,7 @@ function WaiverStrategy({
             checked={preferences.user_confirmed_counts ?? false}
             onChange={(event) => edit({ user_confirmed_counts: event.target.checked })}
           />
-          Use my verified weekly counts
+          Use my verified matchup counts
         </label>
         <p>
           Current-season per-game rates and remaining lineup opportunity drive estimates. Prior
@@ -1091,7 +1326,7 @@ export function LeagueDashboardSummary({ state }: { state: LeagueFantasyState })
           <h2>{team?.name ?? "Your league"}</h2>
           <p>Current opponent: {opponent?.name ?? "Unavailable"}</p>
           <p>
-            {team?.remaining_adds ?? "Unknown"} weekly adds remaining ·{" "}
+            {team?.remaining_adds ?? "Unknown"} matchup acquisitions remaining ·{" "}
             {state.snapshot.period.remaining_dates.length} remaining dates reported.
           </p>
           <p>

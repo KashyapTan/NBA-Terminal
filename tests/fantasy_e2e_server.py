@@ -48,6 +48,11 @@ def synthetic_get(self, views, *args, **kwargs):
             for side in (match["home"], match["away"]):
                 if side["teamId"] == 14:
                     side["cumulativeScore"] = copy.deepcopy(own)
+    if self.league_id in {129, 130}:
+        data["league"]["settings"]["acquisitionSettings"].pop("matchupAcquisitionLimit", None)
+        if self.league_id == 130:
+            for team in data["league"]["teams"]:
+                team["transactionCounter"]["matchupAcquisitionTotals"] = {}
     if self.league_id == 125:
         data["league"]["settings"]["scoringSettings"]["scoringType"] = "H2H_POINTS"
     if self.league_id == 124:
@@ -113,6 +118,11 @@ fantasy_stats.fetch_fantasy_season = lambda season, phase="Regular Season": {
     "phase": phase,
     "players": PLAYERS,
 }
+
+@webapp.app.get("/__test__/fantasy-fixture")
+def fixture_marker():
+    return {"synthetic": True}
+
 
 if __name__ == "__main__":
     uvicorn.run(

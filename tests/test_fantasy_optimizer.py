@@ -223,7 +223,9 @@ def test_evaluation_limit_is_reported_and_deterministic():
     data["players"] += [player("one", current_rates=rates(ast=5)), player("two", current_rates=rates(blk=5))]
     first = plan_waivers(data)
     assert first == plan_waivers(deepcopy(data))
-    assert first["search"] == {"evaluations": 1, "evaluation_limit_reached": True}
+    assert first["search"]["evaluations"] == 1
+    assert first["search"]["evaluation_limit_reached"] is True
+    assert first["search"]["alternatives_complete"] is False
 
 
 def test_drop_cannot_invent_zero_attempt_probability():

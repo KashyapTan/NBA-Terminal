@@ -138,11 +138,15 @@ def _plus(totals, rates):
     return {k: totals[k] + rates[k] for k in TOTALS}
 
 
-def _lineup(players, slots, ours, theirs, deviations, opponent=False):
+def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=None):
     """Rank marginal five-category value, then find a feasible matching by augmentation."""
 
     def utility(left, right):
         categories, probability = _assessment(left, right, deviations)
+        if selected and not opponent:
+            return sum(categories[k]["win_probability"] or 0 for k in selected) / 5
+        if selected and not opponent:
+            return sum(categories[k]["win_probability"] or 0 for k in selected) / 5
         return (
             probability if probability is not None else sum(c["win_probability"] or 0 for c in categories.values()) / 9
         )
@@ -188,7 +192,14 @@ def _forecast(context, actions):
                 roster.add(action["add_id"])
         available = [p for p in context["players"].values() if day in p["schedule"] and day not in p["unavailable"]]
         slots = context["daily_slots"].get(day, context["slots"])
-        user = _lineup([p for p in available if p["id"] in roster], slots, ours, theirs, context["sd"])
+        user = _lineup(
+            [p for p in available if p["id"] in roster],
+            slots,
+            ours,
+            theirs,
+            context["sd"],
+            selected=context.get("scored_categories"),
+        )
         opponent = _lineup(
             [p for p in available if p["owner"] == "opponent"],
             context["opponent_daily_slots"].get(day, slots),
@@ -197,6 +208,8 @@ def _forecast(context, actions):
             context["sd"],
             True,
         )
+        if "opponent_starts" in context:
+            opponent = [context["players"][s["player_id"]] for s in context["opponent_starts"] if s["date"] == day]
         for owner, lineup in (("user", user), ("opponent", opponent)):
             for player in lineup:
                 if owner == "user":
@@ -309,41 +322,23 @@ def _context(payload):
         "provenance": provenance,
         "stream_slots": min(4, _integer(payload, "max_stream_slots", 4)),
         "beam": min(32, max(1, _integer(payload, "beam_width", 8))),
-        "candidate_limit": min(100, max(1, _integer(payload, "candidate_limit", 40))),
-        "evaluation_limit": min(5000, max(1, _integer(payload, "evaluation_limit", 2000))),
+        "candidate_limit": min(1000, max(1, _integer(payload, "candidate_limit", 1000))),
+        "evaluation_limit": min(20000, max(1, _integer(payload, "evaluation_limit", 5000))),
     }
 
 
 def _score(forecast, context):
-    if not context["partial"]:
-        return forecast["win_at_least_five_probability"] or 0
-    return sum(forecast["categories"][k]["win_probability"] or 0 for k in context["scored_categories"]) / 9
+    # Fixed selected five for the whole search: saturated safe wins add almost no
+    # marginal value, while close projected margins have the largest sensitivity.
+    return sum(forecast["categories"][k]["win_probability"] or 0 for k in context["scored_categories"]) / 5
 
 
 def _protection(player):
-    """Hard evidence protects elites even against an accidental UI unprotect toggle."""
-
-    def rank_at_most(key, limit):
-        value = player.get(key)
-        return isinstance(value, (int, float)) and not isinstance(value, bool) and 0 < value <= limit
-
+    """Only legal constraints and explicit user decisions prohibit evaluation."""
     if player.get("undroppable") is True or player.get("droppable") is False:
         return "ESPN undroppable"
-    if rank_at_most("draft_round", 1) or any(
-        rank_at_most(key, 12) for key in ("season_rank", "draft_rank", "draft_pick")
-    ):
-        return "First-round/core value"
     if player.get("protected") is True:
         return "User protected"
-    if player.get("protected") is False:
-        return None
-    if player.get("season_value_unknown"):
-        return "Season value unavailable; preserve until reviewed"
-    if rank_at_most("season_rank", 36):
-        return "Top-36 season value"
-    rates = player["rates"]
-    if rates["minutes"] >= 30 and _season_value(player) >= 3.5:
-        return "Core production and established minutes"
     return None
 
 
@@ -422,6 +417,63 @@ def _strategy(forecast, context):
     return strategy
 
 
+def _calculation(context, before, after, action):
+    add, drop = (context["players"][action[k]] for k in ("add_id", "drop_id"))
+
+    def starts(forecast, pid):
+        return sum(
+            s["owner"] == "user" and s["player_id"] == pid and s["date"] >= action["date"] for s in forecast["starts"]
+        )
+
+    added, lost = starts(after, add["id"]), starts(before, drop["id"])
+    result = {}
+    for k in CATEGORIES:
+        row = {
+            "add_starts": added,
+            "drop_starts": lost,
+            "add_eligible_games": sum(
+                d >= action["date"] and d in context["dates"] and d not in add["unavailable"] for d in add["schedule"]
+            ),
+            "drop_eligible_games": sum(
+                d >= action["date"] and d in context["dates"] and d not in drop["unavailable"] for d in drop["schedule"]
+            ),
+            "lower_is_better": k == "to",
+        }
+        if k in COUNTS:
+            net = after["user_totals"][k] - before["user_totals"][k]
+            row.update(
+                add_rate=add["rates"][k],
+                drop_rate=drop["rates"][k],
+                added_total=add["rates"][k] * added,
+                lost_total=drop["rates"][k] * lost,
+                net_total=net,
+                lineup_other_net=net - add["rates"][k] * added + drop["rates"][k] * lost,
+            )
+        else:
+            made, attempts = ("fgm", "fga") if k == "fg_pct" else ("ftm", "fta")
+            left, right = before["categories"][k]["user"], after["categories"][k]["user"]
+            row.update(
+                add_rate=_values(add["rates"])[k],
+                drop_rate=_values(drop["rates"])[k],
+                added_total=None,
+                lost_total=None,
+                lineup_other_net=None,
+                net_total=None if left is None or right is None else right - left,
+                weighted={
+                    "before_makes": before["user_totals"][made],
+                    "before_attempts": before["user_totals"][attempts],
+                    "after_makes": after["user_totals"][made],
+                    "after_attempts": after["user_totals"][attempts],
+                    "add_makes_rate": add["rates"][made],
+                    "add_attempts_rate": add["rates"][attempts],
+                    "drop_makes_rate": drop["rates"][made],
+                    "drop_attempts_rate": drop["rates"][attempts],
+                },
+            )
+        result[k] = row
+    return result
+
+
 def plan_waivers(payload):
     """Rank net upgrades from normalized primitives, retaining useful partial comparisons.
 
@@ -458,6 +510,61 @@ def plan_waivers(payload):
     )
     result["uncertainty"] = context["uncertainty"]
     result["strategy"] = _strategy(baseline, context)
+    requested = payload.get("selected_categories")
+    if requested is not None and (
+        not isinstance(requested, list)
+        or len(requested) != 5
+        or any(not isinstance(k, str) or k not in CATEGORIES for k in requested)
+        or len(set(requested)) != 5
+    ):
+        result.update(status="unavailable", reasons=["Select exactly five unique supported category keys."])
+        return result
+
+    def selection_priority(k):
+        category = baseline["categories"][k]
+        p = category["win_probability"] or 0
+        # Reachability evidence from observed FA rates and remaining schedules.
+        # This is selection guidance only: every actual pair still pays the full
+        # dropped contribution and lineup cost in the forecast below.
+        upside = 0
+        if k in COUNTS and category["margin"] is not None:
+            drops = [
+                v
+                for v in context["players"].values()
+                if v["owner"] == "user" and not v["protection"] and not v.get("locked")
+            ]
+            for free in context["players"].values():
+                if free["owner"] != "free" or free.get("locked"):
+                    continue
+                contribution = free["rates"][k] * len(
+                    (set(free["schedule"]) - set(free["unavailable"])) & set(context["dates"])
+                )
+                for drop in drops:
+                    loss = drop["rates"][k] * len(
+                        (set(drop["schedule"]) - set(drop["unavailable"])) & set(context["dates"])
+                    )
+                    upside = max(upside, (contribution - loss) * (-1 if k == "to" else 1))
+            possible = (1 + erf((category["margin"] + upside) / (context["sd"][k] * sqrt(2)))) / 2
+            p += max(0, possible - p) * 0.5
+        return (-p, CATEGORIES.index(k))
+
+    selected = requested or sorted(CATEGORIES, key=selection_priority)[:5]
+    result["selected_categories"] = selected
+    result["category_selection_source"] = "user" if requested else "projected contest with historical variation"
+    result["safe_categories"] = [k for k in selected if result["strategy"][k]["classification"] == "favored"]
+    result["improvement_categories"] = [k for k in selected if k not in result["safe_categories"]]
+    for k, category in result["strategy"].items():
+        category.update(
+            selected=k in selected,
+            safe_win=k in result["safe_categories"],
+            improvement_target=k in result["improvement_categories"],
+        )
+    result["horizon"] = {
+        "basis": "prospective remaining matchup totals; recorded actuals are retained",
+        "as_of": payload.get("as_of"),
+        "matchup_end": payload.get("matchup_end"),
+        "remaining_dates": context["dates"],
+    }
     result["recommendations"] = []
     result["recommendation_kind"] = "alternatives"
     result["plan"] = []
@@ -474,9 +581,23 @@ def plan_waivers(payload):
         result.update(status="incomplete", reasons=["Forecast is partial; resolve the listed data gaps."])
         return result
     partial = baseline["win_at_least_five_probability"] is None
-    context["scored_categories"] = [k for k, c in baseline["categories"].items() if c["win_probability"] is not None]
+    context["scored_categories"] = [k for k in selected if baseline["categories"][k]["win_probability"] is not None]
     context["partial"] = partial
-    result["score_basis"] = "known_category_estimates" if partial else "five_category_model"
+    context["opponent_starts"] = [s for s in baseline["starts"] if s["owner"] == "opponent"]
+    baseline = _forecast(context, [])
+    result.update(baseline=baseline, projected=baseline)
+    result["strategy"] = _strategy(baseline, context)
+    result["safe_categories"] = [k for k in selected if result["strategy"][k]["classification"] == "favored"]
+    result["improvement_categories"] = [k for k in selected if k not in result["safe_categories"]]
+    for k, category in result["strategy"].items():
+        category.update(
+            selected=k in selected,
+            safe_win=k in result["safe_categories"],
+            improvement_target=k in result["improvement_categories"],
+        )
+        if k in result["safe_categories"] or k not in selected:
+            category["target_priority"] = 0
+    result["score_basis"] = "known_selected_category_estimates" if partial else "selected_five_category_estimates"
     result["status"] = "ready" if context["budget"] is not None and context["dates"] and not partial else "incomplete"
     if partial:
         result["reasons"].append("Missing shooting attempts: rank known categories without estimating five-win odds.")
@@ -490,6 +611,8 @@ def plan_waivers(payload):
     # Unknown budget still supports conditional single-move alternatives, never a sequential plan.
     search_budget = context["budget"] if context["budget"] is not None else 1
     alternatives = {}
+    evaluated_drops = set()
+    alternatives_search_complete = False
     # Each state retains its chronological transaction ledger and slot ancestry.
     initial = {pid: pid for pid in context["roster"]}
     beam = [(baseline, [], initial, frozenset(), frozenset())]
@@ -534,90 +657,113 @@ def plan_waivers(payload):
                     return (-value, -rates["minutes"], pid)
 
                 candidates.sort(key=candidate_rank)
-                for drop_id, root in sorted(
-                    ownership.items(), key=lambda item: (_season_value(context["players"][item[0]]), item[0])
-                ):
-                    if result["search"]["evaluation_limit_reached"]:
+                legal_drops = [
+                    (pid, root)
+                    for pid, root in sorted(
+                        ownership.items(), key=lambda item: (_season_value(context["players"][item[0]]), item[0])
+                    )
+                    if not context["players"][pid].get("locked")
+                    and not context["players"][pid]["protection"]
+                    and (root in stream_roots or len(stream_roots) < context["stream_slots"])
+                ]
+                # Round-robin all legal roster drops before considering another
+                # candidate, so a large pool cannot spend the bound on one drop.
+                pairs = (
+                    (add_id, drop_id, root)
+                    for add_id in candidates[: context["candidate_limit"]]
+                    for drop_id, root in legal_drops
+                )
+                for add_id, drop_id, root in pairs:
+                    if result["search"]["evaluations"] >= context["evaluation_limit"]:
+                        result["search"]["evaluation_limit_reached"] = True
                         break
-                    if context["players"][drop_id].get("locked", False) or context["players"][drop_id]["protection"]:
+                    result["search"]["evaluations"] += 1
+                    evaluated_drops.add(drop_id)
+                    action = {"date": day, "add_id": add_id, "drop_id": drop_id, "stream_slot": root}
+                    next_actions = [*actions, action]
+                    projected = _forecast(context, next_actions)
+                    if not partial and projected["win_at_least_five_probability"] is None:
                         continue
-                    if root not in stream_roots and len(stream_roots) >= context["stream_slots"]:
+                    gain = _score(projected, context) - _score(forecast, context)
+                    cost = _season_cost(context["players"][drop_id], context["players"][add_id])
+                    if gain - cost <= 1e-5:
                         continue
-                    for add_id in candidates[: context["candidate_limit"]]:
-                        if result["search"]["evaluations"] >= context["evaluation_limit"]:
-                            result["search"]["evaluation_limit_reached"] = True
-                            break
-                        result["search"]["evaluations"] += 1
-                        action = {"date": day, "add_id": add_id, "drop_id": drop_id, "stream_slot": root}
-                        next_actions = [*actions, action]
-                        projected = _forecast(context, next_actions)
-                        if not partial and projected["win_at_least_five_probability"] is None:
-                            continue
-                        gain = _score(projected, context) - _score(forecast, context)
-                        cost = _season_cost(context["players"][drop_id], context["players"][add_id])
-                        if gain - cost <= 1e-5:
-                            continue
-                        action["season_cost"] = cost
-                        action["season_value"] = {
-                            "drop": _season_value(context["players"][drop_id]),
-                            "add": _season_value(context["players"][add_id]),
-                            "basis": "nine-category per-game replacement proxy; heuristic, not a season rank",
-                        }
-                        action["net_score"] = gain - cost
-                        action["probability_gain"] = None if partial else gain
-                        action["estimated_win_gain"] = gain
-                        action["gains"] = {k: projected["user_totals"][k] - forecast["user_totals"][k] for k in TOTALS}
-                        action["category_probability_gains"] = {
-                            k: (
-                                projected["categories"][k]["win_probability"]
-                                - forecast["categories"][k]["win_probability"]
-                            )
-                            if projected["categories"][k]["win_probability"] is not None
-                            and forecast["categories"][k]["win_probability"] is not None
-                            else None
-                            for k in CATEGORIES
-                        }
-                        action["category_impacts"] = {
-                            k: {
-                                "before": forecast["categories"][k]["user"],
-                                "after": projected["categories"][k]["user"],
-                                "margin_before": forecast["categories"][k]["margin"],
-                                "margin_after": projected["categories"][k]["margin"],
-                                "estimate_gain": action["category_probability_gains"][k],
-                                "flips_projection": forecast["categories"][k]["state"] != "winning"
-                                and projected["categories"][k]["state"] == "winning",
-                            }
-                            for k in CATEGORIES
-                        }
-                        action["games_gain"] = projected["games"]["user"] - forecast["games"]["user"]
-                        action["minutes_gain"] = projected["minutes"]["user"] - forecast["minutes"]["user"]
-                        action["target_categories"] = sorted(
-                            (
-                                k
-                                for k in CATEGORIES
-                                if (action["category_probability_gains"][k] or 0) > 0.005
-                                and result["strategy"][k]["classification"] in ("swing", "reachable")
-                            ),
-                            key=lambda k: -action["category_probability_gains"][k],
+                    action["season_cost"] = cost
+                    action["season_value"] = {
+                        "drop": _season_value(context["players"][drop_id]),
+                        "add": _season_value(context["players"][add_id]),
+                        "basis": "nine-category per-game replacement proxy; heuristic, not a season rank",
+                    }
+                    action["net_score"] = gain - cost
+                    action["probability_gain"] = (
+                        None
+                        if partial
+                        else projected["win_at_least_five_probability"] - forecast["win_at_least_five_probability"]
+                    )
+                    action["estimated_win_gain"] = gain
+                    action["gains"] = {k: projected["user_totals"][k] - forecast["user_totals"][k] for k in TOTALS}
+                    action["category_probability_gains"] = {
+                        k: (
+                            projected["categories"][k]["win_probability"] - forecast["categories"][k]["win_probability"]
                         )
-                        action["rationale"] = (
-                            "Net improvement after the dropped player's remaining games and season value; "
-                            + (
-                                "targets " + ", ".join(action["target_categories"])
-                                if action["target_categories"]
-                                else "reinforces the path to five category wins"
-                            )
-                            + ". Estimates assume stable minutes and availability."
+                        if projected["categories"][k]["win_probability"] is not None
+                        and forecast["categories"][k]["win_probability"] is not None
+                        else None
+                        for k in CATEGORIES
+                    }
+                    action["category_impacts"] = {
+                        k: {
+                            "before": forecast["categories"][k]["user"],
+                            "after": projected["categories"][k]["user"],
+                            "margin_before": forecast["categories"][k]["margin"],
+                            "margin_after": projected["categories"][k]["margin"],
+                            "estimate_gain": action["category_probability_gains"][k],
+                            "flips_projection": forecast["categories"][k]["state"] != "winning"
+                            and projected["categories"][k]["state"] == "winning",
+                        }
+                        for k in CATEGORIES
+                    }
+                    action["calculation"] = _calculation(context, forecast, projected, action)
+                    action["long_term_tradeoff"] = {
+                        "cost": cost,
+                        "draft_round": context["players"][drop_id].get("draft_round"),
+                        "season_rank": context["players"][drop_id].get("season_rank"),
+                        "explanation": (
+                            "Heuristic sustained per-game value cost; core/draft metadata never prohibits a legal drop."
+                        ),
+                    }
+                    action["games_gain"] = projected["games"]["user"] - forecast["games"]["user"]
+                    action["minutes_gain"] = projected["minutes"]["user"] - forecast["minutes"]["user"]
+                    action["target_categories"] = sorted(
+                        (
+                            k
+                            for k in result["improvement_categories"]
+                            if (action["category_probability_gains"][k] or 0) > 0.005
+                            and result["strategy"][k]["classification"] in ("swing", "reachable")
+                        ),
+                        key=lambda k: -action["category_probability_gains"][k],
+                    )
+                    action["rationale"] = (
+                        "Net improvement after the dropped player's remaining games and season value; "
+                        + (
+                            "targets " + ", ".join(action["target_categories"])
+                            if action["target_categories"]
+                            else "reinforces the path to five category wins"
                         )
-                        if depth == 0 and (
-                            add_id not in alternatives or action["net_score"] > alternatives[add_id]["net_score"]
-                        ):
-                            alternatives[add_id] = dict(action)
-                        next_ownership = {pid: slot for pid, slot in ownership.items() if pid != drop_id}
-                        next_ownership[add_id] = root
-                        expanded.append(
-                            (projected, next_actions, next_ownership, acquired | {add_id}, stream_roots | {root})
-                        )
+                        + ". Estimates assume stable minutes and availability."
+                    )
+                    pair = (add_id, drop_id)
+                    if depth == 0 and (
+                        pair not in alternatives or action["net_score"] > alternatives[pair]["net_score"]
+                    ):
+                        alternatives[pair] = dict(action)
+                    next_ownership = {pid: slot for pid, slot in ownership.items() if pid != drop_id}
+                    next_ownership[add_id] = root
+                    expanded.append(
+                        (projected, next_actions, next_ownership, acquired | {add_id}, stream_roots | {root})
+                    )
+        if depth == 0:
+            alternatives_search_complete = not result["search"]["evaluation_limit_reached"]
         if not expanded:
             break
         expanded.sort(key=rank, reverse=True)
@@ -639,10 +785,34 @@ def plan_waivers(payload):
         result["limitations"].append(
             "Evaluation budget reached; these are the best explored options, not a global optimum."
         )
-    result["recommendations"] = sorted(alternatives.values(), key=lambda a: (-a["net_score"], a["add_id"]))[:7]
+    result["recommendations"] = sorted(
+        alternatives.values(), key=lambda a: (-a["net_score"], a["add_id"], a["drop_id"])
+    )
     for index, option in enumerate(result["recommendations"], 1):
         option["rank"] = index
         option["conditional_on_one_add"] = context["budget"] is None
+    result["recommendation_groups"] = {
+        pid: [r["rank"] for r in result["recommendations"] if r["drop_id"] == pid] for pid in sorted(context["roster"])
+    }
+    result["alternatives_explanation"] = (
+        "Ranked alternatives may share a drop; they cannot all be combined. "
+        "Each pair retains its best explored date. Only plan is a sequential acquisition ledger."
+    )
+    result["search"].update(
+        candidate_limit=context["candidate_limit"],
+        evaluation_limit=context["evaluation_limit"],
+        candidate_pool=sum(p["owner"] == "free" for p in context["players"].values()),
+        legal_drop_ids=sorted(
+            pid
+            for pid in context["roster"]
+            if not context["players"][pid].get("locked") and not context["players"][pid]["protection"]
+        ),
+        alternatives_returned=len(result["recommendations"]),
+        evaluated_drop_ids=sorted(evaluated_drops),
+        alternatives_complete=alternatives_search_complete
+        and sum(p["owner"] == "free" for p in context["players"].values()) <= context["candidate_limit"],
+        plan_search="bounded beam; not a global optimum",
+    )
     for key, category in result["strategy"].items():
         impacts = [
             option["category_impacts"][key]
@@ -659,7 +829,9 @@ def plan_waivers(payload):
         )
         category["best_estimate_gain"] = max((impact["estimate_gain"] or 0 for impact in impacts), default=0)
         category["recommended_target"] = (
-            category["classification"] in ("swing", "reachable") and category["best_estimate_gain"] > 0.005
+            category["improvement_target"]
+            and category["classification"] in ("swing", "reachable")
+            and category["best_estimate_gain"] > 0.005
         )
         if category["can_flip_with_one_move"]:
             category["explanation"] += " An explored net add/drop alternative flips the projected lead."

@@ -84,6 +84,8 @@ export interface LeagueSnapshot {
     lineup_slots: string[];
     acquisition_settings: {
       weekly_add_limit: number | null;
+      matchup_add_limit?: number | null;
+      cap_source?: string | null;
       limit_per_scoring_period: boolean | null;
       season_add_limit: number | null;
     };
@@ -129,6 +131,8 @@ export interface PlannerPreferences {
     { schedule?: string[]; injured?: boolean; protected?: boolean }
   >;
   remaining_dates?: string[];
+  selected_categories?: Category[];
+  matchup_add_limit_fallback?: number | null;
 }
 /** UI boundary for the later optimizer adapter; never compute probabilities in the browser. */
 export interface CategoryStrategy {
@@ -145,6 +149,9 @@ export interface CategoryStrategy {
   previous_opponent?: number | null;
   previous_period_id?: number | null;
   recommended_target?: boolean;
+  selected?: boolean;
+  safe_win?: boolean;
+  improvement_target?: boolean;
   best_pickup_margin?: number | null;
   can_flip_with_one_move?: boolean;
 }
@@ -153,6 +160,8 @@ export interface PickupRecommendation {
   drop_id: string;
   date: string;
   probability_gain: number | null;
+  estimated_win_gain?: number | null;
+  score_basis?: string;
   category_probability_gains?: Partial<Record<Category, number>>;
   gains: Partial<Record<Category, number | null>>;
   games_gain: number | null;
@@ -161,6 +170,27 @@ export interface PickupRecommendation {
   net_score: number | null;
   target_categories: Category[];
   rationale: string;
+  calculation?: Partial<
+    Record<
+      Category,
+      {
+        add_rate: number | null;
+        drop_rate: number | null;
+        add_starts: number | null;
+        drop_starts: number | null;
+        added_total: number | null;
+        lost_total: number | null;
+        lineup_other_net: number | null;
+        net_total: number | null;
+        weighted?: {
+          before_makes: number | null;
+          before_attempts: number | null;
+          after_makes: number | null;
+          after_attempts: number | null;
+        };
+      }
+    >
+  >;
   category_impacts?: Partial<
     Record<
       Category,
@@ -176,6 +206,26 @@ export interface PickupRecommendation {
   >;
 }
 export interface WaiverPlan {
+  search?: {
+    candidate_pool?: number;
+    candidate_limit?: number;
+    evaluation_limit?: number;
+    evaluations: number;
+    evaluation_limit_reached: boolean;
+    legal_drop_ids?: string[];
+    evaluated_drop_ids?: string[];
+    alternatives_returned?: number;
+    alternatives_complete?: boolean;
+    plan_search?: string;
+  };
+  recommendation_groups?: Record<string, number[]>;
+
+  selected_categories?: Category[];
+  safe_categories?: Category[];
+  improvement_categories?: Category[];
+  category_selection_source?: string;
+  horizon?: { basis: string; as_of: string; matchup_end: string | null; remaining_dates: string[] };
+
   strategy?: Partial<Record<Category, CategoryStrategy>>;
   protected_players?: Record<string, string>;
   recommendations?: PickupRecommendation[];
