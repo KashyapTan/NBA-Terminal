@@ -17,7 +17,7 @@ On 2026-11-01, the production `_cdn_schedule_dataframe('2026-27')` fetched 1,274
 
 `tests/fixtures/nba_schedule_2026_11_01.json` retains the public rows for November 1–4, flattened by the production CDN adapter and identified with their source. November 3 has no games in this snapshot. Tests run these rows through the actual `/api/upcoming` ASGI route, worker/cache boundary and production normalizer; provider transport is replaced with captured rows. This does not assert future live freshness or live scores.
 
-[The official Boston Celtics logo](https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg) returned HTTP 200 and `image/svg+xml`. That unmodified public SVG is retained in `nba_terminal/web/e2e/fixtures/celtics-logo.svg` for deterministic screenshots. Browser tests deliberately fail the opposing team's image to check fallback. Screenshot score/status data is synthetic, not a live game claim.
+[The official Boston Celtics logo](https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg) returned HTTP 200 and `image/svg+xml`. That public SVG (line endings/trailing padding normalized in the repository copy; original bytes retained under `code_review/v5_app/generated/celtics-logo-original.svg`) is retained in `nba_terminal/web/e2e/fixtures/celtics-logo.svg` for deterministic screenshots. Browser tests deliberately fail the opposing team's image to check fallback. Screenshot score/status data is synthetic, not a live game claim.
 
 ## Checks before dependency integration
 
