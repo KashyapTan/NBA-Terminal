@@ -184,6 +184,9 @@ def test_displaced_starts_are_spillover_not_hidden_drop_loss():
     move = _describe_move(context, before, after, action, FIVE)
     row = move["arithmetic"]["primitives"]["pts"]
     assert (row["add"], row["drop"], row["spillover"], row["net"]) == (40, 20, -16, 4)
+    assert move["lineup_changes"]["net_starts"] == -2
+    assert move["lineup_changes"]["recovered"] == []
+    assert [row["player_id"] for row in move["lineup_changes"]["displaced"]] == ["bench", "bench"]
 
 
 def test_no_benefit_empty_plan_and_zero_start_drop_explanation():

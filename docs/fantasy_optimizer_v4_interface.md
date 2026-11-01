@@ -1,4 +1,4 @@
-# V4 engine integration contract (early handoff)
+# V4 engine integration contract
 
 `plan_waivers(payload)` and `plan_snapshot_waivers(snapshot, preferences)` remain entry points. Existing fields remain additive-compatible. Primary `recommended_plan` is an object with ordered `moves`, selected categories, score before/after, net score gain, complete primitive and all-nine arithmetic, budget, coverage and best-explored qualification. Legacy `plan`/`actions` alias its moves; `recommendations` remain competing single-move alternatives.
 
@@ -22,3 +22,5 @@ Confirmed DATA interface: exact commit `7c820454da5b470a393738c0a3b2b6b779d4502d
 Additional output details: `arithmetic.primitives` has eleven exact identity rows; `arithmetic.categories` has nine rows, with shooting `makes`/`attempts` subrows and `percentage_points`. Per-move `add_rates`, `drop_rates`, `rate_provenance`, `rate_evidence`, `add_starts`, `drop_starts` and `zero_drop_reason` support visible arithmetic. `primary_recommendation_kind=ordered_plan`; legacy `recommendation_kind=alternatives` still describes the secondary list. `search.first_layer_pairs_evaluated/first_layer_pairs_total` measures received legal pair/date coverage, `first_layer_complete` excludes shortlist/evaluation interruption, and upstream market completeness stays separate.
 
 Unknown budget yields an empty confirmed move ledger plus conditional secondary alternatives; required projection gaps yield `recommended_plan=null` with confidence cleared. Known no-benefit yields an explicit empty `recommended_plan.moves` baseline and untouched budget. Optional `matchup_finalized=true` with no remaining dates compares actual wins/losses/ties exactly.
+
+Final integration adds per-move `lineup_changes` with named/date-specific `displaced`, `recovered` and `net_starts`, derived from the same paired forecasts. HTTP accepts global core/guard preferences. UI scales scores from 0–1 to 0–100, consumes nine category arithmetic rows and eleven primitive identities, and keeps source completeness separate from market bounds. Explicit unverified ESPN matchup calendar blocks confirmed plans even with complete official banked fallback.

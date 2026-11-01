@@ -222,6 +222,14 @@ def test_authenticated_production_chain_and_guards(monkeypatch, raw):
             assert planned.status_code == 200, planned.text
             assert planned.json()["status"] == "ready", planned.json()
             assert planned.headers["cache-control"] == "no-store"
+            # UI controls cross the real request boundary, not only an in-process adapter.
+            toggled = await browser.post(
+                PREFIX + "/plan", headers=HEADERS,
+                json=prefs | {"allow_core_drops": True, "aggressive_cushion_sacrifice": False},
+            )
+            assert toggled.status_code == 200, toggled.text
+            assert toggled.json()["recommended_plan"] is not None
+
             assert (await browser.post(PREFIX + "/plan", json=prefs)).status_code == 403
             assert (
                 await browser.post(PREFIX + "/plan", headers=HEADERS | {"Origin": "http://evil.test"}, json=prefs)
@@ -354,3 +362,45 @@ def test_normalized_available_health_overrides_raw_questionable_injury_flag(snap
     assert out["baseline"]["games"] == 0
     restored = adapter.plan_snapshot_waivers(snapshot, prefs | {"player_overrides": {"1": {"injured": False}}}, NOW)
     assert restored["baseline"]["minutes"] == available["baseline"]["minutes"]
+
+
+def test_known_unverified_calendar_blocks_confidence_but_not_official_actuals(raw):
+    from nba_terminal.services import fantasy_actuals
+    from tests.test_fantasy_nba import schedule
+
+    raw["league"]["settings"]["scheduleSettings"].update(periodTypeId=2, matchupPeriods={"2": [2]})
+    for team in raw["league"]["teams"]:
+        team["transactionCounter"]["matchupAcquisitionTotals"] = {"2": 6}
+    snapshot = espn.normalize(
+        raw["league"], {}, raw["pool"], raw["cards"], {}, 1, now=NOW,
+        nba={"rates": [], "schedule": schedule(), "rates_status": "unavailable", "schedule_status": "fresh"},
+    )
+
+    class HistoryUnavailable:
+        season_id = 2027
+
+        def get(self, *args, **kwargs):
+            raise espn.EspnError("access_denied", "Synthetic unavailable private history")
+
+    fantasy_actuals.enrich_snapshot(HistoryUnavailable(), raw["league"], snapshot, {})
+    assert snapshot["period"]["calendar_verified"] is False
+    assert snapshot["projection_metadata"]["matchup_calendar"]["complete"] is False
+    assert snapshot["teams"][0]["actuals"]["forecast_source"] == "espn_official"
+    assert snapshot["teams"][0]["actuals"]["forecast_complete"] is True
+    for missing_metadata in (False, True):
+        if missing_metadata:
+            snapshot["projection_metadata"].pop("matchup_calendar")
+        result = adapter.plan_snapshot_waivers(snapshot, preferences(snapshot), NOW)
+        assert result["status"] == "incomplete"
+        assert result["recommended_plan"] is None
+        assert result["safe_categories"] == []
+        assert all(v["classification"] == "unknown" and v["estimate"] is None for v in result["strategy"].values())
+
+    # Real-shaped ESPN schedule anchors verify the future horizon despite unavailable NBA history.
+    verified = espn.normalize(raw["league"], raw["schedule"], raw["pool"], raw["cards"], {}, 1, now=NOW)
+    fantasy_actuals.enrich_snapshot(HistoryUnavailable(), raw["league"], verified, {})
+    assert verified["period"]["calendar_verified"] is True
+    assert verified["projection_metadata"]["matchup_calendar"]["complete"] is True
+    result = adapter.plan_snapshot_waivers(verified, preferences(verified), NOW)
+    assert result["status"] == "ready", result["reasons"]
+    assert result["baseline"]["probability_five_wins"] is not None

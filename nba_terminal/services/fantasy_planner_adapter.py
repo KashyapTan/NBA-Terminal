@@ -385,6 +385,13 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         previous = {"user": periods[period][user_id], "opponent": periods[period][target_id], "period": period}
 
     projection_metadata = dict(snapshot.get("projection_metadata") or {})
+    # Retain the explicit normalized fact even when an older caller omitted metadata.
+    if snapshot.get("period", {}).get("calendar_verified") is False:
+        projection_metadata["matchup_calendar"] = {
+            "complete": False,
+            "source": "espn_scoring_date_anchors",
+            "reason": "ESPN scoring-date anchor unavailable or conflicting; future matchup calendar unverified",
+        }
 
     def banked(team, side):
         actuals = team.get("actuals")

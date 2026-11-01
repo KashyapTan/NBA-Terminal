@@ -388,6 +388,8 @@ async def waiver_plan(request: Request, response: Response) -> dict:
         "droppable_ids",
         "protected_ids",
         "selected_categories",
+        "allow_core_drops",
+        "aggressive_cushion_sacrifice",
         "matchup_add_limit_fallback",
         "max_stream_slots",
         "weekly_add_limit",

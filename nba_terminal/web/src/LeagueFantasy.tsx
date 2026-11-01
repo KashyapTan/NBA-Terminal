@@ -12,6 +12,7 @@ import {
   type LeagueStatus,
   type LeagueTeam,
   type PlannerPreferences,
+  type PlanForecast,
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
@@ -608,7 +609,9 @@ function WaiverStrategy({
     ...new Set(recommendations.flatMap((item) => item.target_categories)),
   ];
   const strategyTargets = LEAGUE_CATEGORIES.filter(({ key }) =>
-    ["swing", "reachable"].includes(plan?.strategy?.[key]?.classification ?? ""),
+    ["favored", "swing", "reachable", "trailing"].includes(
+      plan?.strategy?.[key]?.classification ?? "",
+    ),
   )
     .sort(
       (a, b) =>
@@ -883,6 +886,13 @@ function WaiverStrategy({
         <span className="league-losing">↓ Trailing: lower priority</span>
         <span>— Unknown: missing evidence</span>
       </div>
+      {snapshot.projection_metadata?.matchup_calendar?.complete === false && (
+        <p className="league-tied" role="status">
+          Matchup calendar unverified: ESPN scoring-date anchor is missing or conflicting. Official
+          banked totals remain visible, but future matchup dates cannot support confirmed plans or
+          cushion labels.
+        </p>
+      )}
       {!confidenceComplete && (
         <p className="league-tied">
           Outlook unverified: required roster, rates, schedules or historical active scoring lineups
@@ -923,40 +933,20 @@ function WaiverStrategy({
                 projected final
               </small>
               <div className="forecast-equation">
-                <span>
-                  You:{" "}
-                  {formatCategory(
-                    strategy?.current_user ?? categoryValue(user?.totals ?? null, key),
-                    key,
-                  )}{" "}
-                  +{" "}
-                  {key.endsWith("pct")
-                    ? "weighted remaining makes / attempts"
-                    : formatCategory(
-                        own != null && strategy?.current_user != null
-                          ? own - strategy.current_user
-                          : null,
-                        key,
-                      )}{" "}
-                  remaining = <b>{formatCategory(own, key)}</b>
-                </span>
-                <span>
-                  Opponent:{" "}
-                  {formatCategory(
-                    strategy?.current_opponent ?? categoryValue(opponent?.totals ?? null, key),
-                    key,
-                  )}{" "}
-                  +{" "}
-                  {key.endsWith("pct")
-                    ? "weighted remaining makes / attempts"
-                    : formatCategory(
-                        other != null && strategy?.current_opponent != null
-                          ? other - strategy.current_opponent
-                          : null,
-                        key,
-                      )}{" "}
-                  remaining = <b>{formatCategory(other, key)}</b>
-                </span>
+                <ForecastEquation
+                  forecast={plan?.baseline}
+                  side="user"
+                  category={key}
+                  current={strategy?.current_user}
+                  final={own}
+                />
+                <ForecastEquation
+                  forecast={plan?.baseline}
+                  side="opponent"
+                  category={key}
+                  current={strategy?.current_opponent}
+                  final={other}
+                />
               </div>
               <div className="strategy-actuals">
                 <strong className={`league-${state}`}>{formatCategory(own, key)}</strong>
@@ -1058,11 +1048,19 @@ function WaiverStrategy({
         {plan?.recommended_plan?.moves.length ? (
           <>
             <p className="focus-score">
-              Focus score: {plan.recommended_plan.focus_score_before ?? "?"} →{" "}
-              {plan.recommended_plan.focus_score_after ?? "?"} / 100 · heuristic, not win
-              probability
+              Focus score: {(plan.recommended_plan.score_before * 100).toFixed(1)} →{" "}
+              {(plan.recommended_plan.focus_score_after * 100).toFixed(1)} / 100 · heuristic, not
+              win probability
             </p>
-            <OverallPlanImpact impacts={plan.recommended_plan.category_impacts} />
+            <p>
+              Soft season-value cost: {(plan.recommended_plan.season_cost * 100).toFixed(2)} score
+              points · net strategic score gain:{" "}
+              {(plan.recommended_plan.net_score_gain * 100).toFixed(2)}.{" "}
+              {plan.recommended_plan.viable_five
+                ? "All five selected categories remain modeled viable."
+                : "The selected five remain a difficult route; no five-win guarantee."}
+            </p>
+            <OverallPlanImpact arithmetic={plan.recommended_plan.arithmetic} />
             <ol className="pickup-list">
               {plan.recommended_plan.moves.map((move, index) => (
                 <li key={`${index}:${move.add_id}:${move.drop_id}`}>
@@ -1078,8 +1076,13 @@ function WaiverStrategy({
                       </span>
                     </h4>
                     <p>
-                      Effective {move.date} · {move.remaining_adds ?? "Unknown"} acquisitions left ·
-                      cumulative focus score {move.cumulative_focus_score ?? "Unknown"} / 100
+                      Effective {move.date} ·{" "}
+                      {plan.recommended_plan?.budget_before == null
+                        ? "Unknown"
+                        : plan.recommended_plan.budget_before - index - 1}{" "}
+                      acquisitions left · cumulative focus score{" "}
+                      {move.score_after == null ? "Unknown" : (move.score_after * 100).toFixed(1)} /
+                      100
                     </p>
                     <WaiverArithmetic
                       move={move}
@@ -1448,5 +1451,48 @@ export function LeagueDashboardSummary({ state }: { state: LeagueFantasyState })
         </section>
       )}
     </div>
+  );
+}
+
+function ForecastEquation({
+  forecast,
+  side,
+  category,
+  current,
+  final,
+}: {
+  forecast?: PlanForecast | null;
+  side: "user" | "opponent";
+  category: Category;
+  current?: number | null;
+  final: number | null;
+}) {
+  const actual = forecast?.actual_primitives?.[side];
+  const remaining = forecast?.remaining_primitives?.[side];
+  const finish = side === "user" ? forecast?.totals : forecast?.opponent_totals;
+  const volume = (stats: typeof actual) =>
+    category === "fg_pct"
+      ? `${stats?.fgm ?? "?"}/${stats?.fga ?? "?"}`
+      : `${stats?.ftm ?? "?"}/${stats?.fta ?? "?"}`;
+  return (
+    <span>
+      {side === "user" ? "You" : "Opponent"}:{" "}
+      {category.endsWith("pct") ? (
+        <>
+          {volume(actual)} + {volume(remaining)} remaining = {volume(finish)} ·{" "}
+          <b>{formatCategory(final, category)}</b>
+        </>
+      ) : (
+        <>
+          {formatCategory(current ?? null, category)} +{" "}
+          {formatCategory(
+            categoryValue(remaining ?? null, category) ??
+              (final != null && current != null ? final - current : null),
+            category,
+          )}{" "}
+          remaining = <b>{formatCategory(final, category)}</b>
+        </>
+      )}
+    </span>
   );
 }

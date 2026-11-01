@@ -632,6 +632,21 @@ def _describe_move(context, before, after, action, selected):
         zero_reason = "Drop is explicitly unavailable for all remaining games."
     else:
         zero_reason = "Drop receives zero usable starts under the modeled slots, availability and lineup policy."
+    def other_starts(forecast):
+        return {
+            (row["date"], row["player_id"])
+            for row in forecast["starts"]
+            if row["owner"] == "user" and row["player_id"] not in (add["id"], drop["id"])
+        }
+
+    prior_starts, next_starts = other_starts(before), other_starts(after)
+
+    def changed_starts(keys):
+        return [
+            {"date": day, "player_id": pid, "name": context["players"][pid].get("name") or pid}
+            for day, pid in sorted(keys)
+        ]
+
     gain = _focus(after, selected) - _focus(before, selected)
     move.update(
         calculation=calculation,
@@ -639,6 +654,11 @@ def _describe_move(context, before, after, action, selected):
         add_starts=added_starts,
         drop_starts=lost_starts,
         zero_drop_reason=zero_reason,
+        lineup_changes={
+            "displaced": changed_starts(prior_starts - next_starts),
+            "recovered": changed_starts(next_starts - prior_starts),
+            "net_starts": len(next_starts) - len(prior_starts),
+        },
         rate_provenance={"add": context["provenance"][add["id"]], "drop": context["provenance"][drop["id"]]},
         rate_evidence={"add": add.get("rate_provenance"), "drop": drop.get("rate_provenance")},
         add_rates=dict(add["rates"]),

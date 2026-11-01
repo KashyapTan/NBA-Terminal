@@ -50,6 +50,7 @@ it("posts scoped plan preferences to the authenticated production route", async 
     .mockResolvedValue({ ok: true, json: async () => ({ status: "incomplete", actions: [] }) });
   vi.stubGlobal("fetch", fetcher);
   const preferences = {
+    allow_core_drops: true,
     user_confirmed_counts: false,
     user_confirmed_eligibility: false,
     candidate_ids: [],

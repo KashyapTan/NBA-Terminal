@@ -100,34 +100,40 @@ export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) 
                       . Provider corrections can change this comparison.
                     </p>
                   )}
-                  <div className="league-table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Category</th>
-                          <th>ESPN official</th>
-                          <th>NBA-derived</th>
-                          <th>Forecast banked</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {LEAGUE_CATEGORIES.map(({ key, label }) => (
-                          <tr key={key}>
-                            <th>{label}</th>
-                            <td>
-                              {formatCategory(categoryValue(actuals.official.totals, key), key)}
-                            </td>
-                            <td>
-                              {formatCategory(categoryValue(actuals.nba_derived.totals, key), key)}
-                            </td>
-                            <td>
-                              {formatCategory(categoryValue(actuals.forecast_totals, key), key)}
-                            </td>
+                  <details className="source-total-comparison">
+                    <summary>Compare official and NBA-derived totals</summary>
+                    <div className="league-table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>ESPN official</th>
+                            <th>NBA-derived</th>
+                            <th>Forecast banked</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {LEAGUE_CATEGORIES.map(({ key, label }) => (
+                            <tr key={key}>
+                              <th scope="row">{label}</th>
+                              <td>
+                                {formatCategory(categoryValue(actuals.official.totals, key), key)}
+                              </td>
+                              <td>
+                                {formatCategory(
+                                  categoryValue(actuals.nba_derived.totals, key),
+                                  key,
+                                )}
+                              </td>
+                              <td>
+                                {formatCategory(categoryValue(actuals.forecast_totals, key), key)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
                 </>
               ) : (
                 <p className="league-tied">

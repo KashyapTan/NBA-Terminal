@@ -21,6 +21,7 @@ it("keeps official totals distinct from partial NBA reconstruction and exposes h
     forecast_complete: true,
   };
   render(<ActualSources teams={[team]} />);
+  screen.getByText("Compare official and NBA-derived totals").closest("details")!.open = true;
   expect(screen.getByRole("row", { name: /PTS 132 117 132/ })).toBeInTheDocument();
   expect(screen.getByText(/NBA-derived partial \/ unavailable · provisional/)).toHaveTextContent(
     "8 / 10",
@@ -65,6 +66,7 @@ it("renders exact DATA structured gaps and preserves provider timestamps separat
     ],
   };
   render(<ActualSources teams={[team]} />);
+  screen.getByText("Compare official and NBA-derived totals").closest("details")!.open = true;
   expect(
     screen.getByText(/Historical active scoring lineup missing · scoring day 3/),
   ).toHaveTextContent("NBA player/game production missing · scoring day 4 · player 8 · game 002");

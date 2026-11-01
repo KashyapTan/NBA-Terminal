@@ -445,15 +445,19 @@ it.each([1, 2])(
           drop_id: i ? "free" : "rostered",
           remaining_adds: count - i - 1,
         })),
-        focus_score_before: 60,
-        focus_score_after: 64,
+        score_before: 0.6,
+        score_after: 0.64,
+        focus_score_after: 0.64,
+        season_cost: 0,
+        net_score_gain: 0.04,
+        arithmetic: { categories: {}, primitives: {} },
       },
       recommendations: Array.from({ length: 7 }, () => move),
     });
     render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
     const primary = screen.getByRole("region", { name: "Recommended ordered plan" });
     await waitFor(() => expect(within(primary).getAllByRole("listitem")).toHaveLength(count));
-    expect(within(primary).getByText(/60 → 64/)).toHaveTextContent(
+    expect(within(primary).getByText(/60.0 → 64.0/)).toHaveTextContent(
       "heuristic, not win probability",
     );
     expect(within(primary).getAllByRole("table")).toHaveLength(count + 1);

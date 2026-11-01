@@ -775,6 +775,16 @@ def normalize(
             "start_date": dates[0] if dates else None,
             "end_date": dates[-1] if dates else None,
         },
+        "projection_metadata": {
+            "matchup_calendar": {
+                "complete": calendar_verified,
+                "source": "espn_scoring_date_anchors",
+                "reason": (
+                    "Verified ESPN scoring-date anchor" if calendar_verified
+                    else "ESPN scoring-date anchor unavailable or conflicting; NBA dates alone cannot verify matchup"
+                ),
+            }
+        },
         "selected_team_id": selected,
         "opponent_team_id": opponent,
         "teams": teams,

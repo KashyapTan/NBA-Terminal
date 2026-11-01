@@ -88,3 +88,5 @@ Wire the selected banked/rate inputs into the engine adapter; retain legal IR dr
 source/freshness/partial state in UI; ensure confidence labels honor all projection metadata;
 verify production-shaped recommendations and rendered arithmetic. This service branch does
 not change the optimizer, frontend, login, credentials or transaction behavior.
+
+Final integration correction: `postponedStatus=A` is an active ScheduleLeagueV2 row, including completed games; inactive/PPD/Postponed originals are excluded while active reschedules retain their proper date. `projection_metadata.matchup_calendar` now carries ESPN date-anchor verification. Unverified future calendar blocks plans and confidence; unavailable private NBA history alone still permits complete ESPN scoring fallback.
