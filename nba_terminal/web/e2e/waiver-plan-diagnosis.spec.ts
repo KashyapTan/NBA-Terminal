@@ -9,8 +9,18 @@ test("empty ordered plan names its budget blocker inline on desktop and mobile",
   page,
 }) => {
   const snapshot = testSnapshot();
+  snapshot.league.id = 604550749;
   const plan: WaiverPlan = {
     status: "incomplete",
+    acquisition_budget: {
+      matchup_cap: 7,
+      used: null,
+      remaining: null,
+      cap_source: "scoped user-declared matchup cap",
+      usage_source: null,
+      daily_limit: null,
+      daily_applicability: "unreported",
+    },
     evaluation_state: "conditional_opportunities",
     reasons: [
       "Acquisition budget unknown; alternatives are conditional and no ordered moves are confirmed.",

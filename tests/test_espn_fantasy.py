@@ -81,13 +81,17 @@ def test_private_ownership_comparison_and_validation(data):
         espn.validate_team(data["league"], 999, None)
 
 
-def test_missing_data_never_becomes_zero_and_absent_cap_has_labeled_fallback(data):
+def test_missing_data_never_becomes_zero_and_cap_fallback_is_context_bound(data):
     data["schedule"] = {}
     data["league"]["settings"]["acquisitionSettings"] = {}
     data["league"]["schedule"][7]["home"].pop("cumulativeScore")
     result = normalized(data)
-    assert result["league"]["acquisition_settings"]["weekly_add_limit"] == 7
-    assert result["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
+    assert result["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert result["league"]["acquisition_settings"]["cap_source"] is None
+    data["league"]["id"] = 604550749
+    scoped = normalized(data)
+    assert scoped["league"]["acquisition_settings"]["weekly_add_limit"] == 7
+    assert scoped["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
     assert result["teams"][0]["totals"] is None
     assert all(row["state"] == "unknown" for row in result["comparison"]["categories"])
     assert result["teams"][0]["roster"][0]["schedule"] is None
@@ -101,9 +105,7 @@ def test_daily_unlimited_missing_cap_not_weekly(data, value, per_day):
     data["league"]["settings"]["acquisitionSettings"].update(
         matchupAcquisitionLimit=value, matchupLimitPerScoringPeriod=per_day
     )
-    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] == (
-        7 if value is None and per_day is False else None
-    )
+    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] is None
 
 
 @pytest.mark.parametrize("scoring_type", ["ROTO", "H2H_POINTS", None])
@@ -242,9 +244,11 @@ def test_snapshot_batches_and_optional_failures(monkeypatch, data):
 
     monkeypatch.setattr(espn.EspnClient, "get", get)
     result = espn.EspnClient(123, 2027).snapshot(data["league"], 1)
-    assert len(calls) == 5
-    assert len(calls[2][1]["players"]["filterIds"]["value"]) == 16
-    assert calls[2][1]["players"]["filterStatsForTopScoringPeriodIds"]["additionalValue"] == ["002027", "002026"]
+    assert sum(views == ["mTeam"] for views, _, _ in calls) == 1
+    card_calls = [call for call in calls if call[0] == ["kona_playercard"]]
+    assert len(card_calls) == 1
+    assert len(card_calls[0][1]["players"]["filterIds"]["value"]) == 16
+    assert card_calls[0][1]["players"]["filterStatsForTopScoringPeriodIds"]["additionalValue"] == ["002027", "002026"]
     assert result["transactions"] is None
     assert any("Transactions unavailable" in gap for gap in result["data_gaps"])
 
@@ -268,8 +272,8 @@ def test_started_games_excluded_from_remaining_and_missing_samples_explicit(data
     assert player["remaining_games"] == 1
     assert player["schedule"][0]["started"]
     assert player["current_rates"] is None
-    assert any("samples are unavailable" in gap for gap in result["data_gaps"])
-    assert any("attempts/makes" in gap for gap in result["data_gaps"])
+    assert any("rate samples unavailable" in gap for gap in result["data_gaps"])
+    assert any("shooting pairs unavailable" in gap for gap in result["data_gaps"])
 
 
 def test_real_weekly_shape_maps_weeks_to_daily_calendar(data):
@@ -397,8 +401,8 @@ def test_prior_period_repair_is_one_batch_and_keeps_good_side(monkeypatch, data)
 
     monkeypatch.setattr(espn.EspnClient, "get", get)
     result = espn.EspnClient(123, 2027).snapshot(data["league"], 1)
-    assert len(calls) == 6
-    assert calls[-2][1] == {"schedule": {"filterMatchupPeriodIds": {"value": [1]}}}
+    repairs = [call for call in calls if call[1] == {"schedule": {"filterMatchupPeriodIds": {"value": [1]}}}]
+    assert len(repairs) == 1
     history = next(m for m in result["matchup_history"] if m["home_team_id"] == missing_team)
     assert history["home_totals"] is not None and history["away_totals"] is not None
     assert prior["home"].get("cumulativeScore") is None  # input remains unchanged

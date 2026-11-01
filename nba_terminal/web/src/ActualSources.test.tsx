@@ -80,7 +80,7 @@ it("renders exact DATA structured gaps and preserves provider timestamps separat
   );
   expect(screen.getByRole("row", { name: /PTS 132 Unavailable 132/ })).toBeInTheDocument();
   expect(screen.getByText(/Forecast actuals basis:/).closest("p")).toHaveTextContent(
-    "ESPN official scoring (NBA reconstruction fallback) · Complete scoring basis",
+    "ESPN official scoring · Complete scoring basis",
   );
 });
 

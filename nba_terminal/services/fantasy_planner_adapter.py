@@ -161,6 +161,16 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     if not isinstance(context, dict) or any(context.get(k) != v for k, v in expected.items()):
         result["reasons"] = ["Preferences belong to another league, team or matchup. Refresh this matchup."]
         return result
+    if preferences.get("user_confirmed_counts") is True and "counts_snapshot_at" in preferences:
+        if preferences["counts_snapshot_at"] != snapshot["fetched_at"]:
+            result["reasons"] = [
+                "Manual acquisition counts were confirmed for older data. Verify current counts and reconfirm."
+            ]
+            return result
+        provenance["counts_confirmation"] = {
+            "snapshot_fetched_at": snapshot["fetched_at"],
+            "evaluated_at": now.isoformat(),
+        }
     if not snapshot["league"].get("supported") or user is None or target is None or target_id == user_id:
         result["reasons"] = ["A supported nine-category league and an actual current opponent are required."]
         return result
@@ -174,65 +184,77 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "probability_five_wins": None,
     }
     settings = snapshot["league"].get("acquisition_settings", {})
+    fallback = preferences.get("matchup_add_limit_fallback")
+    per_day = settings.get("limit_per_scoring_period")
+    # A scoped matchup declaration establishes cap units independently of the
+    # provider's optional per-scoring-period flag. Do not default that flag False.
+    cap = settings.get("weekly_add_limit") if per_day is False else None
+    cap_source = settings.get("cap_source") or "legacy ESPN settings"
+    if cap is None and cap_source == "league_fallback_7":
+        cap = settings.get("matchup_add_limit", settings.get("weekly_add_limit"))
+    if not _integer(cap) and _integer(fallback):
+        cap, cap_source = fallback, "scoped user-declared matchup cap"
+    used = user.get("weekly_used_adds") if user.get("weekly_usage_complete") is not False else None
+    remaining = max(0, cap - used) if _integer(cap) and _integer(used) else None
     if preferences.get("user_confirmed_counts") is True:
         counts = [preferences.get(k) for k in ("weekly_add_limit", "used_adds", "available_adds")]
+        cap, used, remaining = counts
+        cap_source = "user_confirmed matchup cap"
         provenance["counts"] = "user_confirmed matchup counts"
-    elif settings.get("limit_per_scoring_period") is False and user.get("weekly_usage_complete") is not False:
-        counts = [settings.get("weekly_add_limit"), user.get("weekly_used_adds"), user.get("remaining_adds")]
-        provenance["counts"] = user.get("weekly_usage_source") or "ESPN complete matchup counts"
     else:
-        counts = [None, None, None]
-        provenance["counts"] = "unknown; daily acquisition rules are not modeled"
-    provenance["acquisition_cap"] = {
-        "value": settings.get("weekly_add_limit"),
-        "source": settings.get("cap_source") or "legacy ESPN settings",
+        supplied_remaining = user.get("remaining_adds")
+        counts = [cap, used, supplied_remaining if _integer(supplied_remaining) else remaining]
+        provenance["counts"] = (
+            f"{cap_source}; " + (user.get("weekly_usage_source") or "ESPN complete matchup usage")
+            if _integer(used)
+            else f"{cap_source}; current matchup usage unknown"
+        )
+    provenance["acquisition_cap"] = {"value": cap, "source": cap_source}
+    remaining = counts[2]
+    provenance["reported_acquisition_limit"] = {
+        "value": settings.get("reported_add_limit"),
+        "scope": settings.get("reported_limit_scope", "unknown"),
+        "source": "ESPN acquisition settings; not automatically a matchup cap",
     }
-    if preferences.get("user_confirmed_counts") is True:
-        provenance["acquisition_cap"] = {"value": counts[0], "source": "user_confirmed matchup cap"}
-    if settings.get("cap_source") == "league_fallback_7" and preferences.get("user_confirmed_counts") is not True:
-        provenance["counts"] = "league_fallback_7 cap; " + provenance["counts"]
-    fallback = preferences.get("matchup_add_limit_fallback")
-    if (
-        settings.get("weekly_add_limit") is None
-        and _integer(fallback)
-        and settings.get("limit_per_scoring_period") is False
-        and user.get("weekly_usage_complete") is True
-        and _integer(user.get("weekly_used_adds"))
-        and preferences.get("user_confirmed_counts") is not True
-    ):
-        used = user["weekly_used_adds"]
-        counts = [fallback, used, max(0, fallback - used)]
-        provenance["counts"] = "scoped user-declared matchup cap; ESPN complete matchup usage"
-        provenance["matchup_add_limit"] = {"value": fallback, "source": "user-declared fallback", **expected}
+    if cap_source == "scoped user-declared matchup cap":
+        provenance["matchup_add_limit"] = {"value": cap, "source": "user-declared fallback", **expected}
+    result["acquisition_budget"] = {
+        "matchup_cap": cap if _integer(cap) else None,
+        "used": used if _integer(used) else None,
+        "remaining": remaining if _integer(remaining) else None,
+        "cap_source": cap_source,
+        "usage_source": "user_confirmed"
+        if preferences.get("user_confirmed_counts") is True
+        else user.get("weekly_usage_source"),
+        "daily_limit": settings.get("daily_add_limit"),
+        "daily_applicability": "daily" if per_day is True else "matchup" if per_day is False else "unreported",
+    }
+    provenance["daily_acquisition_rule"] = {
+        "limit_per_scoring_period": per_day,
+        "source": "ESPN acquisition settings" if isinstance(per_day, bool) else "not supplied by ESPN",
+        "modeled_scope": "supplied matchup cap; explicit daily limits require a daily ledger",
+    }
     supplied_counts = list(counts)
-    if settings.get("limit_per_scoring_period") is True or settings.get("daily_add_limit") is not None:
-        # An additional daily cap needs a day-specific ledger; do not call a weekly plan feasible.
+    if per_day is True or settings.get("daily_add_limit") is not None:
         counts = [None, None, None]
         gaps.append(
             "Per-day acquisition limits require a daily ledger; alternatives are conditional, not a weekly plan."
         )
     if not all(_integer(n) for n in counts) or counts[1] + counts[2] > counts[0]:
-        # Explain the exact rejected input, without substituting season/day totals or
-        # a previously observed usage count for the current matchup ledger.
         if preferences.get("user_confirmed_counts") is True:
             for label, value in zip(("cap", "used", "remaining"), supplied_counts):
                 if not _integer(value):
                     gaps.append(f"User-confirmed matchup acquisitions {label}: enter a nonnegative whole count.")
         else:
-            if settings.get("limit_per_scoring_period") is None:
+            if not _integer(cap):
                 gaps.append(
-                    "Acquisition limit period unknown: ESPN matchupLimitPerScoringPeriod is missing; "
-                    "a matchup cap alone does not verify whether a daily limit applies."
+                    "Matchup acquisition cap unknown: ESPN cap scope is unavailable; no scoped user cap was supplied."
                 )
-            if not _integer(settings.get("weekly_add_limit")) and not _integer(fallback):
-                gaps.append("Matchup acquisition cap unknown: ESPN cap unavailable and no user cap fallback supplied.")
-            if user.get("weekly_usage_complete") is False or not _integer(user.get("weekly_used_adds")):
+            if not _integer(used):
                 gaps.append(
                     "Current matchup acquisitions used unknown: ESPN's current-matchup counter is unavailable "
                     "or invalid. Season/day totals and yesterday's count are not substitutes."
                 )
-            if not _integer(user.get("remaining_adds")) and all(_integer(n) for n in counts[:2]):
-                gaps.append("Matchup acquisitions remaining unknown: no verified remaining count was supplied.")
         if all(_integer(n) for n in counts) and counts[1] + counts[2] > counts[0]:
             gaps.append("Acquisition counts conflict: used plus remaining exceeds the matchup cap.")
         counts = [None, None, None]
@@ -292,6 +314,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         result["reasons"] = ["Player corrections must be keyed by player ID."]
         return result
     players, forecast_gaps, excluded = [], [], []
+    candidate_capacity = max(0, 1000 - len(user["roster"]) - len(target["roster"]))
+    qualified_candidates = selected_candidates = 0
     if not user["roster"] or not target["roster"]:
         forecast_gaps.append("Complete user and opponent rosters are required for a remaining-games forecast.")
     relevant = [(p, "user") for p in user["roster"]] + [(p, "opponent") for p in target["roster"]]
@@ -363,6 +387,12 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         except (TypeError, ValueError, KeyError) as error:
             (excluded if owner == "free" else forecast_gaps).append(f"{name}: {error}.")
             continue
+        if owner == "free":
+            qualified_candidates += 1
+            if selected_candidates >= candidate_capacity:
+                excluded.append(f"{name}: optimizer candidate resource bound.")
+                continue
+            selected_candidates += 1
         provenance[f"schedule:{pid}"] = source
         protection = override.get("protected")
         if pid in protected:
@@ -394,9 +424,26 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
                 ),
             }
         )
+    if not snapshot.get("free_agents") and snapshot.get("market_complete") is not True:
+        forecast_gaps.append(
+            "Free-agent market evidence is unavailable or unverified; an empty response is not a no-benefit evaluation."
+        )
+    elif candidates and qualified_candidates == 0 and excluded:
+        forecast_gaps.append(
+            "No selected eligible free agent has a usable rate/schedule sample; pickup benefit could not be evaluated."
+        )
     gaps.extend(forecast_gaps)
     if excluded:
         provenance["excluded_candidates"] = excluded
+    result["candidate_coverage"] = {
+        "requested": len(candidates),
+        "qualified": qualified_candidates,
+        "selected": selected_candidates,
+        "limit": candidate_capacity,
+        "resource_bound_reached": qualified_candidates > selected_candidates,
+        "excluded_count": len(excluded),
+        "scope": "normalized candidates; separate from raw market enumeration",
+    }
     history = _history(snapshot, user_id, target_id)
     periods = _history_periods(snapshot)
     complete_periods = [
@@ -493,6 +540,17 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     ):
         if key in planned:
             result[key] = planned[key]
+    if per_day is None:
+        result["limitations"].append(
+            "ESPN did not report daily acquisition applicability; this plan models the supplied matchup cap only. "
+            "ESPN remains authoritative for additional transaction restrictions."
+        )
+    if qualified_candidates > selected_candidates:
+        result["limitations"].append(
+            f"Optimizer resource bound selected {selected_candidates} of {qualified_candidates} qualified candidates; "
+            "raw market enumeration is retained separately."
+        )
+        result.setdefault("search", {}).update(candidate_truncated=True, alternatives_complete=False)
     result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
     result["projected"] = _forecast_view(planned["projected"])
     provenance["rates"] = planned["provenance"]

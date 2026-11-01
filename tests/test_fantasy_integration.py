@@ -82,7 +82,7 @@ def test_budget_diagnostics_identify_the_rejected_field_without_inventing_usage(
     user.update(weekly_used_adds=4, remaining_adds=3, weekly_usage_complete=True)
     expected = {
         "usage": "Current matchup acquisitions used unknown",
-        "period": "Acquisition limit period unknown",
+        "period": "Matchup acquisition cap unknown",
         "cap": "Matchup acquisition cap unknown",
         "conflict": "Acquisition counts conflict",
     }[missing]
@@ -120,6 +120,39 @@ def test_daily_guard_does_not_mislabel_valid_user_counts_as_invalid(snapshot):
     assert result["evaluation_state"] == "conditional_opportunities"
     assert any("daily ledger" in gap for gap in result["data_gaps"])
     assert not any("enter a nonnegative whole count" in gap for gap in result["data_gaps"])
+
+
+@pytest.mark.parametrize("per_day", [None, True])
+def test_scoped_matchup_cap_and_current_counter_survive_missing_or_daily_flag(snapshot, per_day):
+    # Fixture-only fresh counter6, never a claim about the user's current usage.
+    settings = snapshot["league"]["acquisition_settings"]
+    settings.update(weekly_add_limit=None, matchup_add_limit=None, limit_per_scoring_period=per_day)
+    user = snapshot["teams"][0]
+    user.update(
+        weekly_used_adds=6,
+        remaining_adds=None,
+        weekly_usage_complete=True,
+        weekly_usage_source="espn_matchup_acquisition_totals",
+    )
+    prefs = preferences(snapshot) | {"user_confirmed_counts": False, "matchup_add_limit_fallback": 7}
+    result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert settings["limit_per_scoring_period"] is per_day  # Omission is never converted to False.
+    assert result["acquisition_budget"]["matchup_cap"] == 7
+    assert result["acquisition_budget"]["used"] == 6
+    assert result["acquisition_budget"]["remaining"] == 1
+    if per_day is None:
+        assert result["evaluation_state"] == "confirmed_ordered_plan"
+        assert result["recommended_plan"]["budget_before"] == 1
+        assert len(result["plan"]) == 1
+        assert any("daily acquisition applicability" in limitation for limitation in result["limitations"])
+    else:
+        assert result["evaluation_state"] == "conditional_opportunities"
+        assert not result["plan"]
+        assert any("daily ledger" in gap for gap in result["data_gaps"])
+    user.update(weekly_used_adds=None, weekly_usage_complete=False)
+    missing = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
+    assert missing["acquisition_budget"]["used"] is None
+    assert not missing["plan"]
 
 
 @pytest.mark.parametrize(
@@ -246,6 +279,7 @@ def test_authenticated_production_chain_and_guards(monkeypatch, raw):
         return raw[
             {
                 "mSettings": "league",
+                "mTeam": "league",
                 "proTeamSchedules_wl": "schedule",
                 "kona_player_info": "pool",
                 "kona_playercard": "cards",
@@ -274,7 +308,8 @@ def test_authenticated_production_chain_and_guards(monkeypatch, raw):
             assert planned.headers["cache-control"] == "no-store"
             # UI controls cross the real request boundary, not only an in-process adapter.
             toggled = await browser.post(
-                PREFIX + "/plan", headers=HEADERS,
+                PREFIX + "/plan",
+                headers=HEADERS,
                 json=prefs | {"allow_core_drops": True, "aggressive_cushion_sacrifice": False},
             )
             assert toggled.status_code == 200, toggled.text
@@ -354,7 +389,7 @@ def test_prior_only_fallback_and_verified_server_counts(snapshot):
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert result["status"] == "ready", result
     assert result["provenance"]["rates"]["1"] == "prior season fallback"
-    assert result["provenance"]["counts"] == "espn_matchup_acquisition_totals"
+    assert result["provenance"]["counts"].endswith("espn_matchup_acquisition_totals")
     user["roster"][0]["locked"] = True
     assert not adapter.plan_snapshot_waivers(snapshot, prefs, NOW)["actions"]
 
@@ -422,7 +457,13 @@ def test_known_unverified_calendar_blocks_confidence_but_not_official_actuals(ra
     for team in raw["league"]["teams"]:
         team["transactionCounter"]["matchupAcquisitionTotals"] = {"2": 6}
     snapshot = espn.normalize(
-        raw["league"], {}, raw["pool"], raw["cards"], {}, 1, now=NOW,
+        raw["league"],
+        {},
+        raw["pool"],
+        raw["cards"],
+        {},
+        1,
+        now=NOW,
         nba={"rates": [], "schedule": schedule(), "rates_status": "unavailable", "schedule_status": "fresh"},
     )
 

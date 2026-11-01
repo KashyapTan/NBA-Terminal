@@ -21,8 +21,8 @@ export function waiverStatus(plan: WaiverPlan | null) {
       "Your verified acquisition allowance is zero. This does not establish whether an available player would improve the roster.",
     ],
     conditional_opportunities: [
-      "Acquisition budget unknown · conditional preview",
-      "Forecast inputs support comparing pickup/drop pairs, but no transaction is confirmed. Verify matchup cap, used and remaining acquisitions in ESPN, then enter the counts below.",
+      "Acquisition constraints unverified · conditional preview",
+      "Forecast inputs support comparing pickup/drop pairs, but no transaction is confirmed. Verify the unresolved acquisition counts or rules shown below.",
     ],
     confirmed_ordered_plan: [
       "Confirmed ordered plan",
@@ -78,10 +78,12 @@ export function EmptyOrderedPlan({
   plan,
   unavailableReason,
   onRecover,
+  onRefresh,
 }: {
   plan: WaiverPlan | null;
   unavailableReason?: string | null;
   onRecover: () => void;
+  onRefresh?: () => void;
 }) {
   const status = waiverStatus(plan);
   const diagnostics = [...new Set([...(plan?.data_gaps ?? []), ...(plan?.reasons ?? [])])];
@@ -99,7 +101,13 @@ export function EmptyOrderedPlan({
   };
   return (
     <div className="strategy-empty" aria-label="Why no ordered moves are confirmed">
-      <h4>{conditional ? "Ordered plan withheld: acquisition budget unverified" : status.title}</h4>
+      <h4>
+        {conditional
+          ? plan?.acquisition_budget?.daily_applicability === "daily"
+            ? "Ordered plan withheld: daily acquisition ledger missing"
+            : "Ordered plan withheld: acquisition budget unverified"
+          : status.title}
+      </h4>
       <p>
         {unavailableReason ||
           (conditional
@@ -111,6 +119,18 @@ export function EmptyOrderedPlan({
           {plan?.recommendations?.length ?? 0} beneficial conditional alternative
           {plan?.recommendations?.length === 1 ? "" : "s"} found. Each is a competing single move,
           subject to verifying at least one acquisition; they are not an executable sequence.
+        </p>
+      )}
+      {plan?.acquisition_budget && (
+        <p>
+          Matchup cap {plan.acquisition_budget.matchup_cap ?? "unknown"} · current used{" "}
+          {plan.acquisition_budget.used ?? "unknown"} · remaining{" "}
+          {plan.acquisition_budget.remaining ?? "unknown"}.
+          {plan.acquisition_budget.daily_applicability === "daily"
+            ? " A daily acquisition ledger is still required."
+            : plan.acquisition_budget.daily_applicability === "unreported"
+              ? " ESPN did not supply daily-limit applicability; it is separate from these matchup counts."
+              : ""}
         </p>
       )}
       {diagnostics.length > 0 && (
@@ -142,11 +162,20 @@ export function EmptyOrderedPlan({
       )}
       <p>
         <b>Next step:</b>{" "}
-        {unavailableReason ? "Resolve the analysis error above and retry." : actions[status.state]}
+        {plan?.acquisition_budget?.daily_applicability === "daily" && conditional
+          ? "ESPN reports a daily acquisition limit. A complete daily ledger is required; matchup totals alone cannot establish transaction legality."
+          : unavailableReason
+            ? "Resolve the analysis error above and retry."
+            : actions[status.state]}
       </p>
       {(status.state === "required_inputs_unknown" || conditional) && (
         <button type="button" onClick={onRecover}>
           Review acquisition counts & required inputs
+        </button>
+      )}
+      {onRefresh && (
+        <button type="button" onClick={onRefresh}>
+          Refresh league data
         </button>
       )}
     </div>

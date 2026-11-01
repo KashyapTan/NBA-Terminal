@@ -22,9 +22,9 @@ Original user text and clarification are retained by the parent at `/Users/kash/
 
 ## Data flow and guards
 
-`espn_fantasy.py` requests `mSettings`/`mTeam`, then normalizes `settings.acquisitionSettings.matchupAcquisitionLimit`, `matchupLimitPerScoringPeriod`, and each team's `transactionCounter.matchupAcquisitionTotals[str(status.currentMatchupPeriod)]`. Missing/invalid current-period usage remains unknown; season acquisitions and single-day transaction rows are not substitutes. The existing cap fallback labels cap 7; it does not provide usage or verify a daily rule.
+`espn_fantasy.py` requests `mSettings`/`mTeam`, then normalizes `settings.acquisitionSettings.matchupAcquisitionLimit`, `matchupLimitPerScoringPeriod`, and each team's `transactionCounter.matchupAcquisitionTotals[str(status.currentMatchupPeriod)]`. Missing/invalid current-period usage remains unknown; season acquisitions and single-day transaction rows are not substitutes. The cap7 fallback is restricted to the user-authorized league/season; it does not provide usage or verify a daily rule. A targeted same-context mTeam refresh retries a missing current matchup counter once.
 
-`fantasy_planner_adapter.py` accepts verified matchup counts or explicitly user-confirmed counts. A user cap fallback can combine with complete current ESPN usage only when the period rule is explicitly matchup-wide. A daily limit still needs a daily ledger. Invalid, incomplete or conflicting counts become unknown budget. Candidate ownership, free-agent eligibility, player schedules/rates and both full rosters remain guarded.
+`fantasy_planner_adapter.py` accepts verified matchup counts or explicitly user-confirmed counts. A scoped user matchup cap can combine with complete current ESPN matchup usage independently of an omitted optional daily-rule flag; omission is retained rather than converted to False. Explicit daily limits still require a daily ledger. A daily limit still needs a daily ledger. Invalid, incomplete or conflicting counts become unknown budget. Candidate ownership, free-agent eligibility, player schedules/rates and both full rosters remain guarded.
 
 `fantasy_optimizer.py` scores the whole roster before and after each move, retaining banked actuals and adding only remaining usable starts. Net totals include pickup production minus lost drop production plus lineup spillover; shooting percentages use made/attempt totals. Search considers selected-five improvements, cushion/viability guards and season-value cost. Unknown budget allows competing one-move conditional comparisons while confirming no ordered moves. Known zero budget is distinct. Only complete inputs and positive budget can produce a confirmed sequence; bounded search never proves global optimality.
 
@@ -37,3 +37,21 @@ The empty ordered-plan section now names the state, displays the actual conditio
 `desktop.png` (1440×1000 viewport) and `mobile.png` (390×844 viewport) are full-page screenshots of an isolated **synthetic** browser regression at port 4194. They prove rendering and recovery controls, not private ESPN state. The fixture deliberately models one conditional alternative and missing usage; it is not a reproduction of the user's 26 private alternatives.
 
 Validation includes the complete Python suite and coverage, Ruff, frontend lint/format/typecheck/Vitest/build, and focused Playwright diagnosis/strategy/browser-setup checks. Exact final counts and commit are in the task delivery evidence and PR. The primary server, checkout and Firefox session were retained untouched; no fantasy transaction occurred.
+
+## Revision2 provider recovery
+
+The expanded scope adds a researcher-led audit and recovery of all recoverable provider gaps. The original inline fix is retained. The parent-validated final research report has been integrated; see [all gap dispositions](gap-disposition.md) and [original research](research-report.md). PR14 remains subject to human review and merge.
+
+Independent code inspection found that historical NBA games with any log row skipped box-score recovery even when another required active starter lacked a row. Recovery now uses verified daily active lineups to identify required player/game keys, fetches only relevant incomplete games within the existing 16-game bound, and accepts explicit DNP zeros only from the box score. Complete fresh required log coverage avoids another fetch. Unknown identities and absent box-score rows remain unknown. This is a code-path defect reproduced with synthetic source-shape tests, not a claim that it caused the user's budget blocker.
+
+## Final revision2 validation
+
+- `uv run ruff check .`: passed.
+- `uv run coverage run -m pytest`:394passed; one pre-existing BoxScoreTraditionalV2 deprecation warning.
+- `uv run coverage report`:97%total; separate93%gates passed at96%game_center and100%webapp.
+- Bun lint, format check, typecheck and build:passed. `bun run coverage`:111tests passed;93.70%line coverage exceeds93%gate.
+- `E2E_PORT=4194 bun run e2e e2e/waiver-plan-diagnosis.spec.ts e2e/league-strategy-ui.spec.ts e2e/game-center-polish.spec.ts`:5passed, including N keyboard/aria navigation and desktop/mobile layouts.
+- `bun run e2e:fantasy`:12passed across Vite proxy and production build, with real backend normalization/planner routes and explicitly synthetic provider transports.
+- Final primary checkout observation remained clean at6edc9be; existing user server listeners remained PIDs59996(:5173) and60007(:8000). No restart or private session action occurred.
+
+Original full command outputs are retained under the worker's `data/evidence/revision2-python.txt` and `revision2-web.txt`; canonical task evidence binds them to the final commit. Screenshots were regenerated from the final tested UI. Current private usage and loaded Python module revision remain unverified; these checks do not claim a live private-account recommendation.

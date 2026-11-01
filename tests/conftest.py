@@ -22,3 +22,8 @@ def offline_nba_enrichment(request, monkeypatch):
             "schedule_status": "not_needed",
         },
     )
+    monkeypatch.setattr(
+        fantasy_nba, "load_prior_rates", lambda *args: {"prior_rates": [], "prior_rates_status": "unavailable"}
+    )
+
+    monkeypatch.setattr(fantasy_nba, "fetch_identities", lambda year: [])

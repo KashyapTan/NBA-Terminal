@@ -33,6 +33,7 @@ it("keeps missing facts discoverable in compact diagnostics and opens recovery c
   expect(screen.getByText("Evaluation diagnostics (2)").closest("details")).not.toHaveAttribute(
     "open",
   );
+
   expect(screen.getAllByText("Specific missing provider field")).toHaveLength(1);
   await userEvent.click(screen.getByRole("button", { name: /recovery controls/ }));
   expect(recover).toHaveBeenCalledOnce();
@@ -73,4 +74,28 @@ it.each([
   expect(screen.getByText(/Specific missing provider field/)).toBeVisible();
   expect(screen.queryByText(/beneficial conditional alternatives found/)).not.toBeInTheDocument();
   expect(screen.getByText(/Next step:/)).toBeVisible();
+});
+
+it("keeps known matchup counts distinct from an unsupported daily acquisition ledger", () => {
+  const conditional = {
+    ...plan("conditional_opportunities"),
+    acquisition_budget: {
+      matchup_cap: 7,
+      used: 6,
+      remaining: 1,
+      cap_source: "user_declared",
+      usage_source: "espn_matchup_acquisition_totals",
+      daily_limit: 2,
+      daily_applicability: "daily",
+    },
+    reasons: [],
+    data_gaps: ["Per-day acquisition limits require a daily ledger."],
+  } as WaiverPlan;
+  render(<EmptyOrderedPlan plan={conditional} onRecover={vi.fn()} />);
+  expect(screen.getByRole("heading")).toHaveTextContent("daily acquisition ledger missing");
+  expect(screen.getByText(/Matchup cap 7 · current used 6 · remaining 1/)).toBeVisible();
+  expect(
+    screen.getByText(/matchup totals alone cannot establish transaction legality/),
+  ).toBeVisible();
+  expect(screen.queryByText(/Current matchup acquisitions used unknown/)).not.toBeInTheDocument();
 });
