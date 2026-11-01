@@ -197,7 +197,10 @@ test("selected-five edits and saved league cap fallback use actual planner route
 }) => {
   await connect(page, 129);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await expect(page.locator(".waiver-budget")).toContainText("League fallback cap (7)");
+  await expect(page.locator(".waiver-budget")).toContainText("Unknown cap");
+  await page.getByText("Advanced inputs & data notes", { exact: true }).click();
+  await page.getByRole("button", { name: "Save my confirmed cap of 7 for this league" }).click();
+  await expect(page.locator(".waiver-budget")).toContainText("Your confirmed matchup cap");
   await expect(page.locator(".waiver-budget b")).toHaveText("1");
   await page.getByText("Edit selected five categories", { exact: true }).click();
   const desired = ["pts", "reb", "ast", "stl", "to"];
@@ -217,9 +220,9 @@ test("selected-five edits and saved league cap fallback use actual planner route
   expect((await (await selection).json()).selected_categories.sort()).toEqual(desired.sort());
   await page.reload();
   await expect(page.locator(".waiver-budget b")).toHaveText("1");
-  expect(
-    await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:129:2027")),
-  ).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:129:2027"))).toBe(
+    "7",
+  );
   expect(
     await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:123:2027")),
   ).toBeNull();
@@ -298,7 +301,7 @@ test("unknown budget displays conditional pairs without a false no-benefit concl
   await connect(page, 130);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
   const status = page.getByRole("region", { name: "Waiver evaluation status" });
-  await expect(status).toContainText("Acquisition budget unknown");
+  await expect(status).toContainText("Acquisition constraints unverified");
   await expect(status).toContainText("no transaction is confirmed");
   await expect(
     page.getByText(

@@ -1,0 +1,17 @@
+{
+  "application_revision": "6edc9be237d2627a72e4ead50d7cc5dbb50b9087",
+  "implementation_revision_assessed": "e865e085bd3b94e7aecbc1efebfe2d998844e098",
+  "espn_api_revision": "700e15ddbb91124f031473d2411c8a6285944274",
+  "nba_api_revision": "83444e14dd3c8848a197a677be06b7ed2e869ae9",
+  "market_probe": {
+    "rows": 843,
+    "unique": 843,
+    "duplicates": 0
+  },
+  "artifacts": {
+    "live-probes-more.json": "391092c451a919ad6a1ec6a61a81f4346b714e1277f0f883a59a6608e40aefe2",
+    "reproductions.json": "4e601c7c4f1b041f2744aa24810e6ddbeaf67e3116c338098687967bd25377ff",
+    "warning-inventory.json": "efb8cb085d422345b10d92334af9937674ef2847c9ce814147520cc230b6e318",
+    "live-probes.json": "936e38ceae3a5b06ad3b7ef61adbbf01658ece80e56d4e35d6f8c4bfb90d9c1e"
+  }
+}

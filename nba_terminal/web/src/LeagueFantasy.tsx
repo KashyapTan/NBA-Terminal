@@ -21,7 +21,7 @@ import "./league-fantasy.css";
 import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
-import { WaiverStatus } from "./WaiverStatus";
+import { EmptyOrderedPlan, WaiverStatus } from "./WaiverStatus";
 
 /** Mount once in the integrating app; pass the returned state to the named components. */
 export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
@@ -535,14 +535,21 @@ function WaiverStrategy({
 }) {
   const capStorageKey = `nba-terminal:matchup-cap:${snapshot.league.id}:${snapshot.league.season_id}`;
   const [preferences, setPreferences] = useState<PlannerPreferences>(() => {
+    const declaredCap =
+      snapshot.league.id === DEFAULT_ESPN_LEAGUE_ID &&
+      snapshot.league.season_id === DEFAULT_ESPN_SEASON_ID
+        ? 7
+        : null;
     try {
       const saved = localStorage.getItem(capStorageKey);
-      const cap = saved === null ? null : Number(saved);
+      // User-confirmed configuration applies only to this league and season;
+      // it never supplies today's acquisition usage.
+      const cap = saved === null ? declaredCap : Number(saved);
       return cap != null && Number.isInteger(cap) && cap >= 0
         ? { matchup_add_limit_fallback: cap }
         : {};
     } catch {
-      return {};
+      return declaredCap == null ? {} : { matchup_add_limit_fallback: declaredCap };
     }
   });
   const [categoryDraft, setCategoryDraft] = useState<Category[] | null>(null);
@@ -561,6 +568,13 @@ function WaiverStrategy({
     setError(null);
     if (!onPlan || !snapshot.league.supported) {
       setBusy(false);
+      return;
+    }
+    if (
+      preferences.user_confirmed_counts &&
+      preferences.counts_snapshot_at !== snapshot.fetched_at
+    ) {
+      setPreferences((current) => ({ ...current, user_confirmed_counts: false }));
       return;
     }
     setBusy(true);
@@ -655,6 +669,27 @@ function WaiverStrategy({
       ? Object.values(requiredMetadata).length > 0 &&
         Object.values(requiredMetadata).every((part) => part.complete)
       : plan.data_gaps.length === 0);
+  const evaluationPlan: WaiverPlan | null =
+    plan &&
+    (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
+      [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
+      ? {
+          ...plan,
+          evaluation_state: "required_inputs_unknown",
+          data_gaps: [
+            ...plan.data_gaps,
+            ...Object.entries(snapshot.projection_metadata ?? {})
+              .filter(([, part]) => !part.complete)
+              .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
+          ],
+        }
+      : plan;
+  function reviewInputs() {
+    if (advancedPanel.current) {
+      advancedPanel.current.open = true;
+      advancedPanel.current.scrollIntoView?.({ block: "start" });
+    }
+  }
   const safeCategories = confidenceComplete
     ? (plan?.safe_categories ?? []).filter((key) => selectedCategories.includes(key))
     : [];
@@ -677,7 +712,7 @@ function WaiverStrategy({
   const knownLimit = espnLimit ?? preferences.matchup_add_limit_fallback;
   const capSource =
     settings.cap_source === "league_fallback_7"
-      ? "League fallback cap (7); ESPN cap unavailable"
+      ? "Your confirmed matchup cap (7); ESPN matchup scope unverified"
       : espnLimit != null
         ? "ESPN matchup cap"
         : preferences.matchup_add_limit_fallback != null
@@ -780,46 +815,43 @@ function WaiverStrategy({
         </div>
         <div className="waiver-budget">
           <b>
-            {plan?.remaining_adds != null
-              ? plan.remaining_adds + actions.length
-              : (user?.remaining_adds ?? "?")}
+            {plan?.acquisition_budget
+              ? (plan.acquisition_budget.remaining ?? "?")
+              : plan?.remaining_adds != null
+                ? plan.remaining_adds + actions.length
+                : (user?.remaining_adds ?? "?")}
           </b>
           <span>matchup acquisitions left</span>
           <small>
-            {knownLimit ?? "Unknown"} cap · {user?.weekly_used_adds ?? "Unknown"} used
+            {plan?.acquisition_budget
+              ? (plan.acquisition_budget.matchup_cap ?? "Unknown")
+              : (knownLimit ?? "Unknown")}{" "}
+            cap ·{" "}
+            {plan?.acquisition_budget
+              ? (plan.acquisition_budget.used ?? "Unknown")
+              : (user?.weekly_used_adds ?? "Unknown")}{" "}
+            used
           </small>
-          <small>{capSource}</small>
           <small>
-            {user?.weekly_usage_source ? "ESPN matchup usage" : "Usage source unavailable"}
+            {plan?.acquisition_budget?.cap_source.includes("user")
+              ? "Your confirmed matchup cap"
+              : capSource}
           </small>
+          <small>
+            {plan?.acquisition_budget && plan.acquisition_budget.used == null
+              ? "Current usage unverified"
+              : plan?.acquisition_budget?.usage_source === "user_confirmed"
+                ? "Your confirmed matchup usage"
+                : user?.weekly_usage_source
+                  ? "ESPN matchup usage"
+                  : "Usage source unavailable"}
+          </small>
+          {plan?.acquisition_budget?.daily_applicability === "unreported" && (
+            <small>Daily-limit applicability not supplied; analysis models the matchup cap.</small>
+          )}
         </div>
       </div>
-      {!busy && (
-        <WaiverStatus
-          plan={
-            plan &&
-            (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
-              [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
-              ? {
-                  ...plan,
-                  evaluation_state: "required_inputs_unknown",
-                  data_gaps: [
-                    ...plan.data_gaps,
-                    ...Object.entries(snapshot.projection_metadata ?? {})
-                      .filter(([, part]) => !part.complete)
-                      .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
-                  ],
-                }
-              : plan
-          }
-          onRecover={() => {
-            if (advancedPanel.current) {
-              advancedPanel.current.open = true;
-              advancedPanel.current.scrollIntoView?.({ block: "start" });
-            }
-          }}
-        />
-      )}
+      {!busy && <WaiverStatus plan={evaluationPlan} onRecover={reviewInputs} />}
       {leagueError && <p role="alert">{leagueError}</p>}
       {!snapshot.league.supported && (
         <p role="alert">
@@ -1151,9 +1183,21 @@ function WaiverStrategy({
           </>
         ) : (
           !busy && (
-            <p className="strategy-empty">
-              No ordered moves confirmed. See the evaluation status and any conditional pairs below.
-            </p>
+            <EmptyOrderedPlan
+              plan={evaluationPlan}
+              onRefresh={onRefresh}
+              unavailableReason={
+                error ??
+                leagueError ??
+                (!onPlan
+                  ? "Optimizer integration is unavailable; no comparison ran."
+                  : !snapshot.league.supported
+                    ? (snapshot.league.unsupported_reason ??
+                      "League scoring format is unsupported.")
+                    : null)
+              }
+              onRecover={reviewInputs}
+            />
           )
         )}
       </section>
@@ -1208,15 +1252,46 @@ function WaiverStrategy({
               Market coverage: {snapshot.market_coverage.observed} observed of{" "}
               {snapshot.market_coverage.provider_total ?? "unknown total"} ·{" "}
               {snapshot.market_complete ? "provider exhaustion observed" : "partial / unverified"} ·
-              bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
+              application bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
               {snapshot.market_coverage.fetched_at ?? "time unavailable"}. Market coverage qualifies
               search, independently of matchup scoring completeness.
+              {snapshot.market_coverage.stopped_reason === "application_bound" &&
+                " Enumeration reached the application request bound; this is not an ESPN provider limit."}
             </p>
           )}
           {snapshot.free_agents_truncated && (
             <p className="league-tied">
-              ESPN returned a limited free-agent pool. Results cover that pool only.
+              {snapshot.market_coverage?.stopped_reason === "application_bound"
+                ? "The app stopped free-agent enumeration at its request bound. Results cover the observed pool only."
+                : "Free-agent enumeration is partial or unverified. Results cover the observed pool only."}
             </p>
+          )}
+          {snapshot.market_coverage?.page_count != null && (
+            <details>
+              <summary>Market retrieval & candidate filtering</summary>
+              <p>
+                {snapshot.market_coverage.page_count} league pages ·{" "}
+                {snapshot.market_coverage.observed} unique observed players ·{" "}
+                {snapshot.market_coverage.eligible_freeagent_count ?? "unknown"} eligible free
+                agents · {snapshot.market_coverage.waiver_count ?? "unknown"} on waivers ·{" "}
+                {snapshot.market_coverage.roster_conflict_count ?? "unknown"} ownership conflicts.
+              </p>
+              <p>
+                Across the observed pool: {snapshot.market_coverage.no_sample_count ?? "unknown"}{" "}
+                without a usable rate sample;{" "}
+                {snapshot.market_coverage.no_schedule_count ?? "unknown"} without a verified
+                schedule. These counts can overlap and do not imply every excluded player would
+                help.
+              </p>
+              {plan?.candidate_coverage && (
+                <p>
+                  {plan.candidate_coverage.selected} of {plan.candidate_coverage.qualified}{" "}
+                  qualified candidates selected from {plan.candidate_coverage.requested} requested ·
+                  optimizer capacity {plan.candidate_coverage.limit}. Retrieval completeness and
+                  search bounds are separate.
+                </p>
+              )}
+            </details>
           )}
           {recommendations.length > 0 && (
             <label className="pickup-filter">
@@ -1431,7 +1506,12 @@ function WaiverStrategy({
           <input
             type="checkbox"
             checked={preferences.user_confirmed_counts ?? false}
-            onChange={(event) => edit({ user_confirmed_counts: event.target.checked })}
+            onChange={(event) =>
+              edit({
+                user_confirmed_counts: event.target.checked,
+                counts_snapshot_at: event.target.checked ? snapshot.fetched_at : undefined,
+              })
+            }
           />
           Use my verified matchup counts
         </label>
@@ -1471,6 +1551,16 @@ function WaiverStrategy({
           </>
         )}
         <DataGaps gaps={snapshot.data_gaps} />
+        {!!snapshot.modeling_notes?.length && (
+          <details>
+            <summary>Model scope & provider notes</summary>
+            <ul>
+              {snapshot.modeling_notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </details>
+        )}
       </details>
     </section>
   );

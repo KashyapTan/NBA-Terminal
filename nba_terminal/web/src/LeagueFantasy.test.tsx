@@ -148,8 +148,24 @@ it("automatically analyzes and preserves availability across harmless refresh", 
 });
 it("explains unavailable optimizer instead of inventing probabilities", () => {
   render(<WaiverWire snapshot={testSnapshot()} />);
-  expect(screen.getByText(/Optimizer integration is unavailable/)).toBeInTheDocument();
+  expect(
+    within(screen.getByRole("region", { name: "Recommended ordered plan" })).getByText(
+      /Optimizer integration is unavailable/,
+    ),
+  ).toBeInTheDocument();
   expect(screen.queryByText(/30.0%/)).not.toBeInTheDocument();
+});
+
+it("scopes the authorized cap fallback to the user's league and never supplies historical usage", async () => {
+  const snapshot = testSnapshot();
+  snapshot.league.id = 604550749;
+  snapshot.league.season_id = 2027;
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  expect(onPlan.mock.calls[0][0].matchup_add_limit_fallback).toBe(7);
+  expect(onPlan.mock.calls[0][0]).not.toHaveProperty("used_adds");
+  expect(onPlan.mock.calls[0][0]).not.toHaveProperty("available_adds");
 });
 it("does not restore a late snapshot after disconnect", async () => {
   let resolveSnapshot!: (value: ReturnType<typeof testSnapshot>) => void;
@@ -516,6 +532,26 @@ it("shows current lead becoming a projected loss and clears incomplete cushion l
   expect(screen.getByText(/Modeled cushions: None established/)).toBeInTheDocument();
   expect(container.querySelector(".strategy-favored")).toBeNull();
   expect(
-    screen.getByText(/Today’s useful available players are not yet determinable/),
+    within(screen.getByRole("region", { name: "Waiver evaluation status" })).getByText(
+      /Today’s useful available players are not yet determinable/,
+    ),
   ).toBeInTheDocument();
+});
+
+it("revokes an old manual budget confirmation when new league data arrives", async () => {
+  const snapshot = testSnapshot();
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  await userEvent.click(screen.getByText("Advanced inputs & data notes", { exact: true }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Use my verified matchup counts" }));
+  await waitFor(() => expect(onPlan.mock.calls.at(-1)?.[0].user_confirmed_counts).toBe(true));
+  expect(onPlan.mock.calls.at(-1)?.[0].counts_snapshot_at).toBe(snapshot.fetched_at);
+  view.rerender(
+    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-11-01T13:00:00Z" }} onPlan={onPlan} />,
+  );
+  await waitFor(() => expect(onPlan.mock.calls.at(-1)?.[0].user_confirmed_counts).toBe(false));
+  expect(
+    screen.getByRole("checkbox", { name: "Use my verified matchup counts" }),
+  ).not.toBeChecked();
 });
