@@ -73,6 +73,9 @@ def _forecast_view(forecast):
         "probability_five_wins": forecast["win_at_least_five_probability"],
         "categories": forecast["categories"],
         "opponent_totals": forecast["opponent_totals"],
+        "actual_primitives": forecast["actual_primitives"],
+        "remaining_primitives": forecast["remaining_primitives"],
+        "starts": forecast["starts"],
     }
 
 
@@ -179,6 +182,14 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     else:
         counts = [None, None, None]
         provenance["counts"] = "unknown; daily acquisition rules are not modeled"
+    provenance["acquisition_cap"] = {
+        "value": settings.get("weekly_add_limit"),
+        "source": settings.get("cap_source") or "legacy ESPN settings",
+    }
+    if preferences.get("user_confirmed_counts") is True:
+        provenance["acquisition_cap"] = {"value": counts[0], "source": "user_confirmed matchup cap"}
+    if settings.get("cap_source") == "league_fallback_7" and preferences.get("user_confirmed_counts") is not True:
+        provenance["counts"] = "league_fallback_7 cap; " + provenance["counts"]
     fallback = preferences.get("matchup_add_limit_fallback")
     if (
         settings.get("weekly_add_limit") is None
@@ -266,9 +277,9 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         override = overrides.get(pid, {})
         if not isinstance(override, dict):
             override = {}
-        if player.get("lineup_slot") in {"IR", "IR+"}:
-            provenance[f"inactive:{pid}"] = "IR player excluded; activation is not modeled"
-            continue
+        inactive = player.get("active") is False or player.get("lineup_slot") in {"IR", "IR+"}
+        if inactive:
+            provenance[f"inactive:{pid}"] = "IR/inactive player retained as legal drop; activation is not modeled"
         # V2 normalization applies the authorized available-unless-explicitly-out policy.
         # The raw ESPN injured boolean can also mean questionable; do not override health_status.
         health = player.get("health_status")
@@ -288,9 +299,9 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         if "injured" not in override and player.get("injured") is None and not known_out:
             assumed += 1
         try:
-            # Out players need no schedule/rates for their zero remaining contribution.
-            if injured:
-                dates, source = [], "explicitly out"
+            # Out/inactive players need no future schedule; rates still establish drop value.
+            if injured or inactive:
+                dates, source = [], "explicitly out or inactive; zero usable starts"
             else:
                 dates, source = _schedule(player, override, remaining, now)
             positions = [p for p in player.get("positions") or [] if p in ACTIVE_SLOTS]
@@ -307,14 +318,23 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             if sample is None:
                 sample = 3 if player.get("current_rates") is not None else 0
                 provenance[f"sample:{pid}"] = "sample count unknown; available current season averages used"
-            rates, prior = player.get("current_rates"), player.get("prior_rates")
-            if rates is None and prior is None and not injured:
-                raise ValueError("season rates are missing")
-            if injured and rates is None and prior is None:
-                # Zero only because explicitly unavailable, never a missing-rate forecast.
-                rates = {**dict.fromkeys(TOTALS, 0), "minutes": 0}
-                sample = 3
-            _rates({"id": pid, "current_rates": rates, "prior_rates": prior, "current_games": sample})
+            rates, prior = player.get("season_rates", player.get("current_rates")), player.get("prior_rates")
+            if player.get("season_rates") is not None:
+                # season_rates is the data adapter's chosen same-sample rate basis.
+                prior = None
+                provenance[f"rate_basis:{pid}"] = player.get("rate_provenance") or "normalized season_rates"
+            if rates is None and prior is None:
+                raise ValueError("season rates are missing; unknown drop value cannot be treated as zero")
+            _rates(
+                {
+                    "id": pid,
+                    "current_rates": rates,
+                    "prior_rates": prior,
+                    "current_games": sample,
+                    "season_rates": player.get("season_rates"),
+                    "rate_provenance": player.get("rate_provenance"),
+                }
+            )
         except (TypeError, ValueError, KeyError) as error:
             (excluded if owner == "free" else forecast_gaps).append(f"{name}: {error}.")
             continue
@@ -332,12 +352,21 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
                 "locked": player.get("locked") is True or (owner == "user" and pid not in drops),
                 "undroppable": player.get("undroppable") is True or player.get("droppable") is False,
                 "protected": protection,
+                "active": not inactive,
+                "core_protection_override": override.get("core_protection_override") is True,
                 "schedule": dates,
                 "injury_status": "out" if injured else "active",
                 "current_rates": rates,
+                "rate_basis_source": (
+                    "normalized season_rates; " + str(player.get("rate_provenance") or "source unknown")
+                    if player.get("season_rates") is not None
+                    else None
+                ),
                 "prior_rates": prior,
                 "current_games": sample,
-                "season_value_unknown": player.get("current_rates") is None and player.get("prior_rates") is None,
+                "season_value_unknown": all(
+                    player.get(k) is None for k in ("current_rates", "prior_rates", "season_rates")
+                ),
             }
         )
     gaps.extend(forecast_gaps)
@@ -355,10 +384,32 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         period = complete_periods[-1]
         previous = {"user": periods[period][user_id], "opponent": periods[period][target_id], "period": period}
 
+    projection_metadata = dict(snapshot.get("projection_metadata") or {})
+
+    def banked(team, side):
+        actuals = team.get("actuals")
+        if actuals is None:
+            provenance[f"actuals:{side}"] = "legacy official ESPN totals; no optional actuals attestation supplied"
+            return team.get("totals")
+        complete = actuals.get("forecast_complete") is True
+        projection_metadata[f"actuals:{side}"] = {
+            "complete": complete,
+            "source": actuals.get("forecast_source"),
+            "reason": "Selected banked actuals are incomplete" if not complete else None,
+        }
+        provenance[f"actuals:{side}"] = actuals
+        # Preserve official totals in snapshot and provenance; never silently replace them.
+        return actuals.get("forecast_totals") if complete else team.get("totals")
+
     payload = {
         "dates": remaining,
-        "current_totals": user.get("totals"),
-        "opponent_totals": target.get("totals"),
+        "current_totals": banked(user, "user"),
+        "opponent_totals": banked(target, "opponent"),
+        "projection_metadata": projection_metadata,
+        "market_complete": snapshot.get("market_complete"),
+        "matchup_finalized": snapshot["period"].get("finalized") is True,
+        "allow_core_drops": preferences.get("allow_core_drops") is True,
+        "aggressive_cushion_sacrifice": preferences.get("aggressive_cushion_sacrifice") is True,
         "players": players,
         "lineup_slots": lineup,
         "lineup_slots_by_date": _remaining_lineup_slots(user["roster"], lineup, remaining, now),
@@ -379,6 +430,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     if preferences.get("uncertainty_mode") == "sensitivity":
         payload["margin_sd"] = preferences.get("margin_sd")
     planned = plan_waivers(payload)
+    gaps.extend(g for g in planned.get("data_gaps", []) if g not in gaps)
     for key in (
         "status",
         "reasons",
@@ -393,6 +445,10 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "search",
         "uncertainty",
         "protected_players",
+        "protection_policy",
+        "recommended_plan",
+        "primary_recommendation_kind",
+        "projection_metadata",
         "score_basis",
         "selected_categories",
         "safe_categories",
@@ -414,7 +470,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         f"{assumed} players assumed available unless explicitly out; user toggles take precedence"
     )
     provenance["transactions"] = (
-        "Known locks/undroppable and explicit user Protect enforced; all other roster players evaluated"
+        "ESPN locks/undroppable, user Protect and default core guard enforced; "
+        "core override never bypasses official locks"
     )
     if forecast_gaps:
         result["status"] = "incomplete"

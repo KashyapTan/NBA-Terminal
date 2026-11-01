@@ -51,7 +51,7 @@ def preferences(snapshot):
         "candidate_ids": ["100"],
         "droppable_ids": ["1"],
         "max_stream_slots": 1,
-        "player_overrides": {"1": {"protected": False}},
+        "player_overrides": {"1": {"protected": False, "core_protection_override": True}},
         "uncertainty_mode": "sensitivity",
         "margin_sd": {key: 0.05 if key.endswith("pct") else 5 for key in CATEGORIES},
     }
@@ -325,7 +325,7 @@ def test_ir_and_reported_out_do_not_create_impossible_active_games(snapshot):
     ir.update(id="ir", lineup_slot="IR", current_rates=None, prior_rates=None)
     snapshot["teams"][0]["roster"].append(ir)
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
-    assert result["status"] == "ready"
+    assert result["status"] == "incomplete"  # Unknown IR season value cannot become zero drop cost.
     assert "inactive:ir" in result["provenance"]
     prefs["droppable_ids"] = ["ir"]
     assert not adapter.plan_snapshot_waivers(snapshot, prefs, NOW)["actions"]

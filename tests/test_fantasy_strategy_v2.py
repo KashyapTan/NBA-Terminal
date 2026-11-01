@@ -128,8 +128,8 @@ def test_current_season_rates_and_minutes_are_primary_not_blended():
     assert result["provenance"]["starter"] == "current season"
     data["players"][0]["current_games"] = 2
     result = plan_waivers(data)
-    assert result["baseline"]["minutes"]["user"] == 8
-    assert "fallback" in result["provenance"]["starter"]
+    assert result["baseline"]["minutes"]["user"] == 32
+    assert "small current sample" in result["provenance"]["starter"]
 
 
 def test_missing_rate_fields_get_targeted_prior_fallback_with_provenance():
@@ -163,8 +163,8 @@ def test_default_season_protection_has_explicit_override_but_long_term_cost_rema
     data = payload()
     data["players"][0].update(season_rank=25, current_rates=rates(pts=24, reb=8), protected=None)
     data["players"].append(player("add", current_rates=rates(ast=6)))
-    assert "drop" not in plan_waivers(data)["protected_players"]
-    data["players"][0]["protected"] = False
+    assert "drop" in plan_waivers(data)["protected_players"]
+    data["players"][0]["core_protection_override"] = True
     result = plan_waivers(data)
     if result["recommendations"]:
         assert result["recommendations"][0]["season_cost"] > 0
@@ -185,7 +185,7 @@ def test_drop_cost_and_net_remaining_contribution_beat_raw_free_agent_production
     result = plan_waivers(data)
     assert result["recommendations"][0]["add_id"] == "target"
     assert result["recommendations"][0]["drop_id"] == "expendable"
-    assert result["strategy"]["pts"]["classification"] == "punt"
+    assert result["strategy"]["pts"]["classification"] == "trailing"
     assert "ast" in result["recommendations"][0]["target_categories"]
 
 
@@ -226,8 +226,9 @@ def test_unknown_shooting_denominators_keep_known_category_alternatives_not_fake
     result = plan_waivers(data)
     assert result["baseline"]["categories"]["fg_pct"]["user"] is None
     assert result["baseline"]["win_at_least_five_probability"] is None
-    assert result["recommendations"] and result["recommendations"][0]["probability_gain"] is None
-    assert result["recommendations"][0]["category_probability_gains"]["fg_pct"] is None
+    assert result["recommendations"] == []
+    assert result["safe_categories"] == []
+    assert all(c["classification"] == "unknown" for c in result["strategy"].values())
     assert result["actions"] == []
 
 
@@ -297,7 +298,7 @@ def test_observed_core_production_is_protected_without_draft_or_rank():
     data["players"].append(player("add", current_rates=rates(ast=5)))
     result = plan_waivers(data)
     assert not result["recommendations"]
-    assert "drop" not in result["protected_players"]
+    assert "drop" in result["protected_players"]
 
 
 def test_full_season_opportunity_cost_rejects_tiny_weekly_gain_after_unprotect():

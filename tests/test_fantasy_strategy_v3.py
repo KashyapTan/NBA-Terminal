@@ -51,7 +51,7 @@ def test_less_remaining_games_and_consumed_capacity_do_not_invent_gain(days, slo
 def test_all_legal_drops_and_repeat_best_drop_have_discoverable_alternatives():
     data = four_days()
     data["players"] += [
-        player("other_drop", "user", [], draft_round=1, season_rank=1),
+        player("other_drop", "user", [], draft_round=1, season_rank=1, core_protection_override=True),
         player("second_add", schedule=data["dates"], current_rates=rates(pts=13)),
     ]
     data["lineup_slots"] = ["UTIL", "UTIL"]
@@ -125,8 +125,8 @@ def test_weighted_shooting_and_turnover_calculations():
     data = fixture()
     data["selected_categories"] = ["fg_pct", "ft_pct", "to", "ast", "stl"]
     data["players"] = [
-        player("drop", "user", current_rates=rates(fgm=1, fga=10, ftm=1, fta=4, to=4)),
-        player("add", current_rates=rates(fgm=4, fga=5, ftm=3, fta=4, to=1)),
+        player("drop", "user", current_rates=rates(pts=20, reb=5, ast=5, fgm=1, fga=10, ftm=1, fta=4, to=4)),
+        player("add", current_rates=rates(pts=20, reb=5, ast=5, fgm=4, fga=5, ftm=3, fta=4, to=1)),
     ]
     action = plan_waivers(data)["recommendations"][0]
     fg = action["calculation"]["fg_pct"]
@@ -141,9 +141,9 @@ def test_weighted_shooting_and_turnover_calculations():
 @pytest.mark.parametrize(
     "metadata", [{"draft_round": 1}, {"draft_pick": 1}, {"season_rank": 1}, {"season_value_unknown": True}]
 )
-def test_core_metadata_never_hard_excludes_legal_player(metadata):
+def test_core_metadata_override_keeps_legal_player_eligible(metadata):
     data = four_days()
-    data["players"][0].update(metadata)
+    data["players"][0].update(metadata, core_protection_override=True)
     result = plan_waivers(data)
     assert result["recommendations"]
     assert result["search"]["evaluated_drop_ids"] == ["drop"]
@@ -157,7 +157,8 @@ def test_identical_rates_different_games_and_lineup_opportunity_cost():
     result = plan_waivers(data)
     c = result["recommendations"][0]["calculation"]["pts"]
     assert c["net_total"] == 20
-    data["opponent_totals"]["pts"] = 22
+    data["opponent_totals"]["pts"] = 38
+    data["margin_sd"]["pts"] = 10
     data["players"].append(player("bench", "user", data["dates"], current_rates=rates(pts=8)))
     result = plan_waivers(data)
     c = next(a for a in result["recommendations"] if a["drop_id"] == "drop")["calculation"]["pts"]
