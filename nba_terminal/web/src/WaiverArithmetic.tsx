@@ -2,6 +2,7 @@ import {
   LEAGUE_CATEGORIES,
   formatCategory,
   type Category,
+  type LeaguePlayer,
   type PickupRecommendation,
 } from "./league-fantasy-model";
 
@@ -13,7 +14,15 @@ const number = (value: number | null | undefined) =>
   value == null ? "?" : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 /** All values come from the paired full-roster forecast, never a pickup-only estimate. */
-export function WaiverArithmetic({ move }: { move: PickupRecommendation }) {
+export function WaiverArithmetic({
+  move,
+  addPlayer,
+  dropPlayer,
+}: {
+  move: PickupRecommendation;
+  addPlayer?: LeaguePlayer;
+  dropPlayer?: LeaguePlayer;
+}) {
   return (
     <div className="move-arithmetic">
       <p>{move.rationale}</p>
@@ -123,11 +132,10 @@ export function WaiverArithmetic({ move }: { move: PickupRecommendation }) {
           Usable-start arithmetic is missing. This move cannot be treated as a verified benefit.
         </p>
       )}
-      <p className="rate-provenance">
-        Rates above are the forecast’s selected sample. Rate source, season and fallback provenance
-        must accompany the optimizer result; missing provenance is unverified, never proof of a zero
-        drop loss.
-      </p>
+      <div className="rate-provenance">
+        <RateEvidence player={addPlayer} role="Pickup" />
+        <RateEvidence player={dropPlayer} role="Drop" />
+      </div>
     </div>
   );
 }
@@ -180,5 +188,25 @@ export function OverallPlanImpact({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RateEvidence({ player, role }: { player?: LeaguePlayer; role: string }) {
+  const evidence = player?.rate_provenance;
+  return (
+    <p>
+      {role} rate sample:{" "}
+      {evidence ? (
+        <>
+          {evidence.source ?? "Source unknown"} · season {evidence.season ?? "unknown"} ·{" "}
+          {evidence.games ?? "unknown"} observed games
+          {evidence.small_sample ? " · small sample" : ""} · {evidence.status} · fetched{" "}
+          {evidence.fetched_at ?? "time unavailable"}
+          {evidence.fallback ? ` · fallback: ${evidence.reason ?? "NBA sample unavailable"}` : ""}
+        </>
+      ) : (
+        "Provenance unavailable; missing loss inputs do not establish zero loss."
+      )}
+    </p>
   );
 }

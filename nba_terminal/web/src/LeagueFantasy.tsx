@@ -623,6 +623,14 @@ function WaiverStrategy({
   const requiredMetadata = snapshot.projection_metadata;
   const confidenceComplete =
     plan?.status === "ready" &&
+    [user, opponent].every(
+      (team) =>
+        !team?.actuals ||
+        (team.actuals.forecast_complete &&
+          !Object.values(team.actuals.discrepancy ?? {}).some(
+            (value) => value != null && Math.abs(value) > 1e-9,
+          )),
+    ) &&
     (requiredMetadata
       ? Object.values(requiredMetadata).length > 0 &&
         Object.values(requiredMetadata).every((part) => part.complete)
@@ -958,7 +966,11 @@ function WaiverStrategy({
                 {share != null && <span style={{ width: `${share}%` }} />}
               </div>
               <small>Projected final · {key === "to" ? "fewer wins" : "higher wins"}</small>
-              <p>{strategy?.explanation.split(". ")[0] ?? "Forecast evidence is unavailable."}</p>
+              <p>
+                {confidenceComplete
+                  ? (strategy?.explanation.split(". ")[0] ?? "Forecast evidence is unavailable.")
+                  : "Confidence withheld until required inputs and scoring-source agreement are verified."}
+              </p>
               {strategy && (
                 <small>
                   Projected gap {signed(strategy.projected_margin, key)}
@@ -1025,7 +1037,11 @@ function WaiverStrategy({
                     {signed(plan?.strategy?.[key]?.projected_margin, key)} /{" "}
                     {signed(plan?.strategy?.[key]?.historical_margin, key)}
                   </td>
-                  <td>{plan?.strategy?.[key]?.explanation ?? "Evidence unavailable"}</td>
+                  <td>
+                    {confidenceComplete
+                      ? (plan?.strategy?.[key]?.explanation ?? "Evidence unavailable")
+                      : "Confidence withheld: required inputs or scoring agreement unverified"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1065,7 +1081,11 @@ function WaiverStrategy({
                       Effective {move.date} · {move.remaining_adds ?? "Unknown"} acquisitions left ·
                       cumulative focus score {move.cumulative_focus_score ?? "Unknown"} / 100
                     </p>
-                    <WaiverArithmetic move={move} />
+                    <WaiverArithmetic
+                      move={move}
+                      addPlayer={players.get(move.add_id)}
+                      dropPlayer={players.get(move.drop_id)}
+                    />
                   </div>
                 </li>
               ))}
@@ -1130,6 +1150,16 @@ function WaiverStrategy({
                   {plan.search.evaluation_limit ?? "unknown"} evaluations.
                 </>
               )}
+            </p>
+          )}
+          {snapshot.market_coverage && (
+            <p className={snapshot.market_complete ? "search-summary" : "league-tied"}>
+              Market coverage: {snapshot.market_coverage.observed} observed of{" "}
+              {snapshot.market_coverage.provider_total ?? "unknown total"} ·{" "}
+              {snapshot.market_complete ? "provider exhaustion observed" : "partial / unverified"} ·
+              bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
+              {snapshot.market_coverage.fetched_at ?? "time unavailable"}. Market coverage qualifies
+              search, independently of matchup scoring completeness.
             </p>
           )}
           {snapshot.free_agents_truncated && (
@@ -1198,7 +1228,11 @@ function WaiverStrategy({
                     </div>
                     <div className="pickup-details">
                       <h5>Remaining matchup arithmetic & tradeoffs</h5>
-                      <WaiverArithmetic move={item} />
+                      <WaiverArithmetic
+                        move={item}
+                        addPlayer={players.get(item.add_id)}
+                        dropPlayer={players.get(item.drop_id)}
+                      />
                       <p>
                         {item.season_cost == null
                           ? "Long-term roster value is considered before this drop."
@@ -1349,6 +1383,16 @@ function WaiverStrategy({
           season is fallback when the current sample is too small. Extra turnovers can hurt;
           shooting percentages use makes and attempts.
         </p>
+        {snapshot.market_coverage && (
+          <p className={snapshot.market_complete ? "search-summary" : "league-tied"}>
+            Market coverage: {snapshot.market_coverage.observed} observed of{" "}
+            {snapshot.market_coverage.provider_total ?? "unknown total"} ·{" "}
+            {snapshot.market_complete ? "provider exhaustion observed" : "partial / unverified"} ·
+            bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
+            {snapshot.market_coverage.fetched_at ?? "time unavailable"}. Market coverage qualifies
+            search, independently of matchup scoring completeness.
+          </p>
+        )}
         {snapshot.free_agents_truncated && (
           <p>
             The returned free-agent pool is limited; these are the best supported alternatives

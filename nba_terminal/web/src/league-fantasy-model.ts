@@ -45,7 +45,16 @@ export interface LeaguePlayer {
   health_source?: "espn" | "assumed_available";
   current_rates_source?: string | null;
   season_rates?: Stats | null;
-  rate_provenance?: Record<string, unknown>;
+  rate_provenance?: {
+    source: string | null;
+    season: string | null;
+    games: number | null;
+    small_sample: boolean;
+    fallback: boolean;
+    reason: string | null;
+    status: string;
+    fetched_at: string | null;
+  };
   active?: boolean;
   season_rank?: number | null;
   draft_rank?: number | null;
@@ -60,10 +69,21 @@ export interface TeamActuals {
     provisional: boolean;
     expected_player_games: number | null;
     covered_player_games: number | null;
-    gaps: string[];
+    gaps: (
+      | string
+      | { period?: number; player_id?: string | number; game_id?: string; reason: string }
+    )[];
     fetched_at: string | null;
   };
-  forecast_source: string;
+  forecast_source: string | null;
+  discrepancy?: Stats | null;
+  sources?: {
+    source: string;
+    status: string;
+    fetched_at: string | null;
+    source_updated_at?: string | null;
+    game_id?: string;
+  }[];
   forecast_totals: Stats | null;
   forecast_complete: boolean;
 }
@@ -123,6 +143,14 @@ export interface LeagueSnapshot {
   free_agents: LeaguePlayer[];
   free_agents_truncated: boolean;
   market_complete?: boolean | null;
+  market_coverage?: {
+    complete: boolean;
+    observed: number;
+    provider_total?: number | null;
+    limit?: number;
+    source: string;
+    fetched_at?: string;
+  };
   projection_metadata?: Record<
     string,
     { complete: boolean; source?: string; as_of?: string; reason?: string }
