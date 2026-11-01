@@ -19,7 +19,24 @@ export type PlayerBrowserContentProps = {
 
 const phases = ["Regular Season", "Pre Season", "Playoffs", "All Star", "Play In", "NBA Cup Final"];
 
-export function GameCenterShell({ players = false }: { players?: boolean }) {
+export type AnalyticsTool = "predictor" | "consistency" | "defense" | "slate" | "picks" | "catalog";
+export type AnalyticsToolsContentProps = { initialTool?: AnalyticsTool };
+const analyticsTools: AnalyticsTool[] = [
+  "predictor",
+  "consistency",
+  "defense",
+  "slate",
+  "picks",
+  "catalog",
+];
+
+export function GameCenterShell({
+  players = false,
+  tools = false,
+}: {
+  players?: boolean;
+  tools?: boolean;
+}) {
   const location = useLocation();
   const [search] = useSearchParams();
   const context = new URLSearchParams();
@@ -29,15 +46,21 @@ export function GameCenterShell({ players = false }: { players?: boolean }) {
   }
   const suffix = context.size ? `?${context}` : "";
   const onPlayers = location.pathname.startsWith("/players");
+  const onTools = location.pathname.startsWith("/tools");
   return (
     <>
       <nav className="game-center-sections" aria-label="Game Center sections">
-        <Link to={`/${suffix}`} aria-current={!onPlayers ? "page" : undefined}>
+        <Link to={`/${suffix}`} aria-current={!onPlayers && !onTools ? "page" : undefined}>
           Games
         </Link>
         {players && (
           <Link to={`/players${suffix}`} aria-current={onPlayers ? "page" : undefined}>
             Players
+          </Link>
+        )}
+        {tools && (
+          <Link to={`/tools${suffix}`} aria-current={onTools ? "page" : undefined}>
+            Analytics Tools
           </Link>
         )}
       </nav>
@@ -136,4 +159,22 @@ export function PlayersWorkspace({
       )}
     </>
   );
+}
+
+export function AnalyticsWorkspace({
+  Tools,
+}: {
+  Tools: ComponentType<AnalyticsToolsContentProps>;
+}) {
+  const { tool } = useParams();
+  const [search] = useSearchParams();
+  const requestedTool = tool || search.get("tool");
+  const selected = analyticsTools.find((item) => item === requestedTool);
+  if (requestedTool && !selected)
+    return (
+      <p role="alert">
+        Unknown analytics tool. <Link to="/tools">Browse analytics tools</Link>
+      </p>
+    );
+  return <Tools key={selected || "default"} initialTool={selected} />;
 }

@@ -12,7 +12,7 @@ Existing direct `/game/:gameId`, `/game/:gameId/player/:playerId`, and Fantasy q
 
 ## Analytics destinations from inventory
 
-The final Game Center will add **Analytics Tools** alongside Games and Players, containing the six meaningful standalone retained pages: Points predictor, Team consistency/CV, Team defense, Slate scanner, Picks archive, API reference. These are route/composition destinations, not implemented ports in this preparation. They will be exposed only with the actual LEGACY implementation and API contract. Raw estimates, definitions, valid sample counts, partial errors and unavailable metrics must remain visible.
+The shell now has a gated **Analytics Tools** destination alongside Games and Players, with prepared `/tools`, `/tools/:tool` and `?tool=` direct initial selection for the six meaningful standalone retained pages: Points predictor, Team consistency/CV, Team defense, Slate scanner, Picks archive, API reference. These are route/composition destinations, not implemented ports in this preparation. The `AnalyticsTools` component binding and backend `/api/tools` router/HTML shell serving wait for its exact source handoff. They will be exposed only with the actual LEGACY implementation and API contract. Raw estimates, definitions, valid sample counts, partial errors and unavailable metrics must remain visible.
 
 The initial inventory's remaining usable Player Profile dashboard/shooting/opponent/multi-season gaps are assigned to PLAYER revision 2, not silently dropped into documentation. Final parity must reconcile the revision-2 inventory with actual implementations. The missing archive `helper` source remains a genuine exact-parity limitation; its absent algorithm cannot be claimed as ported.
 

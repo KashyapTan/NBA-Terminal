@@ -12,6 +12,8 @@ import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./ap
 import { groupGamesByDate } from "./game-groups";
 import FantasyPage from "./FantasyPage";
 import {
+  AnalyticsWorkspace,
+  type AnalyticsToolsContentProps,
   GameCenterShell,
   PlayersWorkspace,
   type PlayerBrowserContentProps,
@@ -817,8 +819,10 @@ function FantasyWorkspace({ meta }: { meta: Meta }) {
 
 export function AppRoutes({
   playerBrowser: PlayerBrowser,
+  analyticsTools: AnalyticsTools,
 }: {
   playerBrowser?: ComponentType<PlayerBrowserContentProps>;
+  analyticsTools?: ComponentType<AnalyticsToolsContentProps>;
 } = {}) {
   const { meta, error } = useMeta();
   if (error)
@@ -837,10 +841,17 @@ export function AppRoutes({
     <AppShell>
       <Routes>
         <Route path="/fantasy" element={<FantasyWorkspace meta={meta} />} />
-        <Route element={<GameCenterShell players={Boolean(PlayerBrowser)} />}>
+        <Route
+          element={
+            <GameCenterShell players={Boolean(PlayerBrowser)} tools={Boolean(AnalyticsTools)} />
+          }
+        >
           <Route path="/" element={<Dashboard />} />
           <Route path="/game/:gameId" element={<GameDetails />} />
           <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
+          {AnalyticsTools && (
+            <Route path="/tools/:tool?" element={<AnalyticsWorkspace Tools={AnalyticsTools} />} />
+          )}
           {PlayerBrowser && (
             <Route
               path="/players/:playerId?"

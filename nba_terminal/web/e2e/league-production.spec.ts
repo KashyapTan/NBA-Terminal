@@ -31,7 +31,10 @@ test("production API returns one coherent pair, visible all-nine arithmetic and 
   await compared.selectOption("14");
   await expect(page.getByLabel("0 wins, 0 losses, 9 ties")).toBeVisible();
   await compared.selectOption("2");
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
+  const evidence = resolve(
+    process.cwd(),
+    process.env.V5_EVIDENCE_DIR || "../../code_review/v5_app/generated/fantasy",
+  );
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({
@@ -305,7 +308,10 @@ test("unknown budget displays conditional pairs without a false no-benefit concl
   ).toHaveCount(0);
   await expect(page.locator(".secondary-alternatives")).toHaveAttribute("open", "");
   await expect(page.locator(".secondary-alternatives .pickup-list > li").first()).toBeVisible();
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v5");
+  const evidence = resolve(
+    process.cwd(),
+    process.env.V5_EVIDENCE_DIR || "../../code_review/v5_app/generated/fantasy",
+  );
   mkdirSync(evidence, { recursive: true });
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],

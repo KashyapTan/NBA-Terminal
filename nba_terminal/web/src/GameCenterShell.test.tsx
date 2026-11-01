@@ -4,7 +4,7 @@ import { Link, MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes, MetaProvider } from "./App";
 import { getGame } from "./api";
-import type { PlayerBrowserContentProps } from "./GameCenterShell";
+import type { AnalyticsToolsContentProps, PlayerBrowserContentProps } from "./GameCenterShell";
 
 vi.mock("./api", () => ({
   getMeta: vi.fn(async () => ({
@@ -39,6 +39,9 @@ function BrowserContract({ season, phase, playerId, onPlayerSelect }: PlayerBrow
     </div>
   );
 }
+function ToolsContract({ initialTool }: AnalyticsToolsContentProps) {
+  return <h1>Tool contract: {initialTool || "default"}</h1>;
+}
 function HistoryControls() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,11 +57,14 @@ function HistoryControls() {
     </>
   );
 }
-function mount(path: string, enablePlayers = true) {
+function mount(path: string, enablePlayers = true, enableTools = false) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <MetaProvider>
-        <AppRoutes playerBrowser={enablePlayers ? BrowserContract : undefined} />
+        <AppRoutes
+          playerBrowser={enablePlayers ? BrowserContract : undefined}
+          analyticsTools={enableTools ? ToolsContract : undefined}
+        />
         <HistoryControls />
       </MetaProvider>
     </MemoryRouter>,
@@ -122,6 +128,30 @@ describe("Game Center shell contracts", () => {
       "/players?season=2026-27&phase=Regular%20Season",
     );
     expect(screen.queryByText(/Profile context/)).not.toBeInTheDocument();
+  });
+
+  it("prepares direct analytics destinations without claiming unintegrated analyses", async () => {
+    mount("/tools/consistency?season=2026-27", true, true);
+    expect(
+      await screen.findByRole("heading", { name: "Tool contract: consistency" }),
+    ).toBeInTheDocument();
+    const sections = screen.getByRole("navigation", { name: "Game Center sections" });
+    expect(within(sections).getByRole("link", { name: "Analytics Tools" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(sections).getByRole("link", { name: /^Games$/ })).not.toHaveAttribute(
+      "aria-current",
+    );
+    cleanup();
+    mount("/tools?tool=picks", true, true);
+    expect(
+      await screen.findByRole("heading", { name: "Tool contract: picks" }),
+    ).toBeInTheDocument();
+    cleanup();
+    mount("/tools/unknown", true, true);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unknown analytics tool");
+    expect(screen.queryByRole("heading", { name: /Tool contract/ })).not.toBeInTheDocument();
   });
 
   it("keeps unintegrated destinations hidden and preserves direct Fantasy queries", async () => {
