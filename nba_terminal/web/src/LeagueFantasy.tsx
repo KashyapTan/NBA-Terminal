@@ -1129,7 +1129,7 @@ function WaiverStrategy({
                       {item.season_cost == null
                         ? "Long-term roster value is considered before this drop."
                         : item.season_cost > 0
-                          ? "The weekly gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
+                          ? "The remaining-matchup gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
                           : "No long-term downgrade is estimated by the season-value model."}{" "}
                       Any legally droppable player can be evaluated. Use Protect to keep a player
                       out of recommendations.
@@ -1326,7 +1326,7 @@ export function LeagueDashboardSummary({ state }: { state: LeagueFantasyState })
           <h2>{team?.name ?? "Your league"}</h2>
           <p>Current opponent: {opponent?.name ?? "Unavailable"}</p>
           <p>
-            {team?.remaining_adds ?? "Unknown"} weekly adds remaining ·{" "}
+            {team?.remaining_adds ?? "Unknown"} matchup acquisitions remaining ·{" "}
             {state.snapshot.period.remaining_dates.length} remaining dates reported.
           </p>
           <p>

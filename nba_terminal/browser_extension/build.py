@@ -26,7 +26,12 @@ def build():
         if target == "firefox":
             manifest["background"] = {"scripts": ["background.js"]}
             manifest["browser_specific_settings"] = {
-                "gecko": {"id": "espn-session@nba-terminal.local", "strict_min_version": "128.0"}
+                "gecko": {
+                    "id": "espn-session@nba-terminal.local",
+                    "strict_min_version": "140.0",
+                    "data_collection_permissions": {"required": ["authenticationInfo", "websiteContent"]},
+                },
+                "gecko_android": {"strict_min_version": "142.0"},
             }
         else:
             manifest["background"] = {"service_worker": "background.js"}

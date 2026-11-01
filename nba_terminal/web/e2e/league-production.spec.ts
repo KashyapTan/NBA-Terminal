@@ -183,3 +183,50 @@ test("missing schedules, unsupported formats and failed connections stay honest"
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   await expect(page.getByLabel("Your ESPN team")).toHaveCount(0);
 });
+
+test("selected-five edits and saved league cap fallback use actual planner routes", async ({
+  page,
+}) => {
+  await connect(page, 129);
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  await expect(page.locator(".waiver-budget b")).toHaveText("?");
+  await page.getByText("Advanced inputs & data notes", { exact: true }).click();
+  const response = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/plan") &&
+      r.ok() &&
+      r.request().postDataJSON()?.matchup_add_limit_fallback === 7,
+  );
+  await page.getByRole("button", { name: "Save my confirmed cap of 7 for this league" }).click();
+  const plan = await (await response).json();
+  expect(plan.provenance.matchup_add_limit).toMatchObject({
+    source: "user-declared fallback",
+    league_id: 129,
+  });
+  await expect(page.locator(".waiver-budget")).toContainText("Your saved league cap fallback");
+  await expect(page.locator(".waiver-budget b")).toHaveText("1");
+  await page.getByText("Edit selected five categories", { exact: true }).click();
+  const desired = ["pts", "reb", "ast", "stl", "to"];
+  for (const category of LEAGUE_CATEGORIES) {
+    await page
+      .locator(".category-picker")
+      .getByRole("checkbox", { name: category.label, exact: true })
+      .setChecked(desired.includes(category.key));
+  }
+  const selection = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/plan") &&
+      r.ok() &&
+      r.request().postDataJSON()?.selected_categories?.length === 5,
+  );
+  await page.getByRole("button", { name: "Recalculate selected five" }).click();
+  expect((await (await selection).json()).selected_categories.sort()).toEqual(desired.sort());
+  await page.reload();
+  await expect(page.locator(".waiver-budget b")).toHaveText("1");
+  expect(await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:129:2027"))).toBe(
+    "7",
+  );
+  expect(
+    await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:123:2027")),
+  ).toBeNull();
+});

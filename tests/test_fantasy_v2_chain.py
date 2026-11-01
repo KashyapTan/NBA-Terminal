@@ -111,11 +111,11 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert snapshot["teams"][0]["roster"][2]["draft_round"] == 1
                 context = {"league_id": 123, "team_id": 1, "matchup_period_id": 2}
 
-                async def plan(overrides=None):
+                async def plan(overrides=None, **preferences):
                     response = await browser.post(
                         "/api/fantasy/espn/plan",
                         headers={"X-Fantasy-Request": "1"},
-                        json={"context": context, "player_overrides": overrides or {}},
+                        json={"context": context, "player_overrides": overrides or {}, **preferences},
                     )
                     assert response.status_code == 200
                     return response.json()
@@ -151,6 +151,22 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert "1002" not in core_protected["search"]["legal_drop_ids"]
                 available = await plan({"1": {"injured": False}})
                 assert available["baseline"]["minutes"] == initial["baseline"]["minutes"]
+                selected = ["pts", "reb", "ast", "stl", "to"]
+                edited = await plan(selected_categories=selected)
+                assert edited["selected_categories"] == selected
+                explicit = await plan(protected_ids=["1", "1002"])
+                assert not explicit["recommendations"]
+                raw["league"]["settings"]["acquisitionSettings"].pop("matchupAcquisitionLimit")
+                await browser.get("/api/fantasy/espn/snapshot?refresh=true")
+                fallback = await plan(matchup_add_limit_fallback=7)
+                assert fallback["remaining_adds"] + len(fallback["actions"]) == 1
+                assert fallback["provenance"]["matchup_add_limit"]["source"] == "user-declared fallback"
+                assert fallback["provenance"]["matchup_add_limit"]["league_id"] == 123
+                raw["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {}
+                await browser.get("/api/fantasy/espn/snapshot?refresh=true")
+                unknown = await plan(matchup_add_limit_fallback=7)
+                assert unknown["remaining_adds"] is None
+                assert not unknown["actions"]
 
     asyncio.run(scenario())
     assert len(calls) == 2

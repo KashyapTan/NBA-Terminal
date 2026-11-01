@@ -137,3 +137,19 @@ test("serialized popup consent generation and Forget reject content-script imper
   expect(state.grants[origin].account).toBeUndefined();
   expect((await call()).state).toBe("ready");
 });
+
+test("explicit new pairing is detected without waiting behind an old connection fingerprint", async () => {
+  const h = contentHarness();
+  await tick();
+  expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(1);
+  // Harness status now represents a fresh waiting_extension pair, while the
+  // content script retains the previous session fingerprint.
+  await h.timers.find(t => t.ms === 2000).fn();
+  await tick();
+  expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(2);
+  h.notify("forget");
+  await tick();
+  await h.timers.find(t => t.ms === 2000).fn();
+  await tick();
+  expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(2);
+});

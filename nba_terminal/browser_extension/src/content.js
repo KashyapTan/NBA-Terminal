@@ -55,6 +55,16 @@
   });
   setInterval(() => { void sync(); }, 60000);
   // Pairing can occur after content script startup; inexpensive local status only.
-  setInterval(() => { if (!lastFingerprint) void sync(); }, 2000);
+  setInterval(async () => {
+    if (busy) return;
+    try {
+      const pair = await request("/bridge/status");
+      if (!pair.enabled) { lastFingerprint = null; renewedAt = 0; return; }
+      // An explicit new Pair/Retry must not wait behind an old error backoff
+      // or a prior connection's one-minute poll. No page-to-extension command.
+      if (pair.state === "waiting_extension") { nextAttempt = 0; lastFingerprint = null; }
+      if (!lastFingerprint) void sync();
+    } catch { /* Local server may be restarting. Normal sync keeps bounded backoff. */ }
+  }, 2000);
   void sync();
 })();

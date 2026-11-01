@@ -387,6 +387,8 @@ async def waiver_plan(request: Request, response: Response) -> dict:
         "candidate_ids",
         "droppable_ids",
         "protected_ids",
+        "selected_categories",
+        "matchup_add_limit_fallback",
         "max_stream_slots",
         "weekly_add_limit",
         "used_adds",

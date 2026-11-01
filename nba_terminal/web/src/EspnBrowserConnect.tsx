@@ -3,12 +3,14 @@ import { browserBridgeApi, type BrowserBridgeStatus } from "./league-fantasy-api
 
 const setup = "/api/fantasy/espn/bridge/setup";
 const messages: Record<NonNullable<BrowserBridgeStatus["state"]>, string> = {
-  waiting_extension: "Waiting for the extension. Open its popup on this tab and choose Enable.",
+  waiting_extension:
+    "Waiting for the extension. Open its popup on this tab and choose Allow ESPN session.",
   no_espn_session:
     "Waiting for ESPN sign-in. Complete sign-in and any verification in the ESPN tab.",
   connected: "Browser session connected. Loading your league…",
   account_changed: "Your ESPN account changed. Re-enable the extension to approve this account.",
-  permission_denied: "ESPN permission is required. Open the extension and choose Enable to retry.",
+  permission_denied:
+    "ESPN permission is required. Open the extension and choose Allow ESPN session to retry.",
   error: "The browser connection could not complete. Retry or use the manual fallback.",
 };
 
@@ -93,8 +95,8 @@ export function EspnBrowserConnect({ onConnected }: { onConnected?: () => Promis
           </li>
           <li>
             Connect below. Open the extension on this NBA Terminal tab, review consent and choose
-            Enable to grant ESPN cookie access. Use the browser profile/container where you sign in
-            to ESPN.
+            Allow ESPN session to grant ESPN cookie access. Use the browser profile/container where
+            you sign in to ESPN.
           </li>
         </ol>
         <p>
