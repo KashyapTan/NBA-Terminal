@@ -1,0 +1,8 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Unauthenticated public service smoke; no private accounts 2026-11-01T16:37:15.243796+00:00
+defense {'state': 'ready', 'errors': [], 'missing_zone_teams': 0, 'rows_count': 30}
+consistency {'state': 'ready', 'errors': [], 'rows_count': 9}
+slate {'state': 'ready', 'errors': [], 'qualified_players': 29, 'evaluated_players': 29, 'missing_players': 0, 'insufficient_players': 0, 'rows_count': 0, 'games_count': 4}
+predictor {'state': 'partial', 'errors': [], 'projection': None, 'valid_games': 5, 'missing_context': ['is_home'], 'context_sources': {'def_rating': 'NBA returned sample', 'league_def_rating': 'NBA returned sample', 'pace': 'NBA returned sample', 'league_pace': 'NBA returned sample', 'rest_days': 'NBA returned sample', 'is_home': 'unavailable'}}
+picks {'state': 'ready', 'errors': [], 'files_count': 48}
+catalog {'state': 'ready', 'errors': [], 'endpoints_count': 1}

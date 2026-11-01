@@ -1,0 +1,8 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+nba_terminal/services/legacy_tools.py     304      0    118      8    98%   74->76, 77->79, 195->179, 404->406, 423->418, 505->504, 509->512, 516->515
+-----------------------------------------------------------------------------------
+TOTAL                                     359      0    126      8    98%
+
+1 file skipped due to complete coverage.

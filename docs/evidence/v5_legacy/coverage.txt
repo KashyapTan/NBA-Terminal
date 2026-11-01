@@ -1,0 +1,8 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Name                                   Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------
+nba_terminal/services/game_center.py     232      6     68      7    96%   120, 123, 127, 130, 141, 176, 337->336
+----------------------------------------------------------------------------------
+TOTAL                                    350      6     90      7    97%
+
+1 file skipped due to complete coverage.
