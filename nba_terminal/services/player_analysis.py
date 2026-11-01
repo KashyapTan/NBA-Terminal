@@ -308,8 +308,7 @@ def _fetch_history(
         context["opponent_abbreviation"] = opponent
 
     if opponent and "MATCHUP" in frame:
-        matchup_pattern = rf"(?<![A-Z0-9]){re.escape(opponent)}(?![A-Z0-9])"
-        opponent_frame = frame[frame["MATCHUP"].astype(str).str.upper().str.contains(matchup_pattern, regex=True)]
+        opponent_frame = frame[frame["MATCHUP"].map(_matchup_opponent) == opponent]
     else:
         opponent_frame = frame.iloc[0:0]
 
@@ -430,6 +429,12 @@ def _empty_history(season: str, phase: str, state: str, note: str) -> dict[str, 
         "games": [],
         "opponent_games": [],
     }
+
+
+def _matchup_opponent(value: Any) -> str | None:
+    """NBA logs place the player's team first, including games before a trade."""
+    match = re.fullmatch(r"\s*[A-Z0-9]{2,5}\s+(?:VS\.?|@)\s+([A-Z0-9]{2,5})\s*", str(value), re.IGNORECASE)
+    return match.group(1).upper() if match else None
 
 
 def _opponent_abbreviation(context: dict[str, Any], current: dict[str, Any]) -> str | None:

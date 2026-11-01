@@ -299,6 +299,13 @@ def _season_from_game_id(game_id: str) -> str:
     return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 
+def _traditional_record(row: pd.Series) -> dict[str, Any]:
+    """Normalize provider TO/TOV aliases without turning unknown turnovers into zero."""
+    item = {str(key).lower(): _serial(value) for key, value in row.items()}
+    item["tov"] = next((item[key] for key in ("tov", "to", "turnovers") if item.get(key) is not None), None)
+    return item
+
+
 def fetch_game_boxscore(game_id: str, season: str | None = None) -> dict[str, Any]:
     """Return traditional player and team box-score rows for one game."""
     if not game_id.isdigit() or len(game_id) != 10:
@@ -310,13 +317,13 @@ def fetch_game_boxscore(game_id: str, season: str | None = None) -> dict[str, An
     lookup = _team_lookup()
     players_out = []
     for _, row in players_frame.iterrows():
-        item = {str(k).lower(): _serial(v) for k, v in row.items()}
+        item = _traditional_record(row)
         team = lookup.get(int(row.get("TEAM_ID", 0)))
         item["team"] = team
         players_out.append(item)
     teams_out = []
     for _, row in team_frame.iterrows():
-        item = {str(k).lower(): _serial(v) for k, v in row.items()}
+        item = _traditional_record(row)
         item["team"] = lookup.get(int(row.get("TEAM_ID", 0)))
         teams_out.append(item)
     selected_season = season or _season_from_game_id(game_id)

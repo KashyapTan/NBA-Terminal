@@ -507,3 +507,69 @@ def test_reference_game_log_mixed_case_ids_keep_profile_and_links_available(monk
     assert profile["history"]["state"] == "available"
     assert profile["history"]["games_played"] == 3
     assert profile["history"]["games"][0]["game_id"] == "0022400001"
+
+
+def test_captured_real_game_log_parser_restores_profile_and_selected_game_history(monkeypatch):
+    from pathlib import Path
+
+    from nba_api.stats.library.http import NBAStatsResponse
+
+    raw = Path("tests/fixtures/nba_playergamelog_playoffs_2025.json").read_text()
+    original_log = player_analysis.playergamelog.PlayerGameLog
+    original_advanced = player_analysis.boxscoreadvancedv3.BoxScoreAdvancedV3
+
+    def replay_log(**kwargs):
+        endpoint = original_log(get_request=False, **kwargs)
+        endpoint.nba_response = NBAStatsResponse(response=raw, status_code=200, url="captured-public-playergamelog")
+        endpoint.load_response()
+        frame = endpoint.get_data_frames()[0]
+        assert frame.shape == (23, 27)
+        assert "Game_ID" in frame and "GAME_ID" not in frame
+        return endpoint
+
+    def replay_advanced(**kwargs):
+        endpoint = original_advanced(get_request=False, **kwargs)
+        endpoint.nba_response = NBAStatsResponse(
+            response=Path("tests/fixtures/nba_boxscoreadvancedv3_finals_2025.json").read_text(),
+            status_code=200, url="captured-public-v3",
+        )
+        endpoint.load_response()
+        return endpoint
+
+    monkeypatch.setattr(player_analysis.playergamelog, "PlayerGameLog", replay_log)
+    monkeypatch.setattr(player_analysis.boxscoreadvancedv3, "BoxScoreAdvancedV3", replay_advanced)
+    profile = player_analysis.fetch_player_profile(1628983, "2024-25", "Playoffs")
+    assert profile["history_state"] == "available"
+    assert profile["history"]["games_played"] == 23
+    assert profile["history"]["summary"]["PTS"]["mean"] == pytest.approx(29.91304347826087)
+    assert profile["history"]["games"][0]["game_id"] == "0042400407"
+    assert profile["history"]["games"][0]["game_date"] == "2025-06-22"
+    assert all(len(row["game_id"]) == 10 for row in profile["history"]["games"])
+    assert profile["shooting"]["ts_pct"]["games"] == 23
+    assert profile["shooting"]["ts_pct"]["value"] == pytest.approx(0.5738306532328017)
+    monkeypatch.setattr(player_analysis.game_center, "fetch_player_game_analysis", lambda *args: {
+        "game_id": "0042400407", "player": {"player_id": 1628983}, "stats": {}, "shots": [],
+        "game_context": {"opponent": {"abbreviation": "IND"}},
+    })
+    selected = player_analysis.fetch_player_game_analysis("0042400407", 1628983, "2024-25", "Playoffs")
+    assert selected["history_state"] == "available"
+    assert selected["history"]["games_played"] == 23
+    assert selected["history"]["opponent_games_played"] == 7
+    assert selected["game_context"]["game_date"] == "2025-06-22"
+    assert selected["advanced_stats_state"] == "available"
+
+
+def test_opponent_sample_excludes_games_played_for_opponent_and_malformed_matchups(monkeypatch):
+    frame = pd.DataFrame([
+        {"GAME_ID": "0022600152", "GAME_DATE": pd.Timestamp("2026-10-31"), "MATCHUP": "ATL vs. BOS", "PTS": 20},
+        {"GAME_ID": "0022600001", "GAME_DATE": pd.Timestamp("2026-10-20"), "MATCHUP": "BOS vs. MIA", "PTS": 40},
+        {"GAME_ID": "0022600002", "GAME_DATE": pd.Timestamp("2026-10-19"), "MATCHUP": "ATL @ BOS", "PTS": 30},
+        {"GAME_ID": "0022600003", "GAME_DATE": pd.Timestamp("2026-10-18"), "MATCHUP": "BOS", "PTS": 99},
+        {"GAME_ID": "0022600004", "GAME_DATE": pd.Timestamp("2026-10-17"), "MATCHUP": "ATL vs. BOS extra", "PTS": 99},
+        {"GAME_ID": "0022600005", "GAME_DATE": pd.Timestamp("2026-10-16"), "MATCHUP": None, "PTS": 99},
+    ])
+    monkeypatch.setattr(player_analysis, "_fetch_game_log", lambda *args: frame)
+    history, _ = player_analysis._fetch_history(123, "2026-27", "Regular Season",
+        {"team": {"abbreviation": "ATL"}, "opponent": {"abbreviation": "BOS"}}, "0022600152")
+    assert [row["game_id"] for row in history["opponent_games"]] == ["0022600152", "0022600002"]
+    assert history["opponent_games_played"] == 2

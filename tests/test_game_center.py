@@ -392,3 +392,27 @@ def test_schedule_window_preserves_live_final_and_special_statuses(monkeypatch):
         row = schedule_row("0022500001", "2025-11-02", status=status)
         row["gameStatusText"] = None
         assert service._schedule_game(pd.Series(row), service._team_lookup())["status"] == expected
+
+
+def test_real_traditional_provider_to_reaches_player_and_team_tov(monkeypatch):
+    from pathlib import Path
+
+    from nba_api.stats.library.http import NBAStatsResponse
+
+    raw = Path("tests/fixtures/nba_traditional_v2_current_2026.json").read_text()
+    endpoint = service.boxscoretraditionalv2.BoxScoreTraditionalV2(game_id="0022600152", get_request=False)
+    endpoint.nba_response = NBAStatsResponse(response=raw, status_code=200, url="captured-public-traditional-v2")
+    endpoint.load_response()
+    monkeypatch.setattr(service.boxscoretraditionalv2, "BoxScoreTraditionalV2", lambda **kwargs: endpoint)
+    monkeypatch.setattr(service, "_schedule_dataframe", lambda *args, **kwargs: pd.DataFrame({"gameId": []}))
+    box = service.fetch_game_boxscore("0022600152", "2026-27")
+    jaden = next(row for row in box["players"] if row["player_id"] == 1630183)
+    assert jaden["tov"] == jaden["to"] == 2
+    assert len(box["teams"]) == 2
+    assert all(row["tov"] == row["to"] for row in box["teams"])
+
+
+@pytest.mark.parametrize("row, expected", [({"TO": None}, None), ({"TO": 0}, 0),
+                                         ({"TOV": 3}, 3), ({"TURNOVERS": 4}, 4), ({}, None)])
+def test_traditional_turnover_aliases_preserve_unknown_and_zero(row, expected):
+    assert service._traditional_record(pd.Series(row))["tov"] == expected
