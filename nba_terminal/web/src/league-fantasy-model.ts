@@ -44,12 +44,51 @@ export interface LeaguePlayer {
   health_status?: "available" | "out";
   health_source?: "espn" | "assumed_available";
   current_rates_source?: string | null;
+  season_rates?: Stats | null;
+  rate_provenance?: {
+    source: string | null;
+    season: string | null;
+    games: number | null;
+    small_sample: boolean;
+    fallback: boolean;
+    reason: string | null;
+    status: string;
+    fetched_at: string | null;
+  };
+  active?: boolean;
   season_rank?: number | null;
   draft_rank?: number | null;
   draft_pick?: number | null;
   draft_round?: number | null;
 }
+export interface TeamActuals {
+  official: { totals: Stats | null; source: string; fetched_at: string | null };
+  nba_derived: {
+    totals: Stats | null;
+    complete: boolean;
+    provisional: boolean;
+    expected_player_games: number | null;
+    covered_player_games: number | null;
+    gaps: (
+      | string
+      | { period?: number; player_id?: string | number; game_id?: string; reason: string }
+    )[];
+    fetched_at: string | null;
+  };
+  forecast_source: string | null;
+  discrepancy?: Stats | null;
+  sources?: {
+    source: string;
+    status: string;
+    fetched_at: string | null;
+    source_updated_at?: string | null;
+    game_id?: string;
+  }[];
+  forecast_totals: Stats | null;
+  forecast_complete: boolean;
+}
 export interface LeagueTeam {
+  actuals?: TeamActuals;
   id: number;
   name: string;
   ownership_verified: boolean;
@@ -103,6 +142,19 @@ export interface LeagueSnapshot {
   teams: LeagueTeam[];
   free_agents: LeaguePlayer[];
   free_agents_truncated: boolean;
+  market_complete?: boolean | null;
+  market_coverage?: {
+    complete: boolean;
+    observed: number;
+    provider_total?: number | null;
+    limit?: number;
+    source: string;
+    fetched_at?: string;
+  };
+  projection_metadata?: Record<
+    string,
+    { complete: boolean; source?: string; as_of?: string; reason?: string }
+  >;
   data_gaps: string[];
 }
 export interface ConnectLeague {
@@ -133,10 +185,21 @@ export interface PlannerPreferences {
   remaining_dates?: string[];
   selected_categories?: Category[];
   matchup_add_limit_fallback?: number | null;
+  allow_core_drops?: boolean;
 }
 /** UI boundary for the later optimizer adapter; never compute probabilities in the browser. */
 export interface CategoryStrategy {
-  classification: "favored" | "swing" | "reachable" | "punt" | "unknown";
+  classification:
+    | "cushion"
+    | "favored"
+    | "swing"
+    | "reachable"
+    | "trailing"
+    | "punt"
+    | "unknown"
+    | "winning"
+    | "losing"
+    | "tied";
   explanation: string;
   projected_margin: number | null;
   historical_margin: number | null;
@@ -155,7 +218,46 @@ export interface CategoryStrategy {
   best_pickup_margin?: number | null;
   can_flip_with_one_move?: boolean;
 }
+export interface PrimitiveArithmetic {
+  before: number;
+  add: number;
+  drop: number;
+  spillover: number;
+  after: number;
+  net: number;
+}
+export interface CategoryArithmetic {
+  before: number | null;
+  after: number | null;
+  net: number | null;
+  opponent_before: number | null;
+  opponent_after: number | null;
+  lower_is_better: boolean;
+  add?: number;
+  drop?: number;
+  spillover?: number;
+  makes?: PrimitiveArithmetic;
+  attempts?: PrimitiveArithmetic;
+  percentage_points?: number | null;
+}
+export interface PlanArithmetic {
+  primitives: Record<string, PrimitiveArithmetic>;
+  categories: Record<Category, CategoryArithmetic>;
+}
 export interface PickupRecommendation {
+  arithmetic?: PlanArithmetic;
+  score_before?: number;
+  score_after?: number;
+  add_starts?: number;
+  drop_starts?: number;
+  zero_drop_reason?: string | null;
+  lineup_changes?: {
+    displaced: { date: string; player_id: string; name: string }[];
+    recovered: { date: string; player_id: string; name: string }[];
+    net_starts: number;
+  };
+  rate_evidence?: { add?: LeaguePlayer["rate_provenance"]; drop?: LeaguePlayer["rate_provenance"] };
+  rate_provenance?: { add?: string; drop?: string };
   add_id: string;
   drop_id: string;
   date: string;
@@ -183,6 +285,10 @@ export interface PickupRecommendation {
         lineup_other_net: number | null;
         net_total: number | null;
         weighted?: {
+          add_makes_rate?: number | null;
+          add_attempts_rate?: number | null;
+          drop_makes_rate?: number | null;
+          drop_attempts_rate?: number | null;
           before_makes: number | null;
           before_attempts: number | null;
           after_makes: number | null;
@@ -205,8 +311,28 @@ export interface PickupRecommendation {
     >
   >;
 }
+/** Scores are dimensionless 0..1; the UI displays them on a heuristic 0..100 scale. */
+export interface RecommendedPlan {
+  moves: PickupRecommendation[];
+  score_before: number;
+  score_after: number;
+  focus_score_after: number;
+  season_cost: number;
+  net_score_gain: number;
+  arithmetic: PlanArithmetic;
+  budget_before: number | null;
+  budget_after: number | null;
+  acquisitions: number;
+  viable_five: boolean;
+  weakest_selected_edge: number;
+  optimality: string;
+}
 export interface WaiverPlan {
+  recommended_plan?: RecommendedPlan | null;
   search?: {
+    first_layer_pairs_evaluated?: number;
+    first_layer_pairs_total?: number;
+    first_layer_complete?: boolean;
     candidate_pool?: number;
     candidate_limit?: number;
     evaluation_limit?: number;
@@ -253,6 +379,9 @@ export interface WaiverPlan {
 export interface PlanForecast {
   basis?: "recorded" | "forecast";
   totals: Stats;
+  opponent_totals?: Stats;
+  actual_primitives?: { user: Stats; opponent: Stats };
+  remaining_primitives?: { user: Stats; opponent: Stats };
   games: number | null;
   minutes: number | null;
   probability_five_wins: number | null;

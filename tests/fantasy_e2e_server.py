@@ -53,6 +53,27 @@ def synthetic_get(self, views, *args, **kwargs):
         if self.league_id == 130:
             for team in data["league"]["teams"]:
                 team["transactionCounter"]["matchupAcquisitionTotals"] = {}
+    if self.league_id == 131:
+        # Known two-acquisition budget, distinct from the default one-add matchup.
+        data["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {str(current): 5}
+    if self.league_id == 132:
+        # Explicit core 30-PTS starter vs zero-PTS/high-AST pickup, one active slot.
+        data["league"]["settings"]["rosterSettings"]["lineupSlotCounts"] = {"0": 1, "12": 12}
+        for team in data["league"]["teams"]:
+            team["roster"]["entries"] = team["roster"]["entries"][:1]
+        data["pool"]["players"] = data["pool"]["players"][:1]
+        ids = {1, 100}
+        for collection in (data["cards"], data["pool"]):
+            for entry in collection["players"]:
+                player = espn.player_body(entry)
+                if player["id"] not in ids:
+                    continue
+                if player["id"] == 100:
+                    player["fullName"] = "Fixture assist specialist"  # No matching NBA sample in this fixture.
+                for split in player["stats"]:
+                    split["stats"].update({"0": 300 if player["id"] == 1 else 0,
+                                          "3": 0 if player["id"] == 1 else 200,
+                                          "2": 1, "6": 1, "17": 1, "11": 10, "42": 10})
     if self.league_id == 125:
         data["league"]["settings"]["scoringSettings"]["scoringType"] = "H2H_POINTS"
     if self.league_id == 124:

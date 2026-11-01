@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from nba_terminal.services import fantasy_nba
+from nba_terminal.services import fantasy_actuals, fantasy_nba
 
 BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba"
 STAT_IDS = {
@@ -50,6 +50,7 @@ SLOTS = {
     11: "UTIL",
     12: "BENCH",
     13: "IR",
+    14: "IR+",
     15: "Rookie",
 }
 NY = ZoneInfo("America/New_York")
@@ -201,20 +202,7 @@ class EspnClient:
 
         period = raw.get("scoringPeriodId")
         schedule = optional("Professional schedule", lambda: self.get(["proTeamSchedules_wl"], season=True))
-        pool = optional(
-            "Free agents",
-            lambda: self.get(
-                ["kona_player_info"],
-                {
-                    "players": {
-                        "filterStatus": {"value": ["FREEAGENT", "WAIVERS"]},
-                        "limit": 100,
-                        "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
-                    },
-                },
-                scoring_period=period,
-            ),
-        )
+        pool = optional("Free agents", lambda: self.market(period))
         # One batched card request for selected rosters and bounded FA sample, not per-player calls.
         ids = {player_id(entry) for team in raw["teams"] for entry in team.get("roster", {}).get("entries", [])}
         ids.update(player_id(entry) for entry in pool.get("players", []))
@@ -275,16 +263,68 @@ class EspnClient:
             replacements = [m for m in history.get("schedule", []) if m.get("matchupPeriodId") == previous]
             if replacements:
                 raw = raw | {"schedule": merge_history(raw.get("schedule", []), replacements)}
-        bundle = fantasy_nba.load(
-            self.season_id,
-            need_schedule=sum(
-                bool(games) for games in normalize_schedule(schedule, datetime.now(timezone.utc)).values()
-            )
-            < 30,
-        )
-        return normalize(
+        bundle = fantasy_nba.load(self.season_id)
+        result = normalize(
             raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps, nba=bundle
         )
+        nba_schedule = fantasy_nba.schedule_games(bundle.get("schedule"), self.season_id, datetime.now(timezone.utc))
+        # NBA game IDs are required for production; ESPN IDs must never be passed to NBA endpoints.
+        fantasy_actuals.enrich_snapshot(self, raw, result, nba_schedule)
+        return result
+
+    def market(self, period: int | None) -> dict:
+        """Page the observed market, stopping honestly at the 800-player resource bound."""
+        entries, seen, complete = [], set(), False
+        total = None
+        for offset in range(0, 800, 100):
+            try:
+                page = self.get(
+                    ["kona_player_info"],
+                    {
+                        "players": {
+                            "filterStatus": {"value": ["FREEAGENT", "WAIVERS"]},
+                            "limit": 100,
+                            "offset": offset,
+                            "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
+                        }
+                    },
+                    scoring_period=period,
+                )
+            except EspnError:
+                if not entries:
+                    raise
+                break
+            rows = page.get("players")
+            if not isinstance(rows, list):
+                break
+            total = count(page.get("totalPlayers"))
+            added = 0
+            for entry in rows:
+                pid = player_id(entry)
+                if pid is not None and pid not in seen:
+                    seen.add(pid)
+                    entries.append(entry)
+                    added += 1
+            if not rows or (len(rows) < 100 and (total is None or len(entries) >= total)):
+                complete = True
+                break
+            if total is not None and len(entries) >= total:
+                complete = True
+                break
+            if added < len(rows):  # Repeated/unstable page: never claim full market.
+                break
+        return {
+            "players": entries,
+            "coverage": {
+                "complete": complete,
+                "observed": len(entries),
+                "provider_total": total,
+                "limit": 800,
+                "page_size": 100,
+                "source": "espn_paginated_market",
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
 
 
 def player_body(entry: dict) -> dict:
@@ -327,18 +367,23 @@ def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
     for team in raw.get("settings", {}).get("proTeams", []):
         if "proGamesByScoringPeriod" not in team:
             continue
-        games = []
+        games, unknown = [], False
         for period, entries in team["proGamesByScoringPeriod"].items():
             for game in entries:
                 timestamp = number(game.get("date"))
                 if timestamp is None:
+                    unknown = True
                     continue
                 try:
                     start = datetime.fromtimestamp(timestamp / 1000, timezone.utc)
                     scoring_id = int(period)
                 except (ValueError, OverflowError, OSError):
+                    unknown = True
                     continue
-                if game.get("startTimeTBD") or game.get("validForLocking") is False:
+                if game.get("validForLocking") is False:
+                    continue
+                if game.get("startTimeTBD"):
+                    unknown = True
                     continue
                 games.append(
                     {
@@ -353,7 +398,7 @@ def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
                         else game.get("homeProTeamId"),
                     }
                 )
-        if games:
+        if not unknown:
             result[team["id"]] = sorted(games, key=lambda game: game["start_at"])
     return result
 
@@ -390,6 +435,7 @@ def normalize_player(
         "pro_team_id": player.get("proTeamId"),
         "positions": positions,
         "lineup_slot": SLOTS.get(entry.get("lineupSlotId")),
+        "active": entry.get("lineupSlotId") not in (13, 14),
         "injury_status": injury,
         "health_status": "out" if out else "available",
         "health_source": "espn" if out or injury == "ACTIVE" else "assumed_available",
@@ -404,7 +450,7 @@ def normalize_player(
         "locked": None,
         "availability": availability,
         "eligible": availability == "FREEAGENT"
-        and any(position in set(SLOTS.values()) - {"BENCH", "IR", "Rookie"} for position in positions),
+        and any(position in set(SLOTS.values()) - {"BENCH", "IR", "IR+", "Rookie"} for position in positions),
         "current_rates": current,
         "current_rates_source": "espn_actual_season" if current is not None else None,
         "schedule_source": schedule[0].get("source") if schedule else None,
@@ -541,9 +587,23 @@ def normalize(
     )
     matchup = raw.get("status", {}).get("currentMatchupPeriod")
     schedules = normalize_schedule(schedule, now)
+    schedule_sources = {team: "espn_schedule" for team in schedules}
+    calendar_verified = len(scoring_date_anchors(schedules)) == 1
     if nba is not None:
         fallback = fantasy_nba.schedule_games(nba.get("schedule"), raw["seasonId"], now)
-        schedules = fallback | schedules  # ESPN data wins for every team it actually covers.
+        anchors = scoring_date_anchors(schedules)
+        if len(anchors) == 1:
+            anchor = next(iter(anchors))
+            for games in fallback.values():
+                for game in games:
+                    game["scoring_period_id"] = (date.fromisoformat(game["date"]) - anchor).days
+        for team in fallback:
+            if nba.get("schedule_status") in ("fresh", "cached") or team not in schedules:
+                schedule_sources[team] = "nba_schedule"
+        # Fresh NBA schedule is primary; stale NBA never displaces a usable ESPN schedule.
+        schedules = (
+            (schedules | fallback) if nba.get("schedule_status") in ("fresh", "cached") else (fallback | schedules)
+        )
     periods, period_source = matchup_scoring_periods(raw, schedules)
     dates = sorted(
         {game["date"] for games in schedules.values() for game in games if game["scoring_period_id"] in periods}
@@ -570,7 +630,9 @@ def normalize(
     acquisition = settings.get("acquisitionSettings", {})
     raw_cap = count(acquisition.get("matchupAcquisitionLimit"))
     per_day = acquisition.get("matchupLimitPerScoringPeriod")
-    cap = raw_cap if per_day is False else None
+    absent_cap = "matchupAcquisitionLimit" not in acquisition or acquisition["matchupAcquisitionLimit"] is None
+    fallback_cap = absent_cap and per_day is not True
+    cap = 7 if fallback_cap else raw_cap if per_day is False else None
     totals, opponent, history = {}, None, []
     for match in raw.get("schedule", []):
         home, away = match.get("home", {}), match.get("away", {})
@@ -623,6 +685,9 @@ def normalize(
                 "ownership_verified": choices[team["id"]]["ownership_verified"],
                 "roster": roster,
                 "totals": totals.get(team["id"]),
+                "actuals": fantasy_actuals.reconstruct(
+                    team["id"], {}, {}, {}, {}, totals.get(team["id"]), now.isoformat()
+                ),
                 "season_acquisitions": team.get("transactionCounter", {}).get("acquisitions"),
                 "weekly_used_adds": used,
                 "weekly_usage_source": "espn_matchup_acquisition_totals" if used is not None else None,
@@ -642,7 +707,7 @@ def normalize(
     lineup = [
         SLOTS.get(int(slot), f"UNKNOWN_{slot}")
         for slot, count in lineup_counts.items()
-        if int(slot) not in (12, 13)
+        if int(slot) not in (12, 13, 14, 15)
         for _ in range(min(max(int(count), 0), 50))
     ]
     if any(team["weekly_used_adds"] is None for team in teams):
@@ -656,6 +721,10 @@ def normalize(
     if not periods or not dates:
         gaps.append("Matchup date coverage is unavailable; no dates were inferred from a nominal week.")
     all_players = [p for team in teams for p in team["roster"]] + free_agents
+    for player in all_players:
+        player["schedule_source"] = (
+            schedule_sources.get(player["pro_team_id"]) if player["schedule"] is not None else None
+        )
     if any(p["schedule"] is None for p in all_players):
         gaps.append("Some professional team schedules are unavailable; missing schedules are not zero games.")
     if any(p["current_rates"] is None or p["prior_rates"] is None for p in all_players):
@@ -686,7 +755,11 @@ def normalize(
                 "limit_per_scoring_period": per_day,
                 "matchup_add_limit": cap,
                 "daily_add_limit": raw_cap if per_day is True else None,
-                "cap_source": "espn_acquisition_settings" if raw_cap is not None else None,
+                "cap_source": "league_fallback_7"
+                if fallback_cap
+                else "espn_acquisition_settings"
+                if raw_cap is not None
+                else None,
                 "unlimited": acquisition.get("matchupAcquisitionLimit") == -1,
                 "season_add_limit": acquisition.get("acquisitionLimit"),
             },
@@ -698,8 +771,19 @@ def normalize(
             "dates": dates,
             "remaining_dates": remaining,
             "source": period_source,
+            "calendar_verified": calendar_verified,
             "start_date": dates[0] if dates else None,
             "end_date": dates[-1] if dates else None,
+        },
+        "projection_metadata": {
+            "matchup_calendar": {
+                "complete": calendar_verified,
+                "source": "espn_scoring_date_anchors",
+                "reason": (
+                    "Verified ESPN scoring-date anchor" if calendar_verified
+                    else "ESPN scoring-date anchor unavailable or conflicting; NBA dates alone cannot verify matchup"
+                ),
+            }
         },
         "selected_team_id": selected,
         "opponent_team_id": opponent,
@@ -721,7 +805,12 @@ def normalize(
             for team in teams
         ],
         "free_agents": free_agents,
-        "free_agents_truncated": len(pool.get("players", [])) >= 100,
+        "free_agents_truncated": not pool.get("coverage", {}).get("complete", False),
+        "market_complete": pool.get("coverage", {}).get("complete"),
+        "market_coverage": pool.get(
+            "coverage",
+            {"complete": False, "observed": len(pool.get("players", [])), "source": "espn_unverified_single_page"},
+        ),
         "transactions": [
             {key: row.get(key) for key in ("id", "type", "status")}
             | {

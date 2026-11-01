@@ -747,3 +747,137 @@
     display: block;
   }
 }
+
+/* V4: arithmetic stays visible; wide numerical tables scroll within the card. */
+.recommended-sequence,
+.core-protection {
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #353a43);
+  border-radius: 12px;
+  min-width: 0;
+}
+.recommended-sequence h4 {
+  font-size: 1.1rem;
+}
+.core-protection small,
+.move-arithmetic td small {
+  display: block;
+  margin-top: 0.35rem;
+}
+.move-arithmetic {
+  min-width: 0;
+}
+.move-arithmetic .league-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.move-arithmetic table {
+  min-width: 850px;
+  font-variant-numeric: tabular-nums;
+}
+.move-arithmetic th,
+.move-arithmetic td {
+  white-space: normal;
+  min-width: 90px;
+  vertical-align: top;
+  padding: 0.65rem;
+}
+.move-arithmetic p,
+.rate-provenance {
+  color: #b8bfca;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.forecast-equation {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.secondary-alternatives > summary {
+  padding: 1rem;
+  cursor: pointer;
+}
+.focus-score {
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  .recommended-sequence {
+    padding: 0.75rem;
+  }
+  .recommended-sequence .pickup-list > li {
+    display: block;
+  }
+  .recommended-sequence .pickup-body {
+    min-width: 0;
+  }
+  .recommended-sequence .pickup-rank {
+    margin-bottom: 0.5rem;
+  }
+}
+.actual-sources {
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #353a43;
+  border-radius: 12px;
+}
+.actual-sources article {
+  margin-block: 1rem;
+  min-width: 0;
+}
+.actual-sources p,
+.actual-sources small {
+  color: #b8bfca;
+  line-height: 1.6;
+}
+
+.league-waiver,
+.actual-sources,
+.recommended-sequence,
+.secondary-alternatives,
+.pickup-list,
+.pickup-list > li {
+  min-width: 0;
+  max-width: 100%;
+}
+.recommended-sequence .pickup-body {
+  display: block;
+  min-width: 0;
+}
+.recommended-sequence .league-table-wrap {
+  max-width: 100%;
+}
+.recommended-sequence > .league-table-wrap small {
+  display: block;
+}
+.nine-category-net {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.nine-category-net > span {
+  border: 1px solid #333d4c;
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-size: 0.8rem;
+}
+.nine-category-net b {
+  display: block;
+  margin-top: 0.3rem;
+  font-variant-numeric: tabular-nums;
+}
+.arithmetic-scroll-hint {
+  font-size: 0.75rem;
+  color: #aeb8c7;
+}
+.source-total-comparison > summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+}
+@media (min-width: 1000px) {
+  .nine-category-net {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+}

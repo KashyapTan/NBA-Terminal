@@ -112,20 +112,22 @@ test("strategy hierarchy, score and five-category remaining-total alternatives r
                   : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/fantasy?fantasyTab=matchups");
   await expect(page.getByLabel("4 wins, 5 losses, 0 ties")).toBeVisible();
   await page.screenshot({ path: resolve(evidence, "ui-matchups-desktop.png"), fullPage: true });
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  await page.getByText(/Optional competing single-move alternatives/).click();
   await expect(page.locator(".pickup-list > li")).toHaveCount(12);
   await expect(page.getByText(/Conditional alternatives:/)).toBeVisible();
   await expect(page.getByText("15 beneficial alternatives")).toBeVisible();
   await page.getByRole("button", { name: /Show more alternatives/ }).click();
   await expect(page.locator(".pickup-list > li")).toHaveCount(15);
-  await page.locator(".pickup-details summary").first().click();
-  await expect(page.getByText(/12 × 4 starts − 10 × 4 starts = \+8 total/).first()).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /AST.*12 × 4 starts.*10 × 4 lost starts.*\+8/ }).first(),
+  ).toBeVisible();
   await page.screenshot({ path: resolve(evidence, "ui-waiver-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
@@ -161,7 +163,7 @@ test("browser setup and consented pairing states work without exposing cookie in
             : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
   mkdirSync(evidence, { recursive: true });
   await page.goto("/fantasy");
   await page.getByText("One-time browser setup", { exact: true }).click();

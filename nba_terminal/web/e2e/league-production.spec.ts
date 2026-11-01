@@ -20,60 +20,69 @@ async function connect(page: Page, league = 123) {
     await expect(page.getByText("Current opponent: Fixture Team 2", { exact: true })).toBeVisible();
   }
 }
-test("production chain evaluates all legal drops with selected five and preserves edits", async ({
+test("production API returns one coherent pair, visible all-nine arithmetic and rerun controls", async ({
   page,
 }, info) => {
   await connect(page);
   await page.getByRole("tab", { name: "Matchups", exact: true }).click();
   const compared = page.getByLabel("Compare league team");
   await expect(compared.locator("option")).toHaveCount(13);
-  await expect(page.getByRole("table").getByRole("row")).toHaveCount(10);
-  await expect(
-    page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: /TO/ }) }),
-  ).toContainText("Leading");
+  await expect(page.locator(".category-row")).toHaveCount(9);
   await compared.selectOption("14");
   await expect(page.getByLabel("0 wins, 0 losses, 9 ties")).toBeVisible();
   await compared.selectOption("2");
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v3");
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({
     path: resolve(evidence, `${info.project.name}-matchups-desktop.png`),
     fullPage: true,
   });
-  const initialResponse = page.waitForResponse(
-    (response) => response.url().endsWith("/api/fantasy/espn/plan") && response.ok(),
+  const response = page.waitForResponse(
+    (r) => r.url().endsWith("/api/fantasy/espn/plan") && r.ok(),
   );
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  const initialPlan = (await (await initialResponse).json()) as WaiverPlan;
-  expect(initialPlan.recommendations!.length).toBeGreaterThan(7);
-  expect(initialPlan.selected_categories).toHaveLength(5);
-  expect(initialPlan.search!.legal_drop_ids).toContain("1002");
-  expect(initialPlan.search!.evaluated_drop_ids).toContain("1002");
-  expect(
-    initialPlan.recommendations!.every(
-      (option) => option.net_score! > 0 && option.estimated_win_gain! > 0,
-    ),
-  ).toBe(true);
-  const primaryTarget = initialPlan.recommendations![0].target_categories[0];
-  expect(initialPlan.strategy?.[primaryTarget]?.recommended_target).toBe(true);
-  await expect(page.getByRole("heading", { name: /Focus on/ })).toContainText(
-    LEAGUE_CATEGORIES.find((category) => category.key === primaryTarget)!.label,
-  );
-  const alternatives = page.getByRole("region", { name: "Ranked pickup alternatives" });
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
-  await expect(page.locator(".category-overview tbody > tr")).toHaveCount(9);
-  await expect(page.locator(".category-overview thead th")).toHaveCount(6);
-  await expect(page.getByText(/Sequential matchup plan/)).toBeVisible();
+  const plan = (await (await response).json()) as WaiverPlan;
+  expect(plan.status, JSON.stringify(plan.reasons)).toBe("ready");
+  expect(plan.recommended_plan!.budget_before).toBe(1);
+  expect(plan.recommended_plan!.moves).toHaveLength(1);
+  expect(plan.selected_categories).toHaveLength(5);
+  const primary = page.getByRole("region", { name: "Recommended ordered plan" });
+  await expect(primary.locator(".pickup-list > li")).toHaveCount(1);
+  await expect(primary).toContainText("0 acquisitions left");
+  const move = plan.recommended_plan!.moves[0];
+  expect(move.drop_id).not.toBe("1001");
+  expect(Object.keys(move.arithmetic!.primitives)).toHaveLength(11);
+  for (const primitive of Object.values(move.arithmetic!.primitives)) {
+    expect(primitive.before + primitive.add - primitive.drop + primitive.spillover).toBeCloseTo(
+      primitive.after,
+      8,
+    );
+    expect(primitive.after - primitive.before).toBeCloseTo(primitive.net, 8);
+  }
+  const calculation = primary.getByRole("region", { name: "All nine move calculations" });
+  await expect(calculation.locator("tbody tr")).toHaveCount(9);
+  for (const { key, label } of LEAGUE_CATEGORIES) {
+    const row = calculation.getByRole("row").filter({
+      has: page.getByRole("rowheader", { name: key === "to" ? "TO ↓" : label, exact: true }),
+    });
+    await expect(row).toBeVisible();
+    await expect(row).not.toContainText("Unavailable");
+    await expect(row).not.toContainText("?");
+  }
+  await expect(
+    primary.getByRole("region", { name: "Overall plan category changes" }).locator("tbody tr"),
+  ).toHaveCount(9);
+  await expect(primary).toContainText("rate sample:");
   await expect(page.locator(".waiver-budget")).toContainText("6 used");
   await expect(page.locator(".waiver-budget b")).toHaveText("1");
-  await alternatives.locator(".pickup-details summary").first().click();
-  await expect(alternatives.getByText(/Weighted team shooting:/).first()).toBeVisible();
-  await expect(alternatives.getByText(/Weighted team shooting:/).first()).not.toContainText("?");
+  await expect(page.locator(".category-strategy-grid article")).toHaveCount(9);
+  await expect(page.getByText(/Optional competing single-move alternatives/)).toBeVisible();
   await page.screenshot({
     path: resolve(evidence, `${info.project.name}-waiver-desktop.png`),
     fullPage: true,
   });
+  await primary.screenshot({ path: resolve(evidence, `${info.project.name}-plan-desktop.png`) });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
@@ -82,50 +91,41 @@ test("production chain evaluates all legal drops with selected five and preserve
     path: resolve(evidence, `${info.project.name}-waiver-mobile.png`),
     fullPage: true,
   });
+  await primary.screenshot({ path: resolve(evidence, `${info.project.name}-plan-mobile.png`) });
+  await primary
+    .getByRole("heading", { name: "Best explored add/drop sequence" })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: resolve(evidence, `${info.project.name}-mobile-viewport.png`) });
+  const coreResponse = page.waitForResponse(
+    (r) => r.url().endsWith("/plan") && r.request().postDataJSON()?.allow_core_drops === true,
+  );
+  await page.getByLabel("Allow core-player drops for this analysis").check();
+  expect((await coreResponse).status()).toBe(200);
   await page.getByText("Edit availability & roster protection", { exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Protect Fixture Player 1001", exact: true }),
   ).toBeDisabled();
-  await expect(
-    page.getByRole("button", { name: "Protect Fixture Player 1002", exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("status")).toHaveCount(0);
-  await page.getByRole("button", { name: "Refresh league", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true })
-    .click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
-  await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(9);
-  await expect(
-    alternatives.getByRole("heading", { name: "Fixture Player 1", exact: true }),
-  ).toHaveCount(0);
-  await expect(alternatives.locator(".pickup-list")).toContainText("Fixture Player 1002");
-  await page.getByRole("button", { name: "Protect Fixture Player 1", exact: true }).click();
-  await expect(alternatives.locator(".pickup-list > li")).toHaveCount(12);
-  await page.route("**/api/fantasy/espn/plan", (route) =>
-    route.fulfill({ status: 503, json: { detail: "test busy" } }),
+  const availabilityResponse = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/plan") &&
+      r.request().postDataJSON()?.player_overrides?.["1"]?.injured === true,
   );
   await page
     .getByRole("button", { name: "Fixture Player 1 availability: Available", exact: true })
     .click();
+  expect((await availabilityResponse).status()).toBe(200);
+  await page.route("**/api/fantasy/espn/plan", (route) =>
+    route.fulfill({ status: 503, json: { detail: "test busy" } }),
+  );
+  await page
+    .getByRole("button", { name: "Fixture Player 1 availability: Out", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText("Analysis could not be loaded");
   await page.unroute("**/api/fantasy/espn/plan");
   await page.getByRole("button", { name: "Retry analysis", exact: true }).click();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(primary.locator(".pickup-list > li")).toHaveCount(1);
   await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Your fantasy workspace" })).toBeVisible();
-  await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
-  await expect(page.getByLabel("League ID", { exact: true })).toBeVisible();
 });
 
 test("private cookie flow uses the local session and enforces selectable ownership", async ({
@@ -167,8 +167,9 @@ test("missing schedules, unsupported formats and failed connections stay honest"
   await connect(page, 124);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
   await expect(
-    page.getByRole("region", { name: "Ranked pickup alternatives" }).locator(".pickup-list > li"),
-  ).toHaveCount(12);
+    page.getByRole("region", { name: "Recommended ordered plan" }).locator(".pickup-list > li"),
+  ).toHaveCount(0);
+  await expect(page.getByText(/Matchup calendar unverified:/)).toBeVisible();
   const fallbackSnapshot = await (await page.request.get("/api/fantasy/espn/snapshot")).json();
   expect(fallbackSnapshot.free_agents[0].schedule_source).toBe("nba_schedule");
   expect(fallbackSnapshot.free_agents[0].current_rates_source).toBe("nba_stats");
@@ -189,21 +190,7 @@ test("selected-five edits and saved league cap fallback use actual planner route
 }) => {
   await connect(page, 129);
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await expect(page.locator(".waiver-budget b")).toHaveText("?");
-  await page.getByText("Advanced inputs & data notes", { exact: true }).click();
-  const response = page.waitForResponse(
-    (r) =>
-      r.url().endsWith("/plan") &&
-      r.ok() &&
-      r.request().postDataJSON()?.matchup_add_limit_fallback === 7,
-  );
-  await page.getByRole("button", { name: "Save my confirmed cap of 7 for this league" }).click();
-  const plan = await (await response).json();
-  expect(plan.provenance.matchup_add_limit).toMatchObject({
-    source: "user-declared fallback",
-    league_id: 129,
-  });
-  await expect(page.locator(".waiver-budget")).toContainText("Your saved league cap fallback");
+  await expect(page.locator(".waiver-budget")).toContainText("League fallback cap (7)");
   await expect(page.locator(".waiver-budget b")).toHaveText("1");
   await page.getByText("Edit selected five categories", { exact: true }).click();
   const desired = ["pts", "reb", "ast", "stl", "to"];
@@ -223,10 +210,77 @@ test("selected-five edits and saved league cap fallback use actual planner route
   expect((await (await selection).json()).selected_categories.sort()).toEqual(desired.sort());
   await page.reload();
   await expect(page.locator(".waiver-budget b")).toHaveText("1");
-  expect(await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:129:2027"))).toBe(
-    "7",
-  );
+  expect(
+    await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:129:2027")),
+  ).toBeNull();
   expect(
     await page.evaluate(() => localStorage.getItem("nba-terminal:matchup-cap:123:2027")),
   ).toBeNull();
+});
+
+test("real routes preserve two-move ownership and nonzero 30-PTS drop arithmetic", async ({
+  page,
+}) => {
+  await connect(page, 131);
+  const initial = page.waitForResponse((r) => r.url().endsWith("/plan") && r.ok());
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  const multi = (await (await initial).json()) as WaiverPlan;
+  expect(multi.recommended_plan!.budget_before).toBe(2);
+  expect(multi.recommended_plan!.moves).toHaveLength(2);
+  const owned = new Set(
+    (await (await page.request.get("/api/fantasy/espn/snapshot")).json()).teams[0].roster.map(
+      (p: { id: string }) => p.id,
+    ),
+  );
+  for (const move of multi.recommended_plan!.moves) {
+    expect(owned.has(move.drop_id)).toBe(true);
+    expect(owned.has(move.add_id)).toBe(false);
+    owned.delete(move.drop_id);
+    owned.add(move.add_id);
+  }
+  await expect(
+    page.getByRole("region", { name: "Recommended ordered plan" }).locator(".pickup-list > li"),
+  ).toHaveCount(2);
+  await page.getByRole("tab", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect ESPN", exact: true }).click();
+  await connect(page, 132);
+  const coreBaseline = page.waitForResponse((r) => r.url().endsWith("/plan") && r.ok());
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  await coreBaseline;
+  await page.getByText("Edit selected five categories", { exact: true }).click();
+  const desired = ["ast", "reb", "stl", "blk", "to"];
+  for (const category of LEAGUE_CATEGORIES) {
+    await page
+      .locator(".category-picker")
+      .getByRole("checkbox", { name: category.label, exact: true })
+      .setChecked(desired.includes(category.key));
+  }
+  const selected = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/plan") && r.request().postDataJSON()?.selected_categories?.length === 5,
+  );
+  await page.getByRole("button", { name: "Recalculate selected five" }).click();
+  const protectedPlan = (await (await selected).json()) as WaiverPlan;
+  expect(protectedPlan.recommended_plan!.moves).toHaveLength(0);
+  expect(protectedPlan.protected_players!["1"]).toContain("Default core protection");
+  const overrideResponse = page.waitForResponse(
+    (r) => r.url().endsWith("/plan") && r.request().postDataJSON()?.allow_core_drops === true,
+  );
+  await page.getByLabel("Allow core-player drops for this analysis").check();
+  const result = (await (await overrideResponse).json()) as WaiverPlan;
+  expect(result.recommended_plan!.moves).toHaveLength(1);
+  const move = result.recommended_plan!.moves[0];
+  expect(move.drop_starts).toBeGreaterThan(0);
+  expect(move.calculation!.pts!.drop_rate).toBe(30);
+  expect(move.calculation!.pts!.add_rate).toBe(0);
+  expect(move.arithmetic!.categories.pts.net).toBeLessThan(0);
+  expect(move.arithmetic!.categories.ast.net).toBeGreaterThan(0);
+  const primary = page.getByRole("region", { name: "Recommended ordered plan" });
+  const pts = primary
+    .getByRole("region", { name: "All nine move calculations" })
+    .getByRole("row", { name: /PTS/ });
+  await expect(pts).toContainText(`30 × ${move.drop_starts} lost starts`);
+  await expect(pts.locator(".league-losing")).toContainText(
+    String(move.arithmetic!.categories.pts.net),
+  );
 });

@@ -56,14 +56,14 @@ def test_no_inputs_and_unknown_uncertainty():
 
 def test_category_direction_and_weighted_shooting():
     data = fixture()
-    data["players"] = [player("starter", "user", current_rates=rates(to=3, fgm=1, fga=10, ftm=1, fta=2))]
+    data["players"] = [player("starter", "user", current_rates=rates(pts=20, ast=5, to=3, fgm=1, fga=10, ftm=1, fta=2))]
     data["available_adds"] = 0
     forecast = plan_waivers(data)["baseline"]
     assert forecast["categories"]["to"]["state"] == "losing"
     assert forecast["categories"]["to"]["margin"] == -3
     assert forecast["categories"]["fg_pct"]["user"] == pytest.approx(41 / 90)
     assert forecast["categories"]["ft_pct"]["user"] == pytest.approx(21 / 27)
-    assert forecast["categories"]["pts"]["state"] == "tied"
+    assert forecast["categories"]["pts"]["state"] == "winning"
 
 
 def test_zero_attempts_are_unknown_not_zero_percent():
@@ -87,7 +87,7 @@ def test_swing_beats_hopeless_punt_and_minutes():
     result = plan_waivers(data)
     assert result["actions"][0]["add_id"] == "swing"
     assert result["projected"]["win_at_least_five_probability"] > result["baseline"]["win_at_least_five_probability"]
-    assert result["projected"]["categories"]["pts"]["attainability"] == "unlikely"
+    assert result["projected"]["categories"]["pts"]["attainability"] == "trailing"
 
 
 def test_sequential_rotation_counts_games_once_and_respects_budget():
@@ -177,8 +177,8 @@ def test_prior_stats_and_history_provenance():
     data["prior_week_margins"] = [{k: n for k in CATEGORIES} for n in (1, 2, 3)]
     result = plan_waivers(data)
     assert result["status"] == "ready"
-    assert "prior season fallback" in result["provenance"]["drop"]
-    assert result["baseline"]["user_totals"]["ast"] == 15
+    assert "small current sample" in result["provenance"]["drop"]
+    assert result["baseline"]["user_totals"]["ast"] == 20
     data["players"][0].pop("current_rates")
     assert plan_waivers(data)["provenance"]["drop"] == "prior season fallback"
 

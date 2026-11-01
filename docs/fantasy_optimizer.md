@@ -1,136 +1,65 @@
-# Read-only waiver strategy engine V2
+# Read-only waiver engine V4
 
-`plan_waivers(payload)` is pure: no network, clock, writes or transactions.
-`plan_snapshot_waivers(snapshot, preferences, now=None)` adapts authenticated
-server-owned facts. The HTTP route continues to own authentication and bounded
-worker execution. All examples/tests are synthetic.
+`services/fantasy_optimizer.py::plan_waivers(payload)` is pure. The snapshot adapter normalizes server-owned facts; the HTTP worker still owns bounded execution. No transaction, authentication or network behavior is introduced. Examples and tests are synthetic.
 
-## Automatic preferences and output
+The primary additive result is `recommended_plan`: one best explored ordered plan, including the empty baseline. `recommended_plan.moves`, legacy `actions` and `plan` refer to the same coherent sequence. Each step specifies one add, one owned drop and one effective date. `recommendations` remain secondary, mutually competing one-move alternatives; `recommendation_kind=alternatives` describes that legacy list. `primary_recommendation_kind=ordered_plan` describes the primary result. Counts are acquisition transactions, never card quotas.
 
-Adapter preferences require `context` with `league_id`, `team_id` and
-`matchup_period_id`. `fetched_at` may be included, but a refresh within the same
-league/week preserves choices. A changed league/team/week rejects stale choices.
-Omitting `candidate_ids` selects the eligible, unrostered FREEAGENT pool; omitting
-`droppable_ids` considers the user roster. Explicit arrays narrow either set,
-including empty arrays to opt out. `protected_ids` protects additional roster
-players. `player_overrides[id].injured` is the Available/Out toggle;
-`.protected` overrides inferred protection. Known undroppable and first-round
-value remain protected. No per-player health/lock confirmation is required.
-`max_stream_slots` defaults to two in the adapter, supports one through four.
+## Forecast and data basis
 
-Legacy fields remain: `status`, `reasons`, `actions`, `baseline`, `projected`,
-`remaining_adds`, `provenance`, `assumptions`, `limitations`, `data_gaps`, `search`.
-`actions` and `plan` contain the same chronological, budget-constrained sequence.
-`remaining_adds` is the balance **after** that sequence; it is null when unknown.
+Both sides use banked actual primitives plus season per-game rates times remaining usable starts. The daily matching policy enforces supplied active slots, position eligibility, started-slot occupancy, availability and effective dates. IR/inactive players retain legal drop identity but receive no starts; no activation is inferred. Each player may start at most once per day. Opponent starter identities are frozen from the symmetric baseline across every user counterfactual. Already-started games receive no extra full-game projection; their unplayed live remainder is unmodeled.
 
-`recommendations` contains up to seven **alternatives**, one best explored
-add/drop/date option per pickup ID. They are not seven moves to execute together.
-`recommendation_kind` is `alternatives`. Each recommendation includes:
+FG/FT use summed makes divided by summed attempts; zero denominators are unknown. Raw TO decreases are beneficial. Current rates remain primary in games 1–2 with a small-sample label; missing current fields can use a labeled prior fallback, with shooting pairs from the same sample. Normalized `season_rates` and original `rate_provenance` from DATA take precedence. Rates and starts used in arithmetic are returned directly.
 
-- `rank`, `date`, `add_id`, `drop_id`, `stream_slot` (original roster ID).
-- `probability_gain` (uncalibrated five-win estimate improvement; null for partial
-  shooting data), `estimated_win_gain`, `net_score`, `season_cost`, `season_value`.
-- `gains` (net counting totals plus shooting makes/attempts), `games_gain`,
-  `minutes_gain`, `category_probability_gains`, `category_impacts` (before/after
-  values and margins, estimate gain and whether the projected lead flips).
-- `target_categories`, plain-language `rationale`, `conditional_on_one_add`.
+When `team.actuals` exists, the adapter consumes `forecast_totals` only with `forecast_complete=true`. Official ESPN totals and all actuals metadata remain intact in snapshot/provenance. Explicit incomplete actuals/projection metadata blocks confidence and confirmed moves. Legacy snapshots without new metadata still work using official totals with a legacy-source disclosure; completeness must be established by the caller, not inferred from the absence of a flag. The adapter detects missing current/opponent rosters, schedule/rate/position failures. Missing drop rates, even on an out/IR player, never become zero opportunity cost.
 
-`strategy[category]` includes `classification` (`favored`, `swing`, `reachable`,
-`punt`, `unknown`), `explanation`, `estimate`, `target_priority`, `lower_is_better`,
-`current_user/opponent`, `projected_user/opponent`, `projected_margin`,
-`previous_user/opponent`, and `historical_margin`. Previous values compare both
-teams in the same latest complete earlier period, even if they played different
-opponents. They never replace this week's actuals or get added to the forecast.
-Historical values are null when unavailable.
+Required projection gaps clear **all** numerical edges, favored/cushion/attainability labels, selected safe lists and flags together. Missing one shooting denominator blocks the complete recommendation rather than ranking a hidden partial objective. Missing candidate inputs exclude that candidate locally with an explanation. Market coverage is independent: a partial market permits best-explored recommendations without claiming whole-market coverage. Missing acquisition counts allow conditional secondary alternatives, with no confirmed ordered moves. Unsupported daily limits need an external daily ledger and remain conditional.
 
-`uncertainty` supplies `source` (`history`, `model_estimate`, `sensitivity`),
-`calibrated: false`, and `margin_sd`. `score_basis` distinguishes the full
-`five_category_model` from `known_category_estimates`. `protected_players` maps
-roster IDs to protection reasons. Adapter `baseline/projected` keep the prior
-frontend shape: `totals`, `opponent_totals`, `games`, `minutes`, `categories`,
-`probability_five_wins`, `basis: forecast`. Pure forecasts also expose starts.
+An explicitly confirmed `matchup_finalized=true` with no remaining dates compares actual wins/losses/ties exactly; actual ties count as zero outright wins. No-date snapshots without final confirmation retain a provisional heuristic comparison.
 
-## Rates, schedules and availability
+## Common feasible plans and five-category choice
 
-Rates use `pts, reb, ast, stl, blk, threes, to, fgm, fga, ftm, fta, minutes` per
-game. Healthy current samples from three games use current rates exclusively.
-Below three games, prior rates are a labeled fallback when present, otherwise the
-small current sample remains labeled. Missing current rate fields can fall back
-to prior values individually; shooting makes/attempts fall back as a pair to avoid
-mixing seasons. Unknown observed sample counts use available current averages
-with explicit provenance. Invalid fractional samples are rejected. No missing
-rate or schedule is silently treated as zero production.
+Every explored full-roster projection is reused across all 126 choices of five. The lineup policy is a shared deterministic greedy nine-category marginal-edge matching policy, including optional benching of individually harmful starts. It is not reoptimized for each focus subset. This avoids choosing categories from incompatible gross pickup upside, while remaining an approximate lineup policy: greedy one-start utility may miss benefits from combinations of starts.
 
-The adapter consumes observed `schedule[{date,start_at,started}]`, excludes past
-and already-started games against supplied server time, and filters to remaining
-matchup dates. Expected remaining minutes are the sum of each selected playable
-game times current per-game minutes. Eligible daily lineup slots constrain starts
-through position matching. A started active player consumes that day's slot;
-user and opponent capacities are independent. Pure callers may supply exact
-`lineup_slots_by_date` and `opponent_lineup_slots_by_date`, including empty lists.
-IR activation is not modeled. Explicit OUT removes future contributions; a user
-Available override recalculates immediately. Missing health/transaction locks
-use the authorized assumed-available/unlocked policy, recorded in provenance.
-Known locks and undroppable remain authoritative.
+For selected set S and feasible plan P:
 
-## Budgets and missing data
+`Q(P,S) = mean(model_edge[P,k] for k in S) - sum(season_cost)`.
 
-Use only actual matchup cap/usage, never season acquisition totals. The adapter
-accepts `weekly_usage_complete` and `weekly_usage_source`; an explicitly incomplete
-counter remains unknown. A compact manual override uses `user_confirmed_counts`
-plus `weekly_add_limit`, `used_adds`, `available_adds`. All must be nonnegative
-integers with used + remaining <= cap. Daily acquisition limits require a daily
-ledger and keep alternatives conditional; no sequential weekly feasibility claim
-is made. Unknown budgets retain strategy/baseline and conditional one-add
-alternatives, with **no actions/plan** and null remaining budget. A known zero
-budget yields no recommendations.
+Edges are a normal-margin **heuristic sensitivity score**, not matchup win probability. The legacy independent-nine `win_at_least_five_probability` diagnostic remains for compatibility and is not optimized. Margins use raw category comparisons and reverse TO. Historical weekly margins affect the heuristic scale/context, never replace this week's roster/schedule forecast. Scale floors remain .025 for shooting and max(2, .12 × banked combined counts, .12 × scheduled volume when history is absent) for counts. History with >=3 rows uses sample deviation above the floor. None of these are calibrated remaining-horizon errors.
 
-Missing candidate schedule/rates excludes that candidate only and records a
-specific reason in `provenance.excluded_candidates`. Missing roster inputs marks
-the forecast partial and suppresses numerical certainty and actions. An explicitly
-out player without rates can contribute zero because they are out, while default
-protection preserves their unknown season value. Missing shooting denominators
-produce null percentages, not zero: known categories can still rank alternatives,
-but five-win odds and sequential actions remain withheld. No remaining dates
-retains actual category comparisons and explains why no future moves are modeled.
+Labels are cushion >=.80, favored >=.60, swing >=.40, otherwise trailing. Reachable additionally requires an explored legal one-move plan with material selected-route gain; it does not assert a guaranteed flip. The weakest selected edge and `viable_five` (all five >=.40) expose a difficult route explicitly.
 
-## Objective and model choices
+Automatic focus includes all baseline cushions when there are <=5; with more, the strongest five form the retained set. Manual five-category choices are honored. Default guards apply to **every prefix**: no selected baseline cushion may cross below .80, and the number of selected viable edges >=.40 cannot decline. `aggressive_cushion_sacrifice=true` explicitly releases those guards; all losses still appear. A terminal recommendation needs net Q improvement >=.005 and a selected non-cushion edge gain >=.01. These are product thresholds, not significance tests. No useful plan leaves the budget untouched.
 
-Weighted shooting uses summed makes / summed attempts. Turnovers are lower-is-
-better. Independent normal margin estimates yield an approximate chance of five
-outright category wins; ties do not count as wins. This is a ranking heuristic,
-**not calibrated odds**. Three complete prior team comparisons supply empirical
-margin standard deviations, floored at 0.025 for shooting and max(2, 12% of current
-combined volume) for counts. Without history, the same labeled model floors use
-current combined totals or scheduled roster volume, whichever is larger. A caller
-can still opt into sensitivity `margin_sd`; it is no longer required.
+Tie breaks use highest score, fewer acquisitions, smaller soft cost, stronger weakest selected edge and stable ordered IDs/dates. The five are frozen for all per-step explanations and secondary alternatives. A 1.5× wider-scale sensitivity calculation is returned for the chosen plan, clearly labeled as fixed-plan sensitivity, not a reranking guarantee.
 
-Category estimates >=0.8 are favored, <0.1 low-upside punts, 0.1–0.4 reachable
-trailing, and 0.4–0.8 swing categories. Priority is `4*p*(1-p)`. These labels
-reflect projected gaps relative to model variation, with prior-week comparison
-shown separately. Search ranks full **net roster forecasts**, including lost drop
-starts and lineup crowding, toward five wins; it does not count free-agent games
-or minutes as the objective. Partial shooting rankings use the average estimated
-win contribution of baseline-known categories, without inventing five-win odds.
+## Core guard and soft cost
 
-Default protection covers ESPN undroppable/droppable=false, draft round one,
-observed top-12 draft/season evidence, top-36 season rank, and established
-30-minute core production with per-game value index >=3.5. User overrides can
-release inferred top-36/production protection, but hard undroppable/first-round
-evidence persists. The season value proxy is pts/25 + reb/10 + ast/8 + stl/1.5 +
-blk/1.5 + threes/3 - to/4 + (fgm-.47*fga)/3 + (ftm-.78*fta)/2. These reference
-rates are model assumptions, not asserted league averages. Acquired value is
-discounted for small samples (0.6 + 0.4*min(1, observed games/15)) and sub-18-minute
-roles (another 0.8). Positive sustained per-game value lost costs 0.035 score units
-per index point. This preserves season opportunity cost beyond a tiny weekly gain;
-it is not an exact season simulation. Every accepted move must have net gain
-above 1e-5. Minutes break equal-score ties only.
+ESPN locks/undroppable and explicit user Protect always apply. Automatic core protection uses caller `core_player` designation or positive season rank <=50, with source shown. When rank evidence is absent/incomplete, a visible conservative per-game fallback protects >=25 PTS or season-value proxy >=3. It is a policy guard, not proof of season rank or future-week value. Missing provenance is labeled unknown.
 
-Search is deterministic and bounded: 0–14 dates, <=1000 players, <=20 slots,
-<=100 shortlisted candidates, <=32 beam states, <=4 original stream slots, no
-re-adds. The adapter uses 1000 forecast evaluations; pure default is 2000, maximum
-5000. `search` and `limitations` report exhaustion. Greedy daily matching and
-improving-only beam search can miss combinations and global optima. Future rate
-changes, category correlations, waiver clearance, unsupported league positional
-season caps and transaction timing policies remain limitations. Recommendations
-are manual ESPN decisions; the engine never performs transactions.
+Player `core_protection_override=true` or global `allow_core_drops=true` releases only automatic protection. Setting `protected=false` alone is not a core override. No override releases an ESPN or explicit user lock.
+
+The separate soft season cost remains `.035 × max(0, drop_proxy - stability × add_proxy)`, where proxy is `PTS/25+REB/10+AST/8+STL/1.5+BLK/1.5+3PM/3-TO/4+(FGM-.47FGA)/3+(FTM-.78FTA)/2`; stability is `.6+.4×min(1,current_games/15)`, times .8 below 18 MPG. It is a per-game opportunity-cost heuristic, not future-season simulation. Score before/after, focus gain and soft cost are separately returned.
+
+## Search and arithmetic
+
+Chronological beam expansion evaluates eligible pickups against all legal owned drops for each effective date until explicit bounds. Nonbeneficial prefixes are retained for expansion; only terminal plans must clear materiality. Ownership, ever-acquired IDs, stream-root ancestry and budget are re-evaluated after every move. Original user drops are not put back into the free-agent pool; reacquisition/waiver cooldown is not invented. Input order cannot change stable tie breaks.
+
+Limits: <=14 dates, <=1000 normalized players, <=20 slots, <=1000 candidate limit, <=32 beam states (default8), <=4 distinct stream roots (adapter default2), <=20,000 forecasts (default/adapter5,000). A narrower explicit stream-root preference is honored. Bounds may omit better plans; no global optimality claim. First-layer pair/date evaluations and completeness are separate from beam pruning and upstream market completeness. Alphabetical candidate enumeration can bias a truncated pool; the output discloses the bound.
+
+All eleven primitive rows satisfy `before + add - drop + spillover = after`. All nine category rows include raw before/after/net and unchanged opponent comparison; shooting rows expose that identity separately for makes/attempts plus percentage-point change. Summed step arithmetic telescopes to the total plan. For a zero-start drop the factual reason is returned, so net=gross is explainable. `add_starts/drop_starts` are usable starts, not scheduled games. Losing categories remain visible even if aggregate Q improves.
+
+See [V4 interface](fantasy_optimizer_v4_interface.md) for optional input fields and integration notes. Unsupported season/position start caps, intraday waiver processing and lock semantics must be marked incomplete by the data adapter; the engine enforces supplied daily slot caps but does not infer missing league rules. No live-account or frontend verification is claimed by the pure engine delivery.
+
+## Production browser and HTTP integration
+
+The Waiver Wire leads with `recommended_plan.moves`; secondary `recommendations` are explicitly collapsed competing alternatives. There is no forced card count. Known zero budget, no material improvement, unknown budget and missing required inputs have separate explanatory states. Move dates, remaining transaction budget and cumulative focus are visible. Engine scores are dimensionless 0–1; the UI multiplies by 100 for the labeled heuristic focus score. Soft season cost and net strategic gain remain separate. None is a matchup win probability.
+
+Every move and total plan shows all nine deltas, with visible before/add/drop/other-roster/after arithmetic. The engine’s eleven primitive identities supply shooting makes and attempts; percentages are weighted team ratios and deltas are percentage points. Negative TO is beneficial. Per-move `lineup_changes` exposes named/date-specific displaced and recovered other-roster starts; `zero_drop_reason` explains genuine zero drop starts. Selected rate samples retain original source, season, observed games, small-sample/fallback and fetch time. On narrow screens, all-nine net chips remain visible and arithmetic tables scroll inside their cards.
+
+Category focus cards show both teams’ current + projected remaining = projected final. FG/FT show the primitive makes/attempts equation. Five selected categories distinguish modeled cushions from improvement priorities and reserves. Unified engine thresholds apply: cushion .80, favored .60, viable/swing .40. Labels and weights are strategic heuristics; raw totals and lower-is-better TO still decide category comparisons. Missing required inputs or unreconciled official/NBA discrepancy withhold safe/favored UI confidence.
+
+`POST /api/fantasy/espn/plan` accepts scoped preferences including `allow_core_drops` and `aggressive_cushion_sacrifice`; core override and availability controls trigger a new analysis through the actual route. Known ESPN locks and explicit user Protect persist. No transaction writes, new login or credential flow was added.
+
+An explicit `period.calendar_verified=false` is propagated as incomplete `projection_metadata.matchup_calendar`, including defensive handling of older snapshots missing that metadata component. NBA calendar numbering alone cannot verify ESPN scoring-date eligibility. This blocks future confidence and confirmed plans while keeping banked official totals visible. Unavailable historical NBA scoring lineups alone instead permit complete official ESPN fallback when the future matchup calendar and other required inputs are verified. Market pagination completeness qualifies the search independently.
+
+The combined deterministic browser suite runs real HTTP routes, normalization, caches, adapter and optimizer, mocking only external provider transports. It covers one/two ordered moves, ownership, full arithmetic, actual core override serialization, a zero-start drop and a nonzero 30-PTS drop for a zero-PTS/high-AST pickup, incomplete calendar, desktop/mobile layout and source limitations. It does not establish live private-league history, current NBA availability, latency or a provider SLA. Screenshots under `visual-evidence/fantasy-v4/` show synthetic league data.

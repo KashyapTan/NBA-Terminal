@@ -24,6 +24,7 @@ NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
 @pytest.mark.parametrize("failed", [False, True])
 def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed):
     raw = league_payload()
+    anchored_schedule = copy.deepcopy(raw["schedule"])
     raw["schedule"] = {}
     for collection in (raw["pool"], raw["cards"]):
         for entry in collection["players"]:
@@ -120,6 +121,14 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                     assert response.status_code == 200
                     return response.json()
 
+                unverified = await plan()
+                assert unverified["status"] == "incomplete"
+                assert unverified["recommended_plan"] is None
+                assert all(row["classification"] == "unknown" for row in unverified["strategy"].values())
+                # NBA schedule/rates stay primary, but ESPN must independently anchor scoring days.
+                raw["schedule"] = anchored_schedule
+                verified = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
+                assert verified["projection_metadata"]["matchup_calendar"]["complete"] is True
                 initial = await plan()
                 assert len(initial["recommendations"]) > 7
                 assert all(item["net_score"] > 0 for item in initial["recommendations"])
@@ -157,11 +166,12 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 explicit = await plan(protected_ids=["1", "1002"])
                 assert not explicit["recommendations"]
                 raw["league"]["settings"]["acquisitionSettings"].pop("matchupAcquisitionLimit")
-                await browser.get("/api/fantasy/espn/snapshot?refresh=true")
+                refreshed = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
+                assert refreshed["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
                 fallback = await plan(matchup_add_limit_fallback=7)
                 assert fallback["remaining_adds"] + len(fallback["actions"]) == 1
-                assert fallback["provenance"]["matchup_add_limit"]["source"] == "user-declared fallback"
-                assert fallback["provenance"]["matchup_add_limit"]["league_id"] == 123
+                assert refreshed["league"]["acquisition_settings"]["weekly_add_limit"] == 7
+                assert refreshed["league"]["id"] == 123
                 raw["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {}
                 await browser.get("/api/fantasy/espn/snapshot?refresh=true")
                 unknown = await plan(matchup_add_limit_fallback=7)

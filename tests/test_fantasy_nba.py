@@ -36,7 +36,6 @@ def schedule():
                         game("0012600001", "2026-10-10T23:30:00Z"),
                         game("0062600001", "2026-12-20T23:30:00Z"),
                         game("0022600004", "2026-11-01T23:30:00Z", gameStatusText="PPD"),
-                        game("0022600005", "TBD"),
                     ]
                 }
             ],
@@ -84,7 +83,7 @@ def test_identity_requires_unique_full_name_and_team(monkeypatch):
     assert nba.match_player({"name": "New Rookie"}, [])[1]["source"] == "nba_static_unique_name"
 
 
-def test_batch_current_season_rates_fill_only_missing_fields():
+def test_batch_current_season_rates_are_primary():
     player = {
         "name": "Sample Player",
         "pro_team_id": 1,
@@ -111,10 +110,10 @@ def test_batch_current_season_rates_fill_only_missing_fields():
             "rates_status": "fresh",
         },
     )
-    assert player["current_rates"]["pts"] == 20
+    assert player["current_rates"]["pts"] == 15
     assert player["current_rates"]["minutes"] == 30
     assert player["current_rates"]["fgm"] == 5
-    assert player["current_rates_source"] == "espn_with_nba_stats"
+    assert player["current_rates_source"] == "nba_stats"
     assert player["current_games"] == 4
 
 
@@ -228,9 +227,9 @@ def test_failed_resource_cache_is_bounded(monkeypatch):
     def fail():
         raise requests.Timeout()
 
-    for year in range(2000, 2030):
+    for year in range(2000, 2100):
         nba.cached(("rates", year), fail)
-    assert len(nba._CACHE) == 12
+    assert len(nba._CACHE) == 64
 
 
 def test_cdn_success_is_bounded_and_no_redirects(monkeypatch):
@@ -258,3 +257,32 @@ def test_cdn_success_is_bounded_and_no_redirects(monkeypatch):
     monkeypatch.setattr(nba.requests, "get", get)
     assert nba.fetch_schedule(2027)["leagueSchedule"]["seasonYear"] == "2026-27"
     assert calls[0][1] == {"timeout": (3.05, 6), "allow_redirects": False, "stream": True}
+
+
+def test_provider_active_schedule_status_and_rescheduled_game_regression():
+    """Provider A means active, not postponed; preserve final and future game joins."""
+    import copy
+    import json
+    from pathlib import Path
+
+    data = json.loads((Path(__file__).parent / "fixtures/nba_scheduleleaguev2_active_subset.json").read_text())
+    games = data["leagueSchedule"]["gameDates"][0]["games"]
+    assert all(g["postponedStatus"] == "A" and g["gameStatus"] == 3 for g in games)
+    future = copy.deepcopy(games[0])
+    future.update(
+        gameId="0022000999", gameStatus=1, gameStatusText="7:00 pm ET", gameDateTimeUTC="2020-12-25T00:00:00Z"
+    )
+    postponed = copy.deepcopy(future)
+    postponed.update(gameDateTimeUTC="2020-12-24T00:00:00Z", gameStatusText="PPD")
+    inactive = copy.deepcopy(future)
+    inactive.update(gameId="0022000998", postponedStatus="I")
+    long_postponed = copy.deepcopy(future)
+    long_postponed.update(gameId="0022000997", gameStatusText="Postponed")
+    games.extend([future, postponed, inactive, long_postponed])
+    parsed = nba.schedule_games(data, 2021, datetime(2020, 12, 23, 12, tzinfo=timezone.utc))
+    rows = [row for team in parsed.values() for row in team]
+    assert len(rows) == 6  # Two original finals plus one active rescheduled future game, two teams each.
+    assert {row["game_id"] for row in rows} == {g["gameId"] for g in games[:2]} | {"0022000999"}
+    assert all(row["final"] and row["started"] for row in rows if row["game_id"] != "0022000999")
+    assert all(not row["final"] and not row["started"] for row in rows if row["game_id"] == "0022000999")
+    assert all(row["date"] == "2020-12-24" for row in rows if row["game_id"] == "0022000999")
