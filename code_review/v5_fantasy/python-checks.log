@@ -1,0 +1,41 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform darwin -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/bb63ebfa7622a9a3bd7f81b7fc5bda84a90c895659c9b3bb40e85365a766a101
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 315 items
+
+tests/test_analytics.py ......                                           [  1%]
+tests/test_architecture.py .                                             [  2%]
+tests/test_espn_bridge.py .............                                  [  6%]
+tests/test_espn_fantasy.py .........................................     [ 19%]
+tests/test_espn_fantasy_api.py .......................                   [ 26%]
+tests/test_fantasy_actuals.py ...........................                [ 35%]
+tests/test_fantasy_api.py .                                              [ 35%]
+tests/test_fantasy_integration.py ...................................    [ 46%]
+tests/test_fantasy_nba.py ............                                   [ 50%]
+tests/test_fantasy_optimizer.py .....................................    [ 62%]
+tests/test_fantasy_optimizer_v4.py .......................               [ 69%]
+tests/test_fantasy_service.py ........                                   [ 72%]
+tests/test_fantasy_strategy_v2.py .................                      [ 77%]
+tests/test_fantasy_strategy_v3.py ..............                         [ 81%]
+tests/test_fantasy_v2_chain.py ..                                        [ 82%]
+tests/test_fantasy_v5_diagnosis.py .........                             [ 85%]
+tests/test_game_center.py ................                               [ 90%]
+tests/test_game_center_phase.py ..                                       [ 91%]
+tests/test_nba_http.py .                                                 [ 91%]
+tests/test_picks_service.py ..                                           [ 92%]
+tests/test_player_analysis.py ..........                                 [ 95%]
+tests/test_player_data_helpers.py ....                                   [ 96%]
+tests/test_webapp.py ...........                                         [100%]
+
+============================= 315 passed in 13.94s =============================
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Name                                   Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------
+nba_terminal/services/game_center.py     232      6     68      7    96%   120, 123, 127, 130, 141, 176, 337->336
+----------------------------------------------------------------------------------
+TOTAL                                    350      6     90      7    97%
+
+1 file skipped due to complete coverage.

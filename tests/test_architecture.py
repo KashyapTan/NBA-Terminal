@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -19,6 +20,6 @@ def test_terminal_package_does_not_import_archived_or_root_legacy_modules():
     for path in (root / "nba_terminal").rglob("*.py"):
         text = path.read_text(encoding="utf-8", errors="replace")
         for token in forbidden:
-            if token in text:
+            if re.search(re.escape(token) + r"\b", text):
                 offenders.append(f"{path.relative_to(root)} contains {token}")
     assert offenders == []

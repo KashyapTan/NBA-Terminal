@@ -58,6 +58,7 @@ def _team_lookup() -> dict[int, dict[str, Any]]:
             "abbreviation": team["abbreviation"],
             "name": team["full_name"],
             "nickname": team["nickname"],
+            "logo_url": f"https://cdn.nba.com/logos/nba/{int(team['id'])}/primary/L/logo.svg",
         }
         for team in teams.get_teams()
     }
@@ -214,6 +215,7 @@ def _schedule_team(row: pd.Series, side: str, lookup: dict[int, dict[str, Any]])
         "abbreviation": str(abbreviation).strip(),
         "name": name or str(nickname).strip(),
         "nickname": str(nickname).strip(),
+        "logo_url": None,
     }
 
 
@@ -238,7 +240,7 @@ def _schedule_game(row: pd.Series, lookup: dict[int, dict[str, Any]]) -> dict[st
         "game_id": game_id,
         "date": _required_schedule_date(row.get("gameDateEst")),
         "start_time": _utc_start_time(row.get("gameDateTimeUTC")),
-        "status": "Final" if status_id == 3 else ("Scheduled" if status_id == 1 else (status_label or "In progress")),
+        "status": status_label or {1: "Scheduled", 2: "In progress", 3: "Final"}.get(status_id, "Status unavailable"),
         "status_id": status_id,
         "phase": phase_for_game_id(game_id),
         "home_team": _schedule_team(row, "home", lookup),
@@ -261,17 +263,16 @@ def _season_start(season: str) -> int:
 
 
 def fetch_upcoming_games(start: date | None = None, schedule_frame: pd.DataFrame | None = None) -> dict[str, Any]:
-    """Read scheduled games in today's and tomorrow's Eastern league dates."""
+    """Read all games from today through the next two Eastern league dates."""
     start = start or nba_today()
     lookup = _team_lookup()
-    days = [start + timedelta(days=offset) for offset in range(2)]
+    days = [start + timedelta(days=offset) for offset in range(3)]
     day_keys = {day.isoformat() for day in days}
     season = current_season(start)
     frame = schedule_frame if schedule_frame is not None else fetch_season_schedule(season)
     games = [
         _schedule_game(row, lookup) for _, row in frame.iterrows()
         if _required_schedule_date(row.get("gameDateEst")) in day_keys
-        and _schedule_status_id(row) == 1
     ]
     games.sort(key=lambda game: (game["date"], game["start_time"] or "", game["game_id"]))
     return {"games": games, "days": [day.isoformat() for day in days]}
@@ -298,6 +299,13 @@ def _season_from_game_id(game_id: str) -> str:
     return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 
+def _traditional_record(row: pd.Series) -> dict[str, Any]:
+    """Normalize provider TO/TOV aliases without turning unknown turnovers into zero."""
+    item = {str(key).lower(): _serial(value) for key, value in row.items()}
+    item["tov"] = next((item[key] for key in ("tov", "to", "turnovers") if item.get(key) is not None), None)
+    return item
+
+
 def fetch_game_boxscore(game_id: str, season: str | None = None) -> dict[str, Any]:
     """Return traditional player and team box-score rows for one game."""
     if not game_id.isdigit() or len(game_id) != 10:
@@ -309,13 +317,13 @@ def fetch_game_boxscore(game_id: str, season: str | None = None) -> dict[str, An
     lookup = _team_lookup()
     players_out = []
     for _, row in players_frame.iterrows():
-        item = {str(k).lower(): _serial(v) for k, v in row.items()}
+        item = _traditional_record(row)
         team = lookup.get(int(row.get("TEAM_ID", 0)))
         item["team"] = team
         players_out.append(item)
     teams_out = []
     for _, row in team_frame.iterrows():
-        item = {str(k).lower(): _serial(v) for k, v in row.items()}
+        item = _traditional_record(row)
         item["team"] = lookup.get(int(row.get("TEAM_ID", 0)))
         teams_out.append(item)
     selected_season = season or _season_from_game_id(game_id)

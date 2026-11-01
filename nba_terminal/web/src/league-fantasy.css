@@ -881,3 +881,41 @@
     grid-template-columns: repeat(9, minmax(0, 1fr));
   }
 }
+
+.waiver-status {
+  border: 1px solid #465467;
+  border-left: 3px solid #d6b66b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-block: 16px;
+  background: #151c27;
+}
+.waiver-status h3 {
+  margin: 0 0 8px;
+}
+.waiver-status p {
+  margin: 8px 0;
+  max-width: 90ch;
+}
+.waiver-status-confirmed_ordered_plan {
+  border-left-color: #69cba3;
+}
+.waiver-status details,
+.source-gap-details {
+  margin-top: 10px;
+}
+.waiver-status summary,
+.source-gap-details summary {
+  cursor: pointer;
+}
+.waiver-status li,
+.source-gap-details li {
+  overflow-wrap: anywhere;
+  margin-block: 6px;
+}
+.today-pairs {
+  margin-block: 12px;
+}
+.today-pairs li {
+  margin-block: 8px;
+}

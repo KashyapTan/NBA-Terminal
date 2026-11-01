@@ -1,0 +1,9 @@
+$ vitest run
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/bb63ebfa7622a9a3bd7f81b7fc5bda84a90c895659c9b3bb40e85365a766a101/nba_terminal/web
+
+
+ Test Files  14 passed (14)
+      Tests  75 passed (75)
+   Start at  11:15:07
+   Duration  2.69s (environment 56%, setup 18%, tests 18%, transform 5%, import 3%)

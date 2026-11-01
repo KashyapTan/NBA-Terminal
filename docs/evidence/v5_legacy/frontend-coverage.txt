@@ -1,0 +1,37 @@
+$ vitest run --coverage
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/245ad4693f10b9457185e9afdd58bcf91dfb13dce95f88154f59108d7b653753/nba_terminal/web
+      Coverage enabled with v8
+
+
+ Test Files  15 passed (15)
+      Tests  81 passed (81)
+   Start at  11:36:06
+   Duration  3.17s (environment 44%, tests 30%, setup 17%, transform 5%, import 3%, worker 2%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    92.1 |     77.1 |   89.14 |   93.63 |
+ ActualSources.tsx |   83.33 |    61.11 |   77.77 |   83.33 | 95-97
+ ...yticsTools.tsx |   96.15 |    89.58 |   92.85 |   96.69 | 310,437,570,669
+ App.tsx           |   91.71 |    77.31 |   86.15 |   94.33 | ...61,750-759,800
+ ...serConnect.tsx |   90.56 |       75 |   91.66 |   93.61 | 60-61,73
+ FantasyPage.tsx   |   88.93 |       75 |   88.29 |   90.76 | ...,769,1022,1166
+ LeagueFantasy.tsx |   84.44 |    71.56 |   79.67 |   86.32 | ...1389,1437,1447
+ ...erAnalysis.tsx |   97.94 |    74.09 |     100 |     100 | ...55-669,678-681
+ ShotChart.tsx     |     100 |     82.1 |     100 |     100 | ...50-257,338-344
+ ...Arithmetic.tsx |   91.89 |       75 |   83.33 |   94.28 | 44-51
+ api.ts            |     100 |    83.33 |     100 |     100 | 16
+ fantasy-model.ts  |     100 |    94.73 |     100 |     100 | 215-216,243-245
+ game-groups.ts    |     100 |    83.33 |     100 |     100 | 17
+ ...fantasy-api.ts |      90 |    72.22 |      80 |      90 | 71,73
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 92.1% ( 1190/1292 )
+Branches     : 77.1% ( 1441/1869 )
+Functions    : 89.14% ( 460/516 )
+Lines        : 93.63% ( 1060/1132 )
+================================================================================

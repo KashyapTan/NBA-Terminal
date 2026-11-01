@@ -2,32 +2,22 @@
 
 from __future__ import annotations
 
+import logging
+import math
 import re
 from typing import Any
 
 import pandas as pd
-from nba_api.stats.endpoints import boxscoreadvancedv2, playergamelog
+from nba_api.stats.endpoints import (
+    boxscoreadvancedv3,
+    leaguedashplayerstats,
+    playerdashboardbyshootingsplits,
+    playergamelog,
+)
+from nba_api.stats.static import players
 
 from nba_terminal.services import game_center, player_data
 
-ADVANCED_COLUMNS = (
-    "OFF_RATING",
-    "DEF_RATING",
-    "NET_RATING",
-    "AST_PCT",
-    "AST_TO",
-    "AST_RATIO",
-    "OREB_PCT",
-    "DREB_PCT",
-    "REB_PCT",
-    "TM_TOV_PCT",
-    "EFG_PCT",
-    "TS_PCT",
-    "USG_PCT",
-    "PACE",
-    "POSS",
-    "PIE",
-)
 HISTORY_COLUMNS = (
     "GAME_ID",
     "GAME_DATE",
@@ -79,35 +69,193 @@ def fetch_player_game_analysis(game_id: str, player_id: int, season: str, phase:
         result.get("game_context") or {},
         game_id,
     )
+    result["advanced_stats_source"] = "BoxScoreAdvancedV3"
+    result["derived_game_shooting"] = _aggregate_shooting([result.get("player") or {}])
     result["history"] = history
     result["history_state"] = history["state"]
     result["game_context"] = context
     return result
 
 
+# V3 uses camelCase, decimal fraction percentages, and per-100-play assist/turnover ratios.
+V3_COLUMNS = {
+    "off_rating": "offensiveRating",
+    "def_rating": "defensiveRating",
+    "net_rating": "netRating",
+    "ast_pct": "assistPercentage",
+    "ast_to": "assistToTurnover",
+    "ast_ratio": "assistRatio",
+    "oreb_pct": "offensiveReboundPercentage",
+    "dreb_pct": "defensiveReboundPercentage",
+    "reb_pct": "reboundPercentage",
+    "tov_ratio": "turnoverRatio",
+    "efg_pct": "effectiveFieldGoalPercentage",
+    "ts_pct": "trueShootingPercentage",
+    "usg_pct": "usagePercentage",
+    "pace": "pace",
+    "poss": "possessions",
+    "pie": "PIE",
+}
+logger = logging.getLogger(__name__)
+
+
 def _fetch_advanced_stats(game_id: str, player_id: int) -> tuple[dict[str, Any], str, str]:
     try:
-        endpoint = boxscoreadvancedv2.BoxScoreAdvancedV2(game_id=game_id, timeout=12)
+        endpoint = boxscoreadvancedv3.BoxScoreAdvancedV3(game_id=game_id, timeout=12)
         frames = endpoint.get_data_frames()
         frame = frames[0] if frames else pd.DataFrame()
     except Exception:
-        return {}, "error", "NBA Stats could not return advanced stats for this game."
-
-    if frame.empty or "PLAYER_ID" not in frame:
-        return {}, "unavailable", "Advanced stats are not available for this game."
-    matches = frame[pd.to_numeric(frame["PLAYER_ID"], errors="coerce") == player_id]
+        logger.warning("AdvancedV3 request/parse failed for game %s", game_id, exc_info=True)
+        return (
+            {},
+            "error",
+            (
+                "NBA Stats could not return advanced stats for this game. "
+                "The V3 request or response parsing failed; retry later."
+            ),
+        )
+    if frame.empty:
+        return {}, "unavailable", "NBA Stats returned no advanced rows for this game."
+    if "personId" not in frame:
+        return {}, "error", "NBA Stats returned an unexpected advanced player schema (missing personId)."
+    matches = frame[pd.to_numeric(frame["personId"], errors="coerce") == player_id]
+    if "gameId" in matches:
+        matches = matches[matches["gameId"].astype(str).str.zfill(10) == str(game_id).zfill(10)]
     if matches.empty:
         return {}, "unavailable", "NBA Stats returned no advanced line for this player."
-
     row = matches.iloc[0]
+    # Do not present provider placeholder zeroes for a DNP as measured efficiency.
+    if "minutes" in row and (_nullable_minutes(row.get("minutes")) or 0) <= 0:
+        return {}, "unavailable", "No played minutes were returned for this player's advanced line."
     values = {
-        column.lower(): _clean_value(row.get(column))
-        for column in ADVANCED_COLUMNS
-        if column in frame.columns and _clean_value(row.get(column)) is not None
+        key.lower(): _clean_value(row.get(column))
+        for key, column in V3_COLUMNS.items()
+        if column in frame and _clean_value(row.get(column)) is not None
     }
     if not values:
         return {}, "unavailable", "NBA Stats returned no advanced metrics for this player."
     return values, "available", ""
+
+
+def fetch_season_advanced(season: str, phase: str, measure: str = "Advanced") -> dict[str, Any]:
+    """One batch dashboard per season/phase, shared across independently browsed players."""
+    try:
+        endpoint = leaguedashplayerstats.LeagueDashPlayerStats(
+            season=season,
+            season_type_all_star=phase,
+            measure_type_detailed_defense=measure,
+            per_mode_detailed="PerGame",
+            timeout=12,
+        )
+        frames = endpoint.get_data_frames()
+        frame = frames[0] if frames else pd.DataFrame()
+    except Exception:
+        logger.warning("Season dashboard failed: %s %s %s", season, phase, measure, exc_info=True)
+        return {"state": "error", "note": f"{measure} season request or parsing failed; retry later.", "players": {}}
+    if not frame.empty and "PLAYER_ID" not in frame:
+        return {"state": "error", "note": "Unexpected season dashboard schema (missing PLAYER_ID).", "players": {}}
+    rows = {}
+    for row in frame.to_dict(orient="records"):
+        identifier = pd.to_numeric(row.get("PLAYER_ID"), errors="coerce")
+        if pd.isna(identifier):
+            continue
+        key = str(int(identifier))
+        if key not in rows or float(row.get("GP") or 0) > float(rows[key].get("GP") or 0):
+            rows[key] = {column: _clean_value(value) for column, value in row.items()}
+    return {"state": "available" if rows else "unavailable", "note": "", "players": rows}
+
+
+def fetch_player_profile(player_id: int, season: str, phase: str) -> dict[str, Any]:
+    """Game-log profile independent of any selected game; advanced data is batched by the route."""
+    player = players.find_player_by_id(player_id)
+    if not player:
+        raise ValueError("Player ID was not found in the bundled NBA player directory.")
+    history, _ = _fetch_history(player_id, season, phase, {}, "")
+    return {
+        "player_id": player_id,
+        "player_name": player["full_name"],
+        "season": season,
+        "phase": phase,
+        "history": history,
+        "history_state": history["state"],
+        "shooting": _aggregate_shooting(history["games"]),
+    }
+
+
+def fetch_player_shooting_tables(player_id: int, season: str, phase: str) -> dict[str, Any]:
+    """One on-demand request returns the retained six shooting tables, in provider Totals units."""
+    try:
+        endpoint = playerdashboardbyshootingsplits.PlayerDashboardByShootingSplits(
+            player_id=player_id,
+            season=season,
+            season_type_playoffs=phase,
+            per_mode_detailed="Totals",
+            timeout=12,
+        )
+    except Exception:
+        logger.warning("Player shooting request failed: %s %s %s", player_id, season, phase, exc_info=True)
+        return {"state": "error", "note": "Shooting splits request or parsing failed; retry later.", "tables": {}}
+    tables = {}
+    for label, attribute in player_data.SHOOTING_SPLIT_TABLES.items():
+        try:
+            frame = getattr(endpoint, attribute).get_data_frame()
+            if not frame.empty and "GROUP_VALUE" not in frame:
+                raise ValueError("Shooting split schema is missing GROUP_VALUE")
+            rows = [
+                {str(column): _clean_value(value) for column, value in row.items()}
+                for row in frame.to_dict(orient="records")
+            ]
+            for row in rows:
+                for attempts, percentages in (("FGA", ("FG_PCT", "EFG_PCT")), ("FG3A", ("FG3_PCT",))):
+                    if row.get(attempts) == 0:
+                        for column in percentages:
+                            if column in row:
+                                row[column] = None
+            for row in rows:
+                for attempts, percentages in (("FGA", ("FG_PCT", "EFG_PCT")), ("FG3A", ("FG3_PCT",))):
+                    if row.get(attempts) == 0:
+                        for column in percentages:
+                            if column in row:
+                                row[column] = None
+            tables[label] = {
+                "state": "available" if rows else "unavailable",
+                "note": "" if rows else "NBA Stats returned no rows for this breakdown.",
+                "rows": rows,
+            }
+        except Exception:
+            logger.warning("Shooting split schema failed: %s %s", player_id, label, exc_info=True)
+            tables[label] = {"state": "error", "note": "This shooting breakdown could not be parsed.", "rows": []}
+    state = (
+        "error"
+        if any(t["state"] == "error" for t in tables.values())
+        else "available"
+        if any(t["rows"] for t in tables.values())
+        else "unavailable"
+    )
+    return {
+        "state": state,
+        "note": "",
+        "tables": tables,
+        "source": "PlayerDashboardByShootingSplits · Totals",
+        "season": season,
+        "phase": phase,
+    }
+
+
+def _aggregate_shooting(games: list[dict[str, Any]]) -> dict[str, Any]:
+    """Ratio of totals from jointly complete games; never an unweighted mean of percentages."""
+    definitions = {
+        "efg_pct": (["fgm", "fg3m", "fga"], lambda r: r["fgm"] + 0.5 * r["fg3m"], lambda r: r["fga"]),
+        "ts_pct": (["pts", "fga", "fta"], lambda r: r["pts"], lambda r: 2 * (r["fga"] + 0.44 * r["fta"])),
+        "fg3a_rate": (["fg3a", "fga"], lambda r: r["fg3a"], lambda r: r["fga"]),
+        "fta_rate": (["fta", "fga"], lambda r: r["fta"], lambda r: r["fga"]),
+    }
+    result = {}
+    for key, (columns, numerator, denominator) in definitions.items():
+        rows = [r for r in games if all(isinstance(r.get(c), (int, float)) for c in columns)]
+        total = sum(denominator(r) for r in rows)
+        result[key] = {"value": sum(numerator(r) for r in rows) / total if total > 0 else None, "games": len(rows)}
+    return result
 
 
 def _fetch_history(
@@ -134,7 +282,12 @@ def _fetch_history(
             context,
         )
 
+    if not {"GAME_ID", "GAME_DATE"}.issubset(frame.columns):
+        return _empty_history(season, phase, "error", "Unexpected game-log schema: missing game ID or date."), context
+
     frame = frame.copy()
+    if "GAME_ID" in frame:
+        frame["GAME_ID"] = frame["GAME_ID"].map(lambda value: _game_id(value))
     if "GAME_DATE" in frame:
         frame = frame.sort_values("GAME_DATE", ascending=False, kind="stable", na_position="last")
     current_rows = frame[frame["GAME_ID"].astype(str) == str(game_id)] if "GAME_ID" in frame else frame.iloc[0:0]
@@ -155,8 +308,7 @@ def _fetch_history(
         context["opponent_abbreviation"] = opponent
 
     if opponent and "MATCHUP" in frame:
-        matchup_pattern = rf"(?<![A-Z0-9]){re.escape(opponent)}(?![A-Z0-9])"
-        opponent_frame = frame[frame["MATCHUP"].astype(str).str.upper().str.contains(matchup_pattern, regex=True)]
+        opponent_frame = frame[frame["MATCHUP"].map(_matchup_opponent) == opponent]
     else:
         opponent_frame = frame.iloc[0:0]
 
@@ -189,6 +341,11 @@ def _fetch_game_log(player_id: int, season: str, phase: str) -> pd.DataFrame:
         return frame
 
     frame = frame.copy()
+    # Installed/reference schemas use Game_ID/Player_ID; some provider responses
+    # already use uppercase. Normalize both before required-field validation.
+    frame.columns = [str(column).upper() for column in frame.columns]
+    if "GAME_ID" in frame:
+        frame["GAME_ID"] = frame["GAME_ID"].map(lambda value: _game_id(value))
     if "GAME_DATE" in frame:
         frame["GAME_DATE"] = pd.to_datetime(frame["GAME_DATE"], errors="coerce")
     for column in (
@@ -274,6 +431,12 @@ def _empty_history(season: str, phase: str, state: str, note: str) -> dict[str, 
     }
 
 
+def _matchup_opponent(value: Any) -> str | None:
+    """NBA logs place the player's team first, including games before a trade."""
+    match = re.fullmatch(r"\s*[A-Z0-9]{2,5}\s+(?:VS\.?|@)\s+([A-Z0-9]{2,5})\s*", str(value), re.IGNORECASE)
+    return match.group(1).upper() if match else None
+
+
 def _opponent_abbreviation(context: dict[str, Any], current: dict[str, Any]) -> str | None:
     opponent = context.get("opponent")
     if isinstance(opponent, dict) and opponent.get("abbreviation"):
@@ -318,11 +481,26 @@ def _records(frame: pd.DataFrame) -> list[dict[str, Any]]:
     columns = [column for column in HISTORY_COLUMNS if column in frame.columns]
     return [
         {
-            column.lower(): _date_value(value) if column == "GAME_DATE" else _clean_value(value)
+            column.lower(): (
+                _date_value(value)
+                if column == "GAME_DATE"
+                else _game_id(value)
+                if column == "GAME_ID"
+                else _clean_value(value)
+            )
             for column, value in row.items()
         }
         for row in frame.loc[:, columns].to_dict(orient="records")
     ]
+
+
+def _game_id(value: Any) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value)
+    if re.fullmatch(r"\d+(?:\.0+)?", text):
+        return str(int(float(text))).zfill(10)
+    return text
 
 
 def _date_value(value: Any) -> str | None:
@@ -334,6 +512,8 @@ def _date_value(value: Any) -> str | None:
 
 def _clean_value(value: Any) -> Any:
     if value is None or pd.isna(value):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
         return None
     if hasattr(value, "item"):
         value = value.item()

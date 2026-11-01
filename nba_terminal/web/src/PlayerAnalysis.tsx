@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PlayerAnalysis as PlayerAnalysisData, PlayerGameLogRow, PlayerLine } from "./model";
+import type { GameAnalysisExtras } from "./player-browser-api";
 import { ShotChart } from "./ShotChart";
 import "./player-analysis.css";
 
@@ -37,7 +38,7 @@ const ADVANCED_STATS: Array<[string, string, boolean?]> = [
   ["oreb_pct", "Offensive reb. %", true],
   ["dreb_pct", "Defensive reb. %", true],
   ["reb_pct", "Rebound %", true],
-  ["tm_tov_pct", "Team turnover %", true],
+  ["tov_ratio", "Turnovers / 100 plays"],
   ["pace", "Pace"],
   ["poss", "Possessions"],
   ["pie", "Player impact %", true],
@@ -150,29 +151,6 @@ function countValues(rows: PlayerGameLogRow[], key: keyof PlayerGameLogRow) {
   return rows.filter((row) => metricValue(key, row) !== null).length;
 }
 
-function ValueCell({
-  title,
-  value,
-  mode = "number",
-}: {
-  title: string;
-  value: unknown;
-  mode?: "number" | "percent" | "minutes";
-}) {
-  const rendered =
-    mode === "percent"
-      ? formatPercent(value)
-      : mode === "minutes"
-        ? formatMinutes(value)
-        : formatNumber(value);
-  return (
-    <div className="player-analysis__metric">
-      <span>{title}</span>
-      <strong>{rendered}</strong>
-    </div>
-  );
-}
-
 function AvailabilityNote({
   title,
   note,
@@ -198,7 +176,7 @@ function AvailabilityNote({
   );
 }
 
-function StatTrend({
+export function StatTrend({
   rows,
   statLabel,
   statKey,
@@ -242,7 +220,7 @@ function StatTrend({
         viewBox="0 0 320 100"
         role="img"
         aria-label={statLabel + " trend over " + points.length + " recent games"}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
       >
         <line className="player-analysis__trend-grid" x1="8" x2="312" y1={averageY} y2={averageY} />
         <polyline className="player-analysis__trend-line" points={polyline} />
@@ -268,7 +246,7 @@ function StatTrend({
   );
 }
 
-function StatDistribution({
+export function StatDistribution({
   rows,
   statLabel,
   statKey,
@@ -313,14 +291,14 @@ function StatDistribution({
   return (
     <div className="player-analysis__distribution">
       <div className="player-analysis__trend-label">
-        <span>{statLabel} · season game distribution</span>
+        <span>{statLabel} · sample game distribution</span>
         <b>n = {values.length}</b>
       </div>
       <svg
         viewBox="0 0 320 110"
         role="img"
         aria-label={statLabel + " distribution across " + values.length + " games"}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
       >
         <line className="player-analysis__distribution-axis" x1="24" x2="296" y1="78" y2="78" />
         {bins.map((bin, index) => {
@@ -353,7 +331,17 @@ function StatDistribution({
   );
 }
 
-function GameLogTable({ rows }: { rows: PlayerGameLogRow[] }) {
+export function GameLogTable({
+  rows,
+  season,
+  phase,
+  playerId,
+}: {
+  rows: PlayerGameLogRow[];
+  season: string;
+  phase: string;
+  playerId?: number;
+}) {
   return (
     <div
       className="player-analysis__table-wrap"
@@ -385,7 +373,38 @@ function GameLogTable({ rows }: { rows: PlayerGameLogRow[] }) {
                           : percent
                             ? formatPercent(row[key])
                             : formatNumber(row[key], 2);
-                return <td key={key}>{value}</td>;
+                return (
+                  <td key={key}>
+                    {key === "game_date" && row.game_id ? (
+                      <Link
+                        to={
+                          "/game/" +
+                          encodeURIComponent(String(row.game_id).padStart(10, "0")) +
+                          "?" +
+                          new URLSearchParams({
+                            season,
+                            phase,
+                            ...(playerId ? { player: String(playerId) } : {}),
+                          }).toString()
+                        }
+                        aria-label={
+                          "Open box score " +
+                          row.game_date +
+                          " " +
+                          (row.matchup || "") +
+                          " · " +
+                          season +
+                          " · " +
+                          phase
+                        }
+                      >
+                        {value}
+                      </Link>
+                    ) : (
+                      value
+                    )}
+                  </td>
+                );
               })}
             </tr>
           ))}
@@ -433,6 +452,8 @@ export function PlayerAnalysisView({
   phase: string;
 }) {
   const player = analysis.player;
+  const derivedShooting = (analysis as PlayerAnalysisData & GameAnalysisExtras)
+    .derived_game_shooting;
   const playerName = player.player_name || "Player";
   const history = analysis.history;
   const [statKey, setStatKey] = useState<keyof PlayerGameLogRow>("pts");
@@ -505,15 +526,28 @@ export function PlayerAnalysisView({
           </div>
           <p>Single game · {analysis.game_id}</p>
         </div>
-        <div className="player-analysis__metrics">
-          {GAME_STATS.map(([key, label]) => (
-            <ValueCell
-              key={key}
-              title={label}
-              value={player[key]}
-              mode={key === "min" ? "minutes" : "number"}
-            />
-          ))}
+        <div className="player-analysis__table-wrap">
+          <table
+            className="player-analysis__table player-analysis__game-line"
+            aria-label="Selected game stats"
+          >
+            <thead>
+              <tr>
+                {GAME_STATS.map(([key, label]) => (
+                  <th key={key}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {GAME_STATS.map(([key]) => (
+                  <td key={key}>
+                    {key === "min" ? formatMinutes(player[key]) : formatNumber(player[key])}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -523,7 +557,7 @@ export function PlayerAnalysisView({
             <div className="player-analysis__section-kicker">ADVANCED BOX SCORE</div>
             <h2>Game-level efficiency &amp; impact</h2>
           </div>
-          <p>BoxScoreAdvancedV2 · this game only</p>
+          <p>BoxScoreAdvancedV3 · this game only</p>
         </div>
         {analysis.advanced_stats_state === "available" ? (
           <div className="player-analysis__panel player-analysis__advanced">
@@ -552,6 +586,35 @@ export function PlayerAnalysisView({
         )}
       </section>
 
+      {derivedShooting && (
+        <section className="player-analysis__section" aria-label="Derived selected game shooting">
+          <h3>Selected game shooting rates</h3>
+          <p className="player-analysis__formula">
+            Derived from the traditional box score, independently of advanced endpoint availability.
+          </p>
+          <div className="player-analysis__advanced-grid">
+            {[
+              ["efg_pct", "eFG%"],
+              ["ts_pct", "TS%"],
+              ["fg3a_rate", "3P attempt rate"],
+              ["fta_rate", "Free throw rate"],
+            ].map(([key, label]) => (
+              <div className="player-analysis__advanced-cell" key={key}>
+                <span>{label}</span>
+                <strong>{formatPercent(derivedShooting[key]?.value)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      <p className="player-analysis__formula">
+        Ratings: points per 100 possessions while on court; net = offensive − defensive rating.
+        Pace: possessions per 48 minutes. Usage: share of team plays used while on court. PIE: share
+        of recorded game events, not a causal impact estimate. Assist and turnover ratios are per
+        100 plays; percentages are shown on a 0–100 scale. Missing metrics stay blank. Derived log
+        rates: eFG = (FGM + 0.5 × 3PM) / FGA; TS = PTS / [2 × (FGA + 0.44 × FTA)]; 3PAr = 3PA / FGA;
+        FTr = FTA / FGA. Zero denominators are unavailable.
+      </p>
       <section className="player-analysis__section">
         <div className="player-analysis__section-heading">
           <div>
@@ -756,14 +819,24 @@ export function PlayerAnalysisView({
               </div>
               <p>Traditional box score plus derived shooting efficiency.</p>
             </div>
-            <GameLogTable rows={seasonRows} />
+            <GameLogTable
+              rows={seasonRows}
+              season={season}
+              phase={phase}
+              playerId={player.player_id}
+            />
 
             {opponentRows.length > 0 && (
               <details className="player-analysis__opponent-details">
                 <summary>
                   {history.opponent} game log · {opponentRows.length} games
                 </summary>
-                <GameLogTable rows={opponentRows} />
+                <GameLogTable
+                  rows={opponentRows}
+                  season={season}
+                  phase={phase}
+                  playerId={player.player_id}
+                />
               </details>
             )}
           </div>

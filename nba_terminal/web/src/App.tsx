@@ -1,8 +1,23 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+  type ReactNode,
+  type ComponentType,
+} from "react";
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./api";
 import { groupGamesByDate } from "./game-groups";
 import FantasyPage from "./FantasyPage";
+import {
+  AnalyticsWorkspace,
+  type AnalyticsToolsContentProps,
+  GameCenterShell,
+  PlayersWorkspace,
+  type PlayerBrowserContentProps,
+} from "./GameCenterShell";
 import { LeagueDashboardSummary, Matchups, useLeagueFantasy, WaiverWire } from "./LeagueFantasy";
 import { requestWaiverPlan } from "./league-fantasy-api";
 import type {
@@ -15,6 +30,8 @@ import type {
   UpcomingResponse,
 } from "./model";
 import { PlayerAnalysisView } from "./PlayerAnalysis";
+import { PlayerBrowser as IntegratedPlayerBrowser } from "./PlayerBrowser";
+import { AnalyticsTools as IntegratedAnalyticsTools } from "./AnalyticsTools";
 
 type MetaState = { meta: Meta | null; error: string | null };
 const MetaContext = createContext<MetaState>({ meta: null, error: null });
@@ -133,23 +150,21 @@ function AppShell({ children }: { children: ReactNode }) {
       }`}
     >
       <aside className="sidebar">
-        <Link className="brand" to="/" aria-label="NBA Terminal home">
-          <span className="brand-mark">N</span>
-          <span className="brand-name">
-            NBA <b>TERMINAL</b>
-          </span>
-        </Link>
         <button
           type="button"
-          className="sidebar-toggle"
+          className="brand"
           onClick={toggleSidebar}
           aria-expanded={!sidebarCollapsed}
           aria-controls="workspace-navigation"
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <span aria-hidden="true">{sidebarCollapsed ? "»" : "«"}</span>
-          <span className="sidebar-toggle-label">Collapse sidebar</span>
+          <span className="brand-mark" aria-hidden="true">
+            N
+          </span>
+          <span className="brand-name">
+            NBA <b>TERMINAL</b>
+          </span>
         </button>
         <div className="nav-label">WORKSPACE</div>
         <nav id="workspace-navigation" aria-label="Workspace">
@@ -211,41 +226,74 @@ function TeamBadge({
   team: Game["home_team"] | PlayerLine["team"];
   large?: boolean;
 }) {
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
   return (
-    <span className={`team-badge${large ? " large" : ""}`}>{team?.abbreviation || "NBA"}</span>
+    <span className={`team-badge${large ? " large" : ""}`}>
+      {team?.logo_url && failedLogo !== team.logo_url ? (
+        <img
+          src={team.logo_url}
+          alt={`${team.name} logo`}
+          loading="lazy"
+          onError={() => setFailedLogo(team.logo_url || null)}
+        />
+      ) : (
+        <span title={team?.name || "Team unavailable"}>{team?.abbreviation || "NBA"}</span>
+      )}
+    </span>
   );
 }
 
-function GameCard({ game, upcoming, season }: { game: Game; upcoming?: boolean; season: string }) {
-  const phase = game.phase;
+function GameCard({ game, season }: { game: Game; season: string }) {
+  const status =
+    game.status_id ??
+    (/final/i.test(game.status)
+      ? 3
+      : /scheduled|\b(?:ET|EST|EDT)\b/i.test(game.status)
+        ? 1
+        : /progress|Q\d|quarter|half/i.test(game.status)
+          ? 2
+          : 0);
+  const hasScore = status === 2 || status === 3;
+  const state =
+    status === 2 ? "live" : status === 3 ? "final" : status === 1 ? "scheduled" : "unknown";
+  const descriptionId = useId();
   return (
     <Link
-      className={`game-card${upcoming ? " upcoming-card" : ""}`}
+      className={`game-card game-card--${state}`}
       to={`/game/${encodeURIComponent(game.game_id)}?season=${encodeURIComponent(season)}&phase=${encodeURIComponent(game.phase)}`}
       aria-label={`Open ${game.away_team.name} at ${game.home_team.name}`}
+      aria-describedby={descriptionId}
     >
-      <span className="game-meta">
-        <span className="phase-tag">{phase}</span>
-        {upcoming && game.start_time && (
-          <time dateTime={game.start_time}>{formatStartTime(game.start_time)}</time>
-        )}
-      </span>
       <span className="matchup">
-        <span className="team-side">
-          <TeamBadge team={game.away_team} />
-          <span className="team-name">{game.away_team.name}</span>
-          {!upcoming && <b className="score">{format(game.away_score)}</b>}
-        </span>
-        <span className="team-side">
-          <TeamBadge team={game.home_team} />
-          <span className="team-name">{game.home_team.name}</span>
-          {!upcoming && <b className="score">{format(game.home_score)}</b>}
-        </span>
+        {[
+          { team: game.away_team, score: game.away_score, side: "Away" },
+          { team: game.home_team, score: game.home_score, side: "Home" },
+        ].map(({ team, score, side }) => (
+          <span className="team-side" key={side}>
+            <TeamBadge team={team} />
+            <span className="team-name">
+              {team.name}
+              <small>{side}</small>
+            </span>
+            <b className="score">{hasScore ? format(score) : "—"}</b>
+          </span>
+        ))}
       </span>
-      <span className="game-status">
-        <i className={`status-dot ${upcoming ? "scheduled" : "final"}`} />
-        {game.status}
-        <span className="arrow">↗</span>
+      <span className="game-info" id={descriptionId}>
+        <span className="game-status">
+          <i className={`status-dot ${state}`} />
+          {game.status}
+        </span>
+        {status === 1 &&
+          (game.start_time ? (
+            <time dateTime={game.start_time}>{formatStartTime(game.start_time)}</time>
+          ) : (
+            <span className="time-unavailable">Time TBD</span>
+          ))}
+        <span className="phase-tag">{game.phase}</span>
+      </span>
+      <span className="arrow" aria-hidden="true">
+        ↗
       </span>
     </Link>
   );
@@ -278,16 +326,20 @@ function GameDateGroups({
   games,
   season,
   direction,
-  upcoming = false,
+  days,
 }: {
   games: Game[];
   season: string;
   direction: "ascending" | "descending";
-  upcoming?: boolean;
+  days?: string[];
 }) {
+  const groups = groupGamesByDate(games, direction);
+  const dateGroups = days?.length
+    ? days.map((date) => ({ date, games: games.filter((game) => game.date === date) }))
+    : groups;
   return (
     <div className="date-groups">
-      {groupGamesByDate(games, direction).map(({ date, games: dateGames }) => (
+      {dateGroups.map(({ date, games: dateGames }) => (
         <section className="date-group" key={date} aria-labelledby={`games-${date}-${direction}`}>
           <div className="date-heading">
             <h3 id={`games-${date}-${direction}`}>{formatGroupDate(date)}</h3>
@@ -295,9 +347,10 @@ function GameDateGroups({
               {dateGames.length} {dateGames.length === 1 ? "game" : "games"}
             </span>
           </div>
+          {!dateGames.length && <p className="schedule-empty">No games scheduled.</p>}
           <div className="games-grid">
             {dateGames.map((game) => (
-              <GameCard key={game.game_id} game={game} upcoming={upcoming} season={season} />
+              <GameCard key={game.game_id} game={game} season={season} />
             ))}
           </div>
         </section>
@@ -382,14 +435,16 @@ function Dashboard() {
         <div className="section-heading">
           <div>
             <div className="eyebrow">UP NEXT</div>
-            <h2>Next two days</h2>
+            <h2>Today + next two days</h2>
           </div>
           <span className="section-note">
-            {upcoming?.games.length ? `${upcoming.games.length} scheduled` : "Today + tomorrow"}
+            {upcoming?.games.length
+              ? `${upcoming.games.length} ${upcoming.games.length === 1 ? "game" : "games"} · dates in Eastern Time`
+              : "Dates in Eastern Time"}
           </span>
         </div>
         {loading ? (
-          <LoadingState title="Upcoming games" detail="Checking today's and tomorrow's schedule" />
+          <LoadingState title="Upcoming games" detail="Checking today and the next two dates" />
         ) : upcomingError ? (
           <ErrorState
             title="Schedule unavailable"
@@ -401,12 +456,12 @@ function Dashboard() {
             games={upcoming.games}
             season={meta.current_season}
             direction="ascending"
-            upcoming
+            days={upcoming.days}
           />
         ) : (
           <EmptyState
             icon="◷"
-            title="No games scheduled in this two-day window"
+            title="No games scheduled in this three-day window"
             detail="The schedule can change as the league updates its feed."
           />
         )}
@@ -764,7 +819,13 @@ function FantasyWorkspace({ meta }: { meta: Meta }) {
   );
 }
 
-export function AppRoutes() {
+export function AppRoutes({
+  playerBrowser: PlayerBrowser = IntegratedPlayerBrowser,
+  analyticsTools: AnalyticsTools = IntegratedAnalyticsTools,
+}: {
+  playerBrowser?: ComponentType<PlayerBrowserContentProps> | null;
+  analyticsTools?: ComponentType<AnalyticsToolsContentProps> | null;
+} = {}) {
   const { meta, error } = useMeta();
   if (error)
     return (
@@ -781,10 +842,25 @@ export function AppRoutes() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
         <Route path="/fantasy" element={<FantasyWorkspace meta={meta} />} />
-        <Route path="/game/:gameId" element={<GameDetails />} />
-        <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
+        <Route
+          element={
+            <GameCenterShell players={Boolean(PlayerBrowser)} tools={Boolean(AnalyticsTools)} />
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/game/:gameId" element={<GameDetails />} />
+          <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
+          {AnalyticsTools && (
+            <Route path="/tools/:tool?" element={<AnalyticsWorkspace Tools={AnalyticsTools} />} />
+          )}
+          {PlayerBrowser && (
+            <Route
+              path="/players/:playerId?"
+              element={<PlayersWorkspace meta={meta} Browser={PlayerBrowser} />}
+            />
+          )}
+        </Route>
         <Route
           path="*"
           element={

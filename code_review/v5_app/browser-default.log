@@ -1,0 +1,37 @@
+$ playwright test
+[WebServer] (node:36111) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 14 tests using 7 workers
+
+(node:36129) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36125) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36131) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36130) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36127) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36126) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › e2e/game-flow.spec.ts:308:1 › renders an honest API failure state (575ms)
+  ✓   5 [chromium] › e2e/game-flow.spec.ts:259:1 › shows an honest unavailable shot chart while retaining player stats (622ms)
+  ✓   4 [chromium] › e2e/game-flow.spec.ts:221:1 › fans drill from season feed through box score to a player's real shot chart (913ms)
+  ✓   1 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 390px (919ms)
+  ✓   3 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 1440px (924ms)
+  ✓   8 [chromium] › e2e/game-flow.spec.ts:314:1 › season log keyboard link opens the actual historical box score with phase context (415ms)
+  ✓   9 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 390px (397ms)
+  ✓   7 [chromium] › e2e/game-flow.spec.ts:270:1 › explores player sample comparisons and shot controls (1.1s)
+  ✓  13 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 390px and retains keyboard game links (381ms)
+  ✓  10 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 1440px (480ms)
+  ✓  14 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 1440px and retains keyboard game links (406ms)
+  ✓  12 [chromium] › e2e/league-strategy-ui.spec.ts:145:1 › browser setup and consented pairing states work without exposing cookie inputs (552ms)
+  ✓   6 [chromium] › e2e/fantasy.spec.ts:50:1 › Fantasy supports season stats, sample filters, player comparison and shortlist (1.6s)
+  ✓  11 [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile (2.7s)
+[WebServer] error: "vite" exited with code 143
+
+  14 passed (4.2s)

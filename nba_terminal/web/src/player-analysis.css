@@ -1264,3 +1264,177 @@
     transition: none;
   }
 }
+
+/* Keep charts proportional and bounded at both phone and wide desktop sizes. */
+.player-analysis__visuals {
+  align-items: start;
+}
+.player-analysis__trend svg,
+.player-analysis__distribution svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+}
+.player-analysis__consistency-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+.player-analysis__consistency-table {
+  width: 100%;
+}
+.player-analysis__game-line {
+  width: 100%;
+}
+.player-analysis__game-line th {
+  white-space: nowrap;
+}
+.player-analysis__game-line td {
+  font-size: 16px;
+  font-weight: 650;
+}
+.player-analysis__table a {
+  color: #abbcff;
+  text-decoration: underline;
+}
+.player-analysis a:focus-visible,
+.player-browser button:focus-visible,
+.player-browser input:focus-visible {
+  outline: 2px solid #7691ff;
+  outline-offset: 3px;
+}
+.player-browser input {
+  background: #151b24;
+  border: 1px solid #526079;
+  border-radius: 6px;
+  color: #f4f7fb;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.player-browser__results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+.player-browser__results button {
+  width: 100%;
+  text-align: left;
+  color: #e9eef6;
+  background: #1a2230;
+  border: 1px solid #344051;
+  border-radius: 5px;
+  padding: 10px;
+  cursor: pointer;
+}
+.player-browser__results button[aria-pressed="true"] {
+  border-color: #48d2a0;
+}
+.player-browser small {
+  color: #aab5c6;
+  display: block;
+}
+.player-browser details {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.player-analysis__profile-table {
+  width: 100%;
+}
+.player-browser section > label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.player-browser select,
+.player-browser section > button,
+.player-browser .player-analysis__history-controls button {
+  color: #e9eef6;
+  background: #1a2230;
+  border: 1px solid #526079;
+  border-radius: 5px;
+  padding: 8px 10px;
+  min-height: 34px;
+}
+.player-browser button {
+  cursor: pointer;
+}
+.player-browser button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.player-browser .player-analysis__history-controls input {
+  box-sizing: border-box;
+  width: 100px;
+}
+.player-browser .player-analysis__history-controls label {
+  max-width: 100%;
+}
+.player-browser select:focus-visible {
+  outline: 2px solid #7691ff;
+  outline-offset: 3px;
+}
+.player-browser caption {
+  padding: 8px;
+  color: #dce5f4;
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .player-analysis__history-top {
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .player-analysis__hit-rate {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}
+
+/* Color reinforces the named metric or state; every state retains text. */
+.player-browser .metric-positive strong {
+  color: var(--player-green);
+}
+.player-browser .metric-negative strong {
+  color: var(--player-red);
+}
+.player-browser article > header {
+  border-left: 3px solid var(--player-green);
+  padding-left: 14px;
+}
+.player-browser h3 {
+  color: #e6edf7;
+}
+.player-browser p[role="alert"] {
+  border-left: 3px solid var(--player-red);
+  padding: 9px 12px;
+  background: #ff7f8b0a;
+  color: #ffc0c7;
+}
+.player-browser p[role="status"] {
+  color: #b2bfd0;
+}
+.player-analysis__comparison-sample {
+  margin-top: 18px;
+  border-top: 1px solid var(--player-line);
+  padding-top: 12px;
+}
+.player-analysis__comparison-sample h4 {
+  color: #e7c468;
+}
+.player-browser .player-analysis__history-controls input[type="search"] {
+  width: 190px;
+  max-width: 100%;
+}
+.player-browser .player-analysis__history-controls select {
+  max-width: 100%;
+}

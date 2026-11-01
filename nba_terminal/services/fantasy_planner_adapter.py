@@ -134,6 +134,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     gaps, provenance = [], {}
     result = {
         "status": "unavailable",
+        "evaluation_state": "required_inputs_unknown",
         "reasons": [],
         "actions": [],
         "plan": [],
@@ -440,6 +441,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     gaps.extend(g for g in planned.get("data_gaps", []) if g not in gaps)
     for key in (
         "status",
+        "evaluation_state",
         "reasons",
         "actions",
         "plan",
@@ -482,12 +484,13 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     )
     if forecast_gaps:
         result["status"] = "incomplete"
+        result["evaluation_state"] = "required_inputs_unknown"
         result["reasons"] = list(forecast_gaps)
         result["limitations"].append(
             "Partial roster forecast: omitted players have unknown contributions, not zero ability."
         )
     if not remaining:
-        result.update(status="incomplete", reasons=[gaps[-1]])
+        result.update(status="incomplete", evaluation_state="required_inputs_unknown", reasons=[gaps[-1]])
     for action in result["actions"]:
         action["stream_roster_id"] = action["stream_slot"]
         action["stream_slot"] = drops.index(action["stream_slot"]) + 1

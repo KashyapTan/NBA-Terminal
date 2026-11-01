@@ -3,14 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   LeagueConnection,
-  Matchups,
-  WaiverWire,
-  useLeagueFantasy,
   type LeagueFantasyState,
+  Matchups,
+  useLeagueFantasy,
+  WaiverWire,
 } from "./LeagueFantasy";
-import type { LeagueFantasyApi } from "./league-fantasy-api";
 import { testSnapshot } from "./league-fantasy.test-fixtures";
+import type { LeagueFantasyApi } from "./league-fantasy-api";
 import type { WaiverPlan } from "./league-fantasy-model";
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -514,5 +515,7 @@ it("shows current lead becoming a projected loss and clears incomplete cushion l
   );
   expect(screen.getByText(/Modeled cushions: None established/)).toBeInTheDocument();
   expect(container.querySelector(".strategy-favored")).toBeNull();
-  expect(screen.getByText(/Outlook unverified:/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Today’s useful available players are not yet determinable/),
+  ).toBeInTheDocument();
 });

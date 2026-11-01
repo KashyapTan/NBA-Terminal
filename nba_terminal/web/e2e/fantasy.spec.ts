@@ -82,7 +82,10 @@ test("Fantasy supports season stats, sample filters, player comparison and short
   );
   await expect(page.getByRole("heading", { name: "Your fantasy workspace" })).toBeVisible();
   await expect(page.getByText("Connect your ESPN league")).toBeVisible();
-  const evidenceDir = resolve(process.cwd(), "../../visual-evidence");
+  const evidenceDir = resolve(
+    process.cwd(),
+    "../../code_review/v5_app/generated/fantasy-dashboard",
+  );
   mkdirSync(evidenceDir, { recursive: true });
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.screenshot({
@@ -135,7 +138,8 @@ test("Fantasy supports season stats, sample filters, player comparison and short
       .getByRole("navigation", { name: "Workspace" })
       .getByRole("link", { name: "Fantasy", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Collapse sidebar" })).toHaveClass("brand");
   await page.screenshot({ path: resolve(evidenceDir, "fantasy-mobile.png") });
 
   await page.getByRole("tab", { name: "TO" }).click();

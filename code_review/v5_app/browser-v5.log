@@ -1,0 +1,12 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/5b8ab95cd6ca308f98d0848d8f1e5dbb56f3447b5a0afac52d3b27cbb8323b4c/.venv` and will be ignored; use `--active` to target the active environment instead
+
+Running 4 tests using 1 worker
+
+(node:82740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/v5-integration.spec.ts:7:3 › integrated Players profiles, analyses and direct navigation at 1440px (1.6s)
+  ✓  2 e2e/v5-integration.spec.ts:7:3 › integrated Players profiles, analyses and direct navigation at 390px (1.4s)
+  ✓  3 e2e/v5-integration.spec.ts:137:3 › all six integrated tools use production routes and survive reload at 1440px (1.2s)
+  ✓  4 e2e/v5-integration.spec.ts:137:3 › all six integrated tools use production routes and survive reload at 390px (1.1s)
+
+  4 passed (5.9s)

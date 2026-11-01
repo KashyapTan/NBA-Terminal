@@ -216,9 +216,7 @@ def summarize_stats(frame: pd.DataFrame) -> dict[str, Any]:
 def rolling_summaries(frame: pd.DataFrame, windows: tuple[int, ...] = (5, 10, 15)) -> dict[int, dict[str, Any]]:
     """Build summaries for recent game windows."""
     return {
-        window: summarize_stats(frame.head(window))
-        for window in windows
-        if not frame.empty and len(frame) >= window
+        window: summarize_stats(frame.head(window)) for window in windows if not frame.empty and len(frame) >= window
     }
 
 
@@ -542,3 +540,19 @@ def _hit_rate_for_values(values: pd.Series, threshold: int) -> float:
 
 def _market_label(stat: str) -> str:
     return "3PM" if stat == "FG3M" else stat
+
+
+def search_players(query: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Search active and historical players in bundled nba_api static data (no NBA request)."""
+    import unicodedata
+
+    def normalize(value: str) -> str:
+        return "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))
+
+    tokens = normalize(query).split()
+    matched = [row for row in players.get_players() if all(token in normalize(row["full_name"]) for token in tokens)]
+    matched.sort(key=lambda row: (not row["is_active"], row["full_name"]))
+    return [
+        {"player_id": int(row["id"]), "name": row["full_name"], "active": bool(row["is_active"])}
+        for row in matched[:limit]
+    ]

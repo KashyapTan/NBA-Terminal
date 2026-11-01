@@ -1,0 +1,41 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/5b8ab95cd6ca308f98d0848d8f1e5dbb56f3447b5a0afac52d3b27cbb8323b4c
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 365 items
+
+tests/test_analytics.py ......                                           [  1%]
+tests/test_architecture.py .                                             [  1%]
+tests/test_espn_bridge.py .............                                  [  5%]
+tests/test_espn_fantasy.py .........................................     [ 16%]
+tests/test_espn_fantasy_api.py .......................                   [ 23%]
+tests/test_fantasy_actuals.py ...........................                [ 30%]
+tests/test_fantasy_api.py .                                              [ 30%]
+tests/test_fantasy_integration.py ...................................    [ 40%]
+tests/test_fantasy_nba.py ............                                   [ 43%]
+tests/test_fantasy_optimizer.py .....................................    [ 53%]
+tests/test_fantasy_optimizer_v4.py .......................               [ 60%]
+tests/test_fantasy_service.py ........                                   [ 62%]
+tests/test_fantasy_strategy_v2.py .................                      [ 66%]
+tests/test_fantasy_strategy_v3.py ..............                         [ 70%]
+tests/test_fantasy_v2_chain.py ..                                        [ 71%]
+tests/test_fantasy_v5_diagnosis.py .........                             [ 73%]
+tests/test_game_center.py .......................                        [ 80%]
+tests/test_game_center_phase.py ..                                       [ 80%]
+tests/test_game_center_schedule_api.py .                                 [ 80%]
+tests/test_legacy_tools.py .................                             [ 85%]
+tests/test_nba_http.py .                                                 [ 85%]
+tests/test_picks_service.py ..                                           [ 86%]
+tests/test_player_analysis.py ...............................            [ 94%]
+tests/test_player_browser_api.py ....                                    [ 95%]
+tests/test_player_data_helpers.py ....                                   [ 96%]
+tests/test_webapp.py ...........                                         [100%]
+
+=============================== warnings summary ===============================
+tests/test_game_center.py::test_real_traditional_provider_to_reaches_player_and_team_tov
+  /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/5b8ab95cd6ca308f98d0848d8f1e5dbb56f3447b5a0afac52d3b27cbb8323b4c/tests/test_game_center.py:403: DeprecationWarning: BoxScoreTraditionalV2 is deprecated and will be removed in a future version. Please use BoxScoreTraditionalV3 instead. Data is no longer being published for BoxScoreTraditionalV2 as of the 2025-26 NBA season.
+    endpoint = service.boxscoretraditionalv2.BoxScoreTraditionalV2(game_id="0022600152", get_request=False)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 365 passed, 1 warning in 13.33s ========================

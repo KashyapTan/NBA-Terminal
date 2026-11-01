@@ -1,7 +1,7 @@
 import {
-  LEAGUE_CATEGORIES,
   categoryValue,
   formatCategory,
+  LEAGUE_CATEGORIES,
   type LeagueTeam,
 } from "./league-fantasy-model";
 
@@ -18,6 +18,19 @@ const gapLabels: Record<string, string> = {
   nba_player_game_missing: "NBA player/game production missing",
   duplicate_credit: "Conflicting duplicate scoring credit",
 };
+function groupedGaps(gaps: NonNullable<LeagueTeam["actuals"]>["nba_derived"]["gaps"]) {
+  const groups = new Map<string, string[]>();
+  for (const gap of gaps) {
+    const key = typeof gap === "string" ? gap : gap.reason;
+    const text =
+      typeof gap === "string"
+        ? gap
+        : `${gapLabels[gap.reason] ?? gap.reason}${gap.period != null ? ` · scoring day ${gap.period}` : ""}${gap.player_id != null ? ` · player ${gap.player_id}` : ""}${gap.game_id ? ` · game ${gap.game_id}` : ""}`;
+    groups.set(key, [...new Set([...(groups.get(key) ?? []), text])]);
+  }
+  return [...groups].map(([key, records]) => ({ key, label: gapLabels[key] ?? key, records }));
+}
+
 /** Keep provider scoring and reconstructed NBA production distinct. */
 export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) {
   return (
@@ -32,6 +45,23 @@ export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) 
         .filter((team): team is LeagueTeam => Boolean(team))
         .map((team) => {
           const actuals = team.actuals;
+          const groups = groupedGaps(actuals?.nba_derived.gaps ?? []);
+          const unknownCoverage =
+            actuals?.nba_derived.expected_player_games == null ||
+            actuals.nba_derived.gaps.some(
+              (gap) =>
+                typeof gap !== "string" &&
+                [
+                  "schedule_missing",
+                  "historical_daily_lineup_missing",
+                  "active_eligibility_unknown",
+                ].includes(gap.reason),
+            );
+          const hasTotals =
+            actuals &&
+            [actuals.official.totals, actuals.nba_derived.totals, actuals.forecast_totals].some(
+              (totals) => LEAGUE_CATEGORIES.some(({ key }) => categoryValue(totals, key) != null),
+            );
           return (
             <article key={team.id}>
               <h4>{team.name}</h4>
@@ -51,20 +81,41 @@ export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) 
                     NBA-derived{" "}
                     {actuals.nba_derived.complete ? "complete" : "partial / unavailable"}
                     {actuals.nba_derived.provisional ? " · provisional" : ""} ·{" "}
-                    {actuals.nba_derived.covered_player_games ?? "?"} /{" "}
-                    {actuals.nba_derived.expected_player_games ?? "?"} eligible player-games ·
-                    evaluated {actuals.nba_derived.fetched_at ?? "time unavailable"}
+                    {unknownCoverage
+                      ? `${actuals.nba_derived.covered_player_games ?? "Unknown"} covered · eligible-game total unknown`
+                      : `${actuals.nba_derived.covered_player_games} / ${actuals.nba_derived.expected_player_games} eligible player-games`}{" "}
+                    · evaluated {actuals.nba_derived.fetched_at ?? "time unavailable"}
                   </p>
                   {actuals.nba_derived.gaps.length > 0 && (
-                    <p className="league-tied">
-                      {actuals.nba_derived.gaps
-                        .map((gap) =>
-                          typeof gap === "string"
-                            ? gap
-                            : `${gapLabels[gap.reason] ?? gap.reason}${gap.period != null ? ` · scoring day ${gap.period}` : ""}${gap.player_id != null ? ` · player ${gap.player_id}` : ""}${gap.game_id ? ` · game ${gap.game_id}` : ""}`,
-                        )
-                        .join("; ")}
-                    </p>
+                    <details className="source-gap-details">
+                      <summary>
+                        Reconstruction gaps ({actuals.nba_derived.gaps.length}) ·{" "}
+                        {actuals.forecast_complete
+                          ? "official scoring basis available"
+                          : "scoring basis incomplete"}
+                      </summary>
+                      <ul>
+                        {groups.map(({ key, label, records }) => (
+                          <li key={key}>
+                            {records.length > 1 ? (
+                              <>
+                                <b>{label}</b> · {records.length} distinct player/day records
+                                <details>
+                                  <summary>Affected days and players</summary>
+                                  <ul>
+                                    {records.map((record) => (
+                                      <li key={record}>{record}</li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              </>
+                            ) : (
+                              records[0]
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   )}
                   {actuals.sources?.length ? (
                     <ul
@@ -100,40 +151,46 @@ export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) 
                       . Provider corrections can change this comparison.
                     </p>
                   )}
-                  <details className="source-total-comparison">
-                    <summary>Compare official and NBA-derived totals</summary>
-                    <div className="league-table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Category</th>
-                            <th>ESPN official</th>
-                            <th>NBA-derived</th>
-                            <th>Forecast banked</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {LEAGUE_CATEGORIES.map(({ key, label }) => (
-                            <tr key={key}>
-                              <th scope="row">{label}</th>
-                              <td>
-                                {formatCategory(categoryValue(actuals.official.totals, key), key)}
-                              </td>
-                              <td>
-                                {formatCategory(
-                                  categoryValue(actuals.nba_derived.totals, key),
-                                  key,
-                                )}
-                              </td>
-                              <td>
-                                {formatCategory(categoryValue(actuals.forecast_totals, key), key)}
-                              </td>
+                  {hasTotals ? (
+                    <details className="source-total-comparison">
+                      <summary>Compare official and NBA-derived totals</summary>
+                      <div className="league-table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Category</th>
+                              <th>ESPN official</th>
+                              <th>NBA-derived</th>
+                              <th>Forecast banked</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </details>
+                          </thead>
+                          <tbody>
+                            {LEAGUE_CATEGORIES.map(({ key, label }) => (
+                              <tr key={key}>
+                                <th scope="row">{label}</th>
+                                <td>
+                                  {formatCategory(categoryValue(actuals.official.totals, key), key)}
+                                </td>
+                                <td>
+                                  {formatCategory(
+                                    categoryValue(actuals.nba_derived.totals, key),
+                                    key,
+                                  )}
+                                </td>
+                                <td>
+                                  {formatCategory(categoryValue(actuals.forecast_totals, key), key)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  ) : (
+                    <p>
+                      Category totals unavailable from both sources; refresh league data to retry.
+                    </p>
+                  )}
                 </>
               ) : (
                 <p className="league-tied">

@@ -632,6 +632,7 @@ def _describe_move(context, before, after, action, selected):
         zero_reason = "Drop is explicitly unavailable for all remaining games."
     else:
         zero_reason = "Drop receives zero usable starts under the modeled slots, availability and lineup policy."
+
     def other_starts(forecast):
         return {
             (row["date"], row["player_id"])
@@ -652,6 +653,13 @@ def _describe_move(context, before, after, action, selected):
         calculation=calculation,
         arithmetic={"primitives": primitives, "categories": _category_arithmetic(before, after, primitives)},
         add_starts=added_starts,
+        add_usable_dates=sorted(
+            {
+                row["date"]
+                for row in after["starts"]
+                if row["owner"] == "user" and row["player_id"] == add["id"] and row["date"] >= action["date"]
+            }
+        ),
         drop_starts=lost_starts,
         zero_drop_reason=zero_reason,
         lineup_changes={
@@ -745,6 +753,7 @@ def plan_waivers(payload):
         "recommendations": [],
         "recommendation_kind": "alternatives",
         "primary_recommendation_kind": "ordered_plan",
+        "evaluation_state": "required_inputs_unknown",
         "strategy": {},
         "baseline": None,
         "projected": None,
@@ -996,6 +1005,15 @@ def plan_waivers(payload):
     safe = [k for k in selected if _edges(baseline)[k] >= 0.8]
     result.update(
         status="ready" if context["budget"] is not None else "incomplete",
+        evaluation_state=(
+            "conditional_opportunities"
+            if context["budget"] is None
+            else "known_zero_acquisitions"
+            if context["budget"] == 0
+            else "confirmed_ordered_plan"
+            if moves
+            else "evaluated_no_material_benefit"
+        ),
         selected_categories=list(selected),
         category_selection_source="user" if requested else "common feasible full-roster plan library; all 126 sets",
         safe_categories=safe,
@@ -1058,8 +1076,10 @@ def plan_waivers(payload):
         - cost,
         "basis": "same final totals and chosen five; wider heuristic scale, not reranked alternatives",
     }
-    if not moves:
+    if not moves and context["budget"] is not None and context["budget"] > 0:
         result["reasons"].append("No materially beneficial legal ordered plan passed the selected-category guards.")
+    if context["budget"] == 0:
+        result["reasons"].append("Confirmed acquisition allowance is zero; pickup benefit was not evaluated.")
     if context["budget"] is None:
         result["reasons"].append(
             "Acquisition budget unknown; alternatives are conditional and no ordered moves are confirmed."
