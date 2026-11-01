@@ -204,8 +204,12 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
             # Regular-season NBA/Cup games only; cup final, exhibitions and playoffs excluded.
             if not str(game.get("gameId", "")).startswith("002"):
                 continue
+            # ScheduleLeagueV2 uses A for active, including completed games; it is
+            # not a postponed flag. Inactive/original postponed rows must not add starts.
             postponed = game.get("postponedStatus")
-            if postponed not in (None, False, 0, "", "N", "0") or "PPD" in str(game.get("gameStatusText", "")).upper():
+            status = str(postponed).strip().upper() if postponed is not None else ""
+            text = str(game.get("gameStatusText", "")).upper()
+            if status not in ("", "FALSE", "0", "N", "A") or "PPD" in text or "POSTPONED" in text:
                 continue
             try:
                 start = datetime.fromisoformat(game["gameDateTimeUTC"].replace("Z", "+00:00"))

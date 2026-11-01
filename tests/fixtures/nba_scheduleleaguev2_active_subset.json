@@ -1,0 +1,71 @@
+{
+  "_source": "https://github.com/swar/nba_api/blob/master/docs/nba_api/stats/endpoints/responses/scheduleleaguev2.json",
+  "_note": "First two regular-season games, selected original fields. Future/PPD/inactive variants are generated explicitly in the test.",
+  "leagueSchedule": {
+    "seasonYear": "2020-21",
+    "gameDates": [
+      {
+        "games": [
+          {
+            "gameId": "0022000001",
+            "gameStatus": 3,
+            "gameStatusText": "Final",
+            "gameDateTimeUTC": "2020-12-23T00:00:00Z",
+            "postponedStatus": "A",
+            "homeTeam": {
+              "teamId": 1610612751,
+              "teamName": "Nets",
+              "teamCity": "Brooklyn",
+              "teamTricode": "BKN",
+              "teamSlug": "nets",
+              "wins": 1,
+              "losses": 0,
+              "score": 125,
+              "seed": 0
+            },
+            "awayTeam": {
+              "teamId": 1610612744,
+              "teamName": "Warriors",
+              "teamCity": "Golden State",
+              "teamTricode": "GSW",
+              "teamSlug": "warriors",
+              "wins": 0,
+              "losses": 1,
+              "score": 99,
+              "seed": 0
+            }
+          },
+          {
+            "gameId": "0022000002",
+            "gameStatus": 3,
+            "gameStatusText": "Final",
+            "gameDateTimeUTC": "2020-12-23T03:00:00Z",
+            "postponedStatus": "A",
+            "homeTeam": {
+              "teamId": 1610612747,
+              "teamName": "Lakers",
+              "teamCity": "Los Angeles",
+              "teamTricode": "LAL",
+              "teamSlug": "lakers",
+              "wins": 0,
+              "losses": 1,
+              "score": 109,
+              "seed": 0
+            },
+            "awayTeam": {
+              "teamId": 1610612746,
+              "teamName": "Clippers",
+              "teamCity": "LA",
+              "teamTricode": "LAC",
+              "teamSlug": "clippers",
+              "wins": 1,
+              "losses": 0,
+              "score": 116,
+              "seed": 0
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

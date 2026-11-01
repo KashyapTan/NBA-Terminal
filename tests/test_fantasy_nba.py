@@ -257,3 +257,32 @@ def test_cdn_success_is_bounded_and_no_redirects(monkeypatch):
     monkeypatch.setattr(nba.requests, "get", get)
     assert nba.fetch_schedule(2027)["leagueSchedule"]["seasonYear"] == "2026-27"
     assert calls[0][1] == {"timeout": (3.05, 6), "allow_redirects": False, "stream": True}
+
+
+def test_provider_active_schedule_status_and_rescheduled_game_regression():
+    """Provider A means active, not postponed; preserve final and future game joins."""
+    import copy
+    import json
+    from pathlib import Path
+
+    data = json.loads((Path(__file__).parent / "fixtures/nba_scheduleleaguev2_active_subset.json").read_text())
+    games = data["leagueSchedule"]["gameDates"][0]["games"]
+    assert all(g["postponedStatus"] == "A" and g["gameStatus"] == 3 for g in games)
+    future = copy.deepcopy(games[0])
+    future.update(
+        gameId="0022000999", gameStatus=1, gameStatusText="7:00 pm ET", gameDateTimeUTC="2020-12-25T00:00:00Z"
+    )
+    postponed = copy.deepcopy(future)
+    postponed.update(gameDateTimeUTC="2020-12-24T00:00:00Z", gameStatusText="PPD")
+    inactive = copy.deepcopy(future)
+    inactive.update(gameId="0022000998", postponedStatus="I")
+    long_postponed = copy.deepcopy(future)
+    long_postponed.update(gameId="0022000997", gameStatusText="Postponed")
+    games.extend([future, postponed, inactive, long_postponed])
+    parsed = nba.schedule_games(data, 2021, datetime(2020, 12, 23, 12, tzinfo=timezone.utc))
+    rows = [row for team in parsed.values() for row in team]
+    assert len(rows) == 6  # Two original finals plus one active rescheduled future game, two teams each.
+    assert {row["game_id"] for row in rows} == {g["gameId"] for g in games[:2]} | {"0022000999"}
+    assert all(row["final"] and row["started"] for row in rows if row["game_id"] != "0022000999")
+    assert all(not row["final"] and not row["started"] for row in rows if row["game_id"] == "0022000999")
+    assert all(row["date"] == "2020-12-24" for row in rows if row["game_id"] == "0022000999")
