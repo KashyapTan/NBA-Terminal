@@ -24,7 +24,7 @@ Each parent readiness handoff and canonical typed attempt/revision/current commi
 
 ## Validation and screenshots
 
-Combined repository Python gate after corrections:365 tests passed, one expected installed TraditionalV2 deprecation warning; game_center96%, webapp100%, configured combined97% (threshold93%). Whole frontend lint/format/types/build and104 unit/coverage tests passed at the unchanged93% line threshold. Final exact-HEAD logs are retained at `generated/final/` and referenced by task evidence.
+Combined repository Python gate after corrections:365 tests passed, one expected installed TraditionalV2 deprecation warning; game_center96%, webapp100%, configured combined97% (threshold93%). Whole frontend lint/format/types/build and104 unit/coverage tests passed at the unchanged93% line threshold. Final exact-HEAD logs are retained at `generated/final/` and referenced by task evidence. The committed frontend log copy removes trailing table-padding whitespace; the original unmodified command output remains in `generated/final/frontend-precommit.log`.
 
 Browser checks:14 default headless checks,12 real-route Fantasy proxy/production checks,4 served-production Players/all-six-tools desktop1440/mobile390 flows. Final gates run after the final code commit. Source Legacy's two standalone all-six harness flows are separately retained; they are not substituted for integrated production checks.
 
