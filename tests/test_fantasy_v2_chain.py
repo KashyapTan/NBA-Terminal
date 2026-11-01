@@ -157,11 +157,12 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 explicit = await plan(protected_ids=["1", "1002"])
                 assert not explicit["recommendations"]
                 raw["league"]["settings"]["acquisitionSettings"].pop("matchupAcquisitionLimit")
-                await browser.get("/api/fantasy/espn/snapshot?refresh=true")
+                refreshed = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
+                assert refreshed["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
                 fallback = await plan(matchup_add_limit_fallback=7)
                 assert fallback["remaining_adds"] + len(fallback["actions"]) == 1
-                assert fallback["provenance"]["matchup_add_limit"]["source"] == "user-declared fallback"
-                assert fallback["provenance"]["matchup_add_limit"]["league_id"] == 123
+                assert refreshed["league"]["acquisition_settings"]["weekly_add_limit"] == 7
+                assert refreshed["league"]["id"] == 123
                 raw["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {}
                 await browser.get("/api/fantasy/espn/snapshot?refresh=true")
                 unknown = await plan(matchup_add_limit_fallback=7)

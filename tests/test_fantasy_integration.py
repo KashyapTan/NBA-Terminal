@@ -200,6 +200,7 @@ def test_authenticated_production_chain_and_guards(monkeypatch, raw):
                 "kona_player_info": "pool",
                 "kona_playercard": "cards",
                 "mTransactions2": "transactions",
+                "mMatchupScore": "league",  # Historical view lacks daily rosters: official fallback.
             }[views[0]]
         ]
 

@@ -77,6 +77,7 @@ FIELDS = {
 }
 _CACHE: dict[tuple, tuple[float, object, float, bool]] = {}
 _LOCK = threading.Lock()
+_FLIGHTS: dict[tuple, threading.Event] = {}
 
 
 def season_name(ending_year: int) -> str:
@@ -93,23 +94,38 @@ def finite(value):
 
 def cached(key: tuple, fetch: Callable, ttl: int = 900) -> tuple[object | None, str]:
     """Single-flight, bounded cache; failures back off, usable stale data lasts six hours."""
-    with _LOCK:
-        clock = time.monotonic()
-        old = _CACHE.get(key)
-        if old and old[0] > clock:
-            return copy.deepcopy(old[1]), "unavailable" if old[1] is None else "stale" if old[3] else "cached"
-        if len(_CACHE) >= 12 and key not in _CACHE:
-            _CACHE.pop(next(iter(_CACHE)))
+    while True:
+        with _LOCK:
+            clock = time.monotonic()
+            old = _CACHE.get(key)
+            if old and old[0] > clock:
+                status = "unavailable" if old[1] is None else "stale" if old[3] else "cached"
+                return copy.deepcopy(old[1]), status
+            flight = _FLIGHTS.get(key)
+            if flight is None:
+                flight = _FLIGHTS[key] = threading.Event()
+                break
+        flight.wait()  # Only identical resource keys wait; callers run in bounded workers.
+    try:
         try:
             value = fetch()
         except (requests.RequestException, ValueError, KeyError, TypeError, IndexError, StopIteration):
             value = None
         if value is None:
             stale = old[1] if old and clock - old[2] < 21600 else None
-            _CACHE[key] = (clock + 60, stale, old[2] if old else clock, True)
-            return copy.deepcopy(stale), "stale" if stale is not None else "unavailable"
-        _CACHE[key] = (clock + ttl, value, clock, False)
-        return copy.deepcopy(value), "fresh"
+            entry = (clock + 60, stale, old[2] if old else clock, True)
+            status = "stale" if stale is not None else "unavailable"
+        else:
+            entry = (clock + ttl, value, clock, False)
+            status = "fresh"
+        with _LOCK:
+            if len(_CACHE) >= 64 and key not in _CACHE:
+                _CACHE.pop(next(iter(_CACHE)))
+            _CACHE[key] = entry
+        return copy.deepcopy(entry[1]), status
+    finally:
+        with _LOCK:
+            _FLIGHTS.pop(key).set()
 
 
 def fetch_rates(year: int) -> list[dict]:
@@ -155,13 +171,23 @@ def fetch_schedule(year: int) -> dict:
 
 
 def load(year: int, *, need_schedule: bool = True) -> dict:
-    rates, rate_status = cached(("rates", year), lambda: fetch_rates(year))
+    rates, rate_status = cached(
+        ("rates", year), lambda: {"rows": fetch_rates(year), "fetched_at": datetime.now(timezone.utc).isoformat()}
+    )
     schedule, schedule_status = (
-        cached(("schedule", year), lambda: fetch_schedule(year), 3600) if need_schedule else (None, "not_needed")
+        cached(
+            ("schedule", year),
+            lambda: {"data": fetch_schedule(year), "fetched_at": datetime.now(timezone.utc).isoformat()},
+            3600,
+        )
+        if need_schedule
+        else (None, "not_needed")
     )
     return {
-        "rates": rates or [],
-        "schedule": schedule,
+        "rates": rates["rows"] if rates else [],
+        "rates_fetched_at": rates["fetched_at"] if rates else None,
+        "schedule": schedule["data"] if schedule else None,
+        "schedule_fetched_at": schedule["fetched_at"] if schedule else None,
         "rates_status": rate_status,
         "schedule_status": schedule_status,
         "season": season_name(year),
@@ -172,7 +198,7 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
     league = (data or {}).get("leagueSchedule", {})
     if league.get("seasonYear") != season_name(year):
         return {}
-    parsed = []
+    parsed, unknown_teams = [], set()
     for day in league.get("gameDates", []):
         for game in day.get("games", []):
             # Regular-season NBA/Cup games only; cup final, exhibitions and playoffs excluded.
@@ -187,6 +213,10 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
                     start = start.replace(tzinfo=timezone.utc)
                 home, away = (NBA_TO_ESPN[game[key]["teamId"]] for key in ("homeTeam", "awayTeam"))
             except (ValueError, KeyError, TypeError):
+                affected = [NBA_TO_ESPN.get(game.get(key, {}).get("teamId")) for key in ("homeTeam", "awayTeam")]
+                if None in affected:
+                    return {}  # Unknown affected team: cannot certify any team's empty schedule.
+                unknown_teams.update(affected)
                 continue
             parsed.append((game, start, home, away))
     if not parsed:
@@ -203,11 +233,14 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
                     "date": date.isoformat(),
                     "start_at": start.isoformat(),
                     "started": start <= now or game.get("gameStatus") in (2, 3),
+                    "final": game.get("gameStatus") == 3,
                     "opponent_pro_team_id": opponent,
                     "source": "nba_schedule",
                 }
             )
-    return {team: sorted(games, key=lambda g: g["start_at"]) for team, games in result.items()}
+    return {
+        team: sorted(games, key=lambda g: g["start_at"]) for team, games in result.items() if team not in unknown_teams
+    }
 
 
 def name_key(name: str | None) -> str:
@@ -237,22 +270,69 @@ def match_player(player: dict, rows: list[dict]) -> tuple[dict | None, dict]:
 
 def enrich_players(snapshot: dict, bundle: dict) -> None:
     all_players = [p for team in snapshot["teams"] for p in team["roster"]] + snapshot["free_agents"]
+    ending_year = snapshot.get("league", {}).get("season_id")
+    season = bundle.get("season") or (season_name(ending_year) if ending_year else None)
     for player in all_players:
         row, identity = match_player(player, bundle.get("rates", []))
         player["identity"] = identity
-        if row is None or (finite(row.get("GP")) or 0) <= 0:
-            continue
-        rates = {key: finite(row.get(field)) for field, key in FIELDS.items()}
-        current = player["current_rates"] or {}
-        filled = [key for key, value in rates.items() if current.get(key) is None and value is not None]
-        if filled:
-            player["current_rates"] = rates | {k: v for k, v in current.items() if v is not None}
-            player["current_rates_source"] = "nba_stats" if not current else "espn_with_nba_stats"
-            player["nba_filled_rate_fields"] = filled
-        if player["current_games"] is None:
-            player["current_games"] = finite(row.get("GP"))
-            player["current_games_source"] = "nba_stats"
+        current = player.get("current_rates")
+        player["espn_current_rates"] = copy.deepcopy(current)
+        games = finite(row.get("GP")) if row else None
+        if row is not None and games is not None and games > 0:
+            rates = {key: finite(row.get(field)) for field, key in FIELDS.items()}
+            # Shooting pairs always come from the same sample; do not mix vendor denominators.
+            for prefix in ("fg", "ft"):
+                made, attempts = rates[prefix + "m"], rates[prefix + "a"]
+                rates[prefix + "_pct"] = made / attempts if made is not None and attempts else None
+            player["nba_rates"] = copy.deepcopy(rates)
+            if bundle.get("rates_status") != "stale" or not current:
+                player["current_rates"] = rates
+                player["current_rates_source"] = "nba_stats"
+                player["current_games"] = games
+                player["current_games_source"] = "nba_stats"
+        source = player.get("current_rates_source")
+        chosen = player.get("current_rates")
+        if chosen is None or not (player.get("current_games") or 0) > 0:
+            chosen = player.get("prior_rates")
+            source = "espn_prior_season" if chosen is not None else None
+        player["rate_provenance"] = {
+            "source": source,
+            "season": season
+            if source != "espn_prior_season"
+            else season_name(ending_year - 1)
+            if ending_year
+            else None,
+            "games": player.get("prior_games") if source == "espn_prior_season" else player.get("current_games"),
+            "small_sample": bool(source != "espn_prior_season" and 0 < (player.get("current_games") or 0) < 3),
+            "fallback": source != "nba_stats",
+            "reason": "NBA batch unavailable, stale, or identity/sample missing" if source != "nba_stats" else None,
+            "status": bundle.get("rates_status") if source == "nba_stats" else "fallback" if source else "missing",
+            "fetched_at": bundle.get("rates_fetched_at") if source == "nba_stats" else snapshot.get("fetched_at"),
+        }
+        player["season_rates"] = copy.deepcopy(chosen)
     snapshot["enrichment"] = {k: v for k, v in bundle.items() if k not in ("rates", "schedule")}
+    required_teams = {snapshot.get("selected_team_id"), snapshot.get("opponent_team_id")}
+    for team in snapshot["teams"]:
+        if team.get("id") is None or team.get("id") not in required_teams:
+            continue
+        stale = any(
+            p.get("rate_provenance", {}).get("status") == "stale"
+            for p in team["roster"]
+            if p.get("active") is not False
+        )
+        stale_schedule = bundle.get("schedule_status") == "stale" and any(
+            p.get("schedule_source") == "nba_schedule" for p in team["roster"] if p.get("active") is not False
+        )
+        snapshot.setdefault("projection_metadata", {})[f"schedule_freshness_team_{team['id']}"] = {
+            "complete": not stale_schedule,
+            "source": "per_player_schedule_source",
+            "reason": "Stale NBA schedule selected" if stale_schedule else "No stale schedules selected",
+        }
+        snapshot.setdefault("projection_metadata", {})[f"rate_freshness_team_{team['id']}"] = {
+            "complete": not stale,
+            "source": "per_player_rate_provenance",
+            "reason": "Stale NBA rates lack a usable ESPN current sample" if stale else "No stale rates selected",
+        }
     if bundle.get("rates_status") in ("unavailable", "stale"):
         snapshot["data_gaps"].append(f"NBA current-season batch stats {bundle['rates_status']}; ESPN samples retained.")
     if bundle.get("schedule_status") in ("unavailable", "stale"):

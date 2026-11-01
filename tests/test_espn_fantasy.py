@@ -81,12 +81,13 @@ def test_private_ownership_comparison_and_validation(data):
         espn.validate_team(data["league"], 999, None)
 
 
-def test_missing_data_never_becomes_zero_or_seven(data):
+def test_missing_data_never_becomes_zero_and_absent_cap_has_labeled_fallback(data):
     data["schedule"] = {}
     data["league"]["settings"]["acquisitionSettings"] = {}
     data["league"]["schedule"][7]["home"].pop("cumulativeScore")
     result = normalized(data)
-    assert result["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert result["league"]["acquisition_settings"]["weekly_add_limit"] == 7
+    assert result["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
     assert result["teams"][0]["totals"] is None
     assert all(row["state"] == "unknown" for row in result["comparison"]["categories"])
     assert result["teams"][0]["roster"][0]["schedule"] is None
@@ -100,7 +101,9 @@ def test_daily_unlimited_missing_cap_not_weekly(data, value, per_day):
     data["league"]["settings"]["acquisitionSettings"].update(
         matchupAcquisitionLimit=value, matchupLimitPerScoringPeriod=per_day
     )
-    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] == (
+        7 if value is None and per_day is False else None
+    )
 
 
 @pytest.mark.parametrize("scoring_type", ["ROTO", "H2H_POINTS", None])
@@ -239,7 +242,7 @@ def test_snapshot_batches_and_optional_failures(monkeypatch, data):
 
     monkeypatch.setattr(espn.EspnClient, "get", get)
     result = espn.EspnClient(123, 2027).snapshot(data["league"], 1)
-    assert len(calls) == 4
+    assert len(calls) == 5
     assert len(calls[2][1]["players"]["filterIds"]["value"]) == 16
     assert calls[2][1]["players"]["filterStatsForTopScoringPeriodIds"]["additionalValue"] == ["002027", "002026"]
     assert result["transactions"] is None
@@ -394,8 +397,8 @@ def test_prior_period_repair_is_one_batch_and_keeps_good_side(monkeypatch, data)
 
     monkeypatch.setattr(espn.EspnClient, "get", get)
     result = espn.EspnClient(123, 2027).snapshot(data["league"], 1)
-    assert len(calls) == 5
-    assert calls[-1][1] == {"schedule": {"filterMatchupPeriodIds": {"value": [1]}}}
+    assert len(calls) == 6
+    assert calls[-2][1] == {"schedule": {"filterMatchupPeriodIds": {"value": [1]}}}
     history = next(m for m in result["matchup_history"] if m["home_team_id"] == missing_team)
     assert history["home_totals"] is not None and history["away_totals"] is not None
     assert prior["home"].get("cumulativeScore") is None  # input remains unchanged
