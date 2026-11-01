@@ -92,6 +92,10 @@ test("production API returns one coherent pair, visible all-nine arithmetic and 
     fullPage: true,
   });
   await primary.screenshot({ path: resolve(evidence, `${info.project.name}-plan-mobile.png`) });
+  await primary
+    .getByRole("heading", { name: "Best explored add/drop sequence" })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: resolve(evidence, `${info.project.name}-mobile-viewport.png`) });
   const coreResponse = page.waitForResponse(
     (r) => r.url().endsWith("/plan") && r.request().postDataJSON()?.allow_core_drops === true,
   );
