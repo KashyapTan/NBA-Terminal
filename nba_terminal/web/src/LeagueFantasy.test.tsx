@@ -63,7 +63,11 @@ it("clears private cookies immediately after submit and never persists them", as
   const storage = vi.spyOn(Storage.prototype, "setItem");
   render(<LeagueConnection state={state({ connect })} />);
   await user.click(screen.getByText("Manual or public league fallback"));
+  expect(screen.getByLabelText("Manual league ID")).toHaveValue(604550749);
+  expect(screen.getByLabelText("Manual season ending year")).toHaveValue(2027);
+  await user.clear(screen.getByLabelText("Manual league ID"));
   await user.type(screen.getByLabelText("Manual league ID"), "123");
+  await user.clear(screen.getByLabelText("Manual season ending year"));
   await user.type(screen.getByLabelText("Manual season ending year"), "2027");
   await user.click(screen.getByLabelText("Private league"));
   await user.type(screen.getByLabelText("SWID"), "test-cookie");

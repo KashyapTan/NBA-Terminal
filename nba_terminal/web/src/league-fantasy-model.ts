@@ -157,6 +157,9 @@ export interface LeagueSnapshot {
   >;
   data_gaps: string[];
 }
+export const DEFAULT_ESPN_LEAGUE_ID = 604550749;
+export const DEFAULT_ESPN_SEASON_ID = 2027;
+
 export interface ConnectLeague {
   league_id: number;
   season_id: number;
