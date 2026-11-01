@@ -44,7 +44,7 @@ The expanded scope adds a researcher-led audit and recovery of all recoverable p
 
 Independent code inspection found that historical NBA games with any log row skipped box-score recovery even when another required active starter lacked a row. Recovery now uses verified daily active lineups to identify required player/game keys, fetches only relevant incomplete games within the existing 16-game bound, and accepts explicit DNP zeros only from the box score. Complete fresh required log coverage avoids another fetch. Unknown identities and absent box-score rows remain unknown. This is a code-path defect reproduced with synthetic source-shape tests, not a claim that it caused the user's budget blocker.
 
-## Final revision2 validation
+## Combined validation at3b3f751
 
 - `uv run ruff check .`: passed.
 - `uv run coverage run -m pytest`:394passed; one pre-existing BoxScoreTraditionalV2 deprecation warning.
@@ -55,3 +55,9 @@ Independent code inspection found that historical NBA games with any log row ski
 - Final primary checkout observation remained clean at6edc9be; existing user server listeners remained PIDs59996(:5173) and60007(:8000). No restart or private session action occurred.
 
 Original full command outputs are retained under the worker's `data/evidence/revision2-python.txt` and `revision2-web.txt`; canonical task evidence binds them to the final commit. Screenshots were regenerated from the final tested UI. Current private usage and loaded Python module revision remain unverified; these checks do not claim a live private-account recommendation.
+
+## Ordinary review corrections and production proof
+
+The independent review of3b3f751 found twoP2 anomalous-response cases, now covered by oversized-page and cache-level invalidGP regressions. See the updated gap matrix/review note. The original394/111/17 results above remain exact3b3f751 evidence; current correction check counts are retained in canonical delivery evidence. Frontend source is unchanged by the corrections.
+
+A separate production-proof set uses the real HTTP session/normalizer/planner with the existing synthetic-provider backend: complete9category forecast, cap7, fixture-current usage6, one ordered move, and legible full-roster before/add/drop/spillover/after/net arithmetic. Desktop/mobile/budget and mobile horizontal table positions are retained in the worker `data/evidence/production-fixture/` directory, with safe metadata and a standalone capture script. The original `desktop.png`/`mobile.png` here remain minimal blocker-rendering fixtures; they do not prove recovered production forecasts or private account results.

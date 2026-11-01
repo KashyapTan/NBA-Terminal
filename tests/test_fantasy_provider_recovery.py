@@ -4,6 +4,7 @@ import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,6 +13,7 @@ from nba_terminal.services import fantasy_actuals as actuals
 from nba_terminal.services import fantasy_nba as nba
 from nba_terminal.services import fantasy_planner_adapter as adapter
 from nba_terminal.services.fantasy_nba import fetch_identities as fetch_identity_batch
+from nba_terminal.services.fantasy_nba import load as load_current_bundle
 from nba_terminal.services.fantasy_nba import load_prior_rates as load_prior_sample
 from tests.test_fantasy_integration import preferences
 
@@ -270,3 +272,108 @@ def test_identity_request_uses_the_real_supported_constructor_and_explicit_seaso
     load_prior_sample(2027)
     load_prior_sample(2027)
     assert calls == [2026]
+
+
+@pytest.mark.parametrize("reported_total", [None, 500])
+def test_oversized_market_page_cannot_skip_returned_ids_then_claim_complete(monkeypatch, reported_total):
+    calls = []
+
+    def oversized(self, views, filters, **kwargs):
+        offset = filters["players"]["offset"]
+        calls.append(offset)
+        page = {"players": [{"player": {"id": pid}} for pid in range(1000)] if offset == 0 else []}
+        if reported_total is not None:
+            page["totalPlayers"] = reported_total
+        return page
+
+    monkeypatch.setattr(espn.EspnClient, "get", oversized)
+    result = espn.EspnClient(123, 2027).market(1)
+    assert calls == [0]  # No cursor advance past the discarded overflow.
+    assert len(result["players"]) == 500
+    assert not result["coverage"]["complete"] and not result["coverage"]["terminal_observed"]
+    assert result["coverage"]["stopped_reason"] == "oversized_page"
+    assert result["coverage"]["pages"] == [{"offset": 0, "requested": 500, "returned": 1000}]
+
+
+@pytest.mark.parametrize(
+    "games,made",
+    [
+        (None, None),
+        (None, 1),
+        (float("nan"), 1),
+        (float("inf"), 1),
+        (-1, 1),
+        (1.5, 1),
+        (False, 1),
+        (0, None),
+        (4, None),
+    ],
+)
+def test_malformed_gp_or_primitives_preserve_last_valid_nba_batch_at_load_boundary(monkeypatch, games, made):
+    headers = ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "GP", *nba.FIELDS]
+    good = {
+        "PLAYER_ID": 123,
+        "PLAYER_NAME": "Example",
+        "TEAM_ID": 1610612737,
+        "GP": 4,
+        **{field: 1 for field in nba.FIELDS},
+    }
+    current = [good]
+    clock = [100.0]
+    monkeypatch.setattr(nba, "_CACHE", {})
+    monkeypatch.setattr(nba.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(
+        nba.leaguedashplayerstats,
+        "LeagueDashPlayerStats",
+        lambda **kwargs: SimpleNamespace(
+            get_dict=lambda: {
+                "resultSets": [
+                    {
+                        "name": "LeagueDashPlayerStats",
+                        "headers": headers,
+                        "rowSet": [[row.get(key) for key in headers] for row in current],
+                    }
+                ]
+            }
+        ),
+    )
+    first = load_current_bundle(2027, need_schedule=False)
+    assert first["rates_status"] == "fresh" and first["rates"][0]["FGM"] == 1
+    current[:] = [good | {"GP": games, "FGM": made}]
+    clock[0] = 1001  # Expired900s rate cache; valid batch still within stale retention.
+    recovered = load_current_bundle(2027, need_schedule=False)
+    assert recovered["rates_status"] == "stale"
+    assert recovered["rates"][0]["GP"] == 4 and recovered["rates"][0]["FGM"] == 1
+    assert recovered["rates_fetched_at"] == first["rates_fetched_at"]
+
+
+def test_explicit_zero_gp_is_valid_zero_sample_but_never_an_invented_production_basis(monkeypatch):
+    headers = ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION", "GP", *nba.FIELDS]
+    row = {
+        "PLAYER_ID": 123,
+        "PLAYER_NAME": "Example",
+        "TEAM_ID": 1610612737,
+        "TEAM_ABBREVIATION": "ATL",
+        "GP": 0,
+        **{field: 0 for field in nba.FIELDS},
+    }
+    monkeypatch.setattr(
+        nba.leaguedashplayerstats,
+        "LeagueDashPlayerStats",
+        lambda **kwargs: SimpleNamespace(
+            get_dict=lambda: {
+                "resultSets": [
+                    {"name": "LeagueDashPlayerStats", "headers": headers, "rowSet": [[row.get(key) for key in headers]]}
+                ]
+            }
+        ),
+    )
+    assert nba.fetch_rates(2027)[0]["GP"] == 0
+    player = {"name": "Example", "pro_team_id": 1, "current_rates": None, "current_games": 0, "prior_rates": None}
+    snapshot = {"teams": [{"roster": [player]}], "free_agents": [], "data_gaps": []}
+    nba.enrich_players(snapshot, {"rates": [row], "rates_status": "fresh"})
+    assert player["season_rates"] is None  # GP0 does not establish zero ability.
+    row.update(GP=4.0)
+    for field in nba.FIELDS:
+        row[field] = 1
+    assert nba.fetch_rates(2027)[0]["GP"] == 4.0  # Integral numeric floats remain supported.

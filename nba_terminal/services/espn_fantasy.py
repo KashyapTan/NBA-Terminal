@@ -352,6 +352,11 @@ class EspnClient:
                     entries.append(entry)
                     added += 1
             duplicates += len(rows[:requested]) - added
+            if len(rows) > requested:
+                # Never advance past rows discarded by the request-size guard
+                # and then certify a later empty page as complete enumeration.
+                stopped = "oversized_page"
+                break
             if added < len(rows[:requested]):
                 stopped = "repeated_or_invalid_page"
                 break

@@ -164,13 +164,13 @@ def fetch_rates(year: int) -> list[dict]:
     if not {"PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "GP", *required}.issubset(headers):
         raise ValueError("NBA stats schema changed")
     rows = [dict(zip(headers, row, strict=True)) for row in table["rowSet"]]
-    if any(
-        finite(row.get("GP")) is not None
-        and row["GP"] > 0
-        and not usable_rates({key: finite(row.get(field)) for field, key in FIELDS.items()})
-        for row in rows
-    ):
-        raise ValueError("NBA sampled rate row incomplete")
+    for row in rows:
+        games = finite(row.get("GP"))
+        rates = {key: finite(row.get(field)) for field, key in FIELDS.items()}
+        if games is None or games < 0 or not games.is_integer() or not usable_rates(rates):
+            raise ValueError("NBA game count or primitive rate sample invalid")
+        if games == 0 and any(value != 0 for key, value in rates.items() if key not in {"fg_pct", "ft_pct"}):
+            raise ValueError("NBA zero-game sample has nonzero production")
     return rows
 
 
