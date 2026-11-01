@@ -112,7 +112,7 @@ test("strategy hierarchy, score and five-category remaining-total alternatives r
                   : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
+  const evidence = resolve(process.cwd(), "../../code_review/v5_app/generated/league-strategy-ui");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/fantasy?fantasyTab=matchups");
@@ -163,7 +163,7 @@ test("browser setup and consented pairing states work without exposing cookie in
             : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v4");
+  const evidence = resolve(process.cwd(), "../../code_review/v5_app/generated/league-strategy-ui");
   mkdirSync(evidence, { recursive: true });
   await page.goto("/fantasy");
   await page.getByText("One-time browser setup", { exact: true }).click();

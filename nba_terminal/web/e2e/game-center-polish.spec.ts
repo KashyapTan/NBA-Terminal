@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 const home = {
@@ -71,7 +71,11 @@ for (const width of [1440, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,
     );
-    await page.screenshot({ path: `test-results/game-center-${width}.png`, fullPage: true });
+    mkdirSync("../../code_review/v5_app/generated/game-center", { recursive: true });
+    await page.screenshot({
+      path: `../../code_review/v5_app/generated/game-center/game-center-${width}.png`,
+      fullPage: true,
+    });
     const collapse = page.getByRole("button", { name: "Collapse sidebar" });
     await collapse.focus();
     await page.keyboard.press("Enter");

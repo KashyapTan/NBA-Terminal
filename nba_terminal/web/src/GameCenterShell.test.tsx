@@ -63,7 +63,7 @@ function mount(path: string, enablePlayers = true, enableTools = false) {
       <MetaProvider>
         <AppRoutes
           playerBrowser={enablePlayers ? BrowserContract : null}
-          analyticsTools={enableTools ? ToolsContract : undefined}
+          analyticsTools={enableTools ? ToolsContract : null}
         />
         <HistoryControls />
       </MetaProvider>

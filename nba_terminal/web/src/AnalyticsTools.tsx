@@ -226,12 +226,26 @@ function PredictorResult({ result }: { result: ToolResult }) {
   );
 }
 
-export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: AnalyticsTool }) {
+export function AnalyticsTools({
+  initialTool = "predictor",
+  initialSeason,
+  initialPhase,
+  onToolSelect,
+}: {
+  initialTool?: AnalyticsTool;
+  initialSeason?: string;
+  initialPhase?: string;
+  onToolSelect?: (tool: AnalyticsTool) => void;
+}) {
   const [tool, setTool] = useState<AnalyticsTool>(initialTool);
   const [meta, setMeta] = useState<ToolMeta>();
   const [metaError, setMetaError] = useState("");
   const [season, setSeason] = useState("");
-  const [phase, setPhase] = useState("Regular Season");
+  const [phase, setPhase] = useState(
+    initialPhase && ["Regular Season", "Playoffs", "Pre Season", "All Star"].includes(initialPhase)
+      ? initialPhase
+      : "Regular Season",
+  );
   const [day, setDay] = useState("");
   const [team, setTeam] = useState("");
   const [opponent, setOpponent] = useState("");
@@ -253,7 +267,7 @@ export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: An
       .then((data) => {
         if (!active) return;
         setMeta(data);
-        setSeason(data.season);
+        setSeason(initialSeason || data.season);
         setDay(data.today);
         setTeam(String(data.teams[0]?.id ?? ""));
         setOpponent(String(data.teams[1]?.id ?? ""));
@@ -266,6 +280,13 @@ export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: An
       request.current++;
     };
   }, []);
+  useEffect(() => {
+    request.current++;
+    setTool(initialTool);
+    setResult(undefined);
+    setBusy(false);
+    setError("");
+  }, [initialTool]);
   const online = !["picks", "catalog"].includes(tool);
   async function load(filename?: string) {
     const id = ++request.current;
@@ -335,6 +356,7 @@ export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: An
             onClick={() => {
               request.current++;
               setTool(key);
+              onToolSelect?.(key);
               setResult(undefined);
               setBusy(false);
               setError("");
@@ -351,6 +373,14 @@ export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: An
         <summary>Definitions and original method</summary>
         <p>{DEFINITIONS[tool]}</p>
       </details>
+      {online &&
+        initialPhase &&
+        !["Regular Season", "Playoffs", "Pre Season", "All Star"].includes(initialPhase) && (
+          <p className="at-warning">
+            These tools do not support {initialPhase}. The phase selector shows the supported sample
+            used for this analysis.
+          </p>
+        )}
       {metaError && online && (
         <p role="alert">Tool setup unavailable: {metaError}. Reload to retry.</p>
       )}
@@ -615,7 +645,11 @@ export function AnalyticsTools({ initialTool = "predictor" }: { initialTool?: An
               {result.content != null && (
                 <article>
                   <h3>{result.filename}</h3>
-                  <pre className="at-note">{result.content}</pre>
+                  {result.content.trim() ? (
+                    <pre className="at-note">{result.content}</pre>
+                  ) : (
+                    <p className="at-note">This historical note is empty.</p>
+                  )}
                   <button type="button" onClick={() => void load()}>
                     Back to matching files
                   </button>

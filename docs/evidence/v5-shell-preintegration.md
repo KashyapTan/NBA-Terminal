@@ -23,3 +23,5 @@ Three focused shell tests cover season/phase selection, keyboard selection, brow
 ## Subsequent verified integration
 
 PLAYER revision 2 source d7e9aec was integrated as 0b083ac. The real production Players routes are now enabled; see `code_review/v5_app/player-integration.md` for current production-route validation and the added two-player sample comparison. Analytics Tools remains gated pending exact LEGACY source. Earlier paragraphs preserve the preparation-stage facts, not current completion claims.
+
+LEGACY revision1 f6f9c484 is now integrated as af85a68; the real router and AnalyticsTools are mounted, including direct tool URLs and built-shell reload. The final current disposition is `docs/v5_feature_parity.md`; this document retains the earlier preparation history.

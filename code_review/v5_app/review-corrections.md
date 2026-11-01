@@ -13,3 +13,7 @@ Original independent review: `/Users/kash/.local/share/multplx/home/data/NBA_V5_
 The source-worker `code_review/evidence/v5_player_profile_live.txt` and copied original completion report asserted available23game history. Independent exact-source replay contradicted that claim at d7e9aec. Those original bytes remain historical artifacts; they are **not** final pre-fix history correctness evidence. Final available-history/derived-shooting/navigation claims rely on the corrected APP code and unmodified review raw-response parser regression/production-route replay. Source V3/season/shooting endpoint observations remain separately attributable and were not disproven by R1.
 
 The independent review reported exactly these three source findings and no additional concrete FANTASY/LEGACY defect in its bounded pass. It did not certify the integrated application or private ESPN state. Parent-requested bounded verification of the exact correction commit is distinct from this implementation self-check.
+
+## Independent closure
+
+Parent supplied and accepted `/Users/kash/.local/share/multplx/home/data/NBA_V5_REVIEW/fix-verification.md`: exact4bb6460 correction source, byte-identical original raw responses, independent script and9targeted tests passed. All R1–R3 findings are resolved at that revision. No later behavioral change was made to those normalization/opponent functions. This closes the bounded findings, not a full integrated UI/private-account certification.

@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 
 from nba_terminal.espn_fantasy_api import router as espn_fantasy_router
 from nba_terminal.fantasy_api import router as fantasy_router
+from nba_terminal.legacy_tools_api import create_legacy_tools_router
 from nba_terminal.services import game_center, player_data
 from nba_terminal.services import player_analysis as player_analysis_service
 from nba_terminal.services.nba_http import configure_nba_stats_client
@@ -99,6 +100,7 @@ def _run_nba_fetch(function: Callable[..., Any], *args: Any) -> Any:
 
 app.state.cached_nba_call = _cached_call
 app.include_router(fantasy_router)
+app.include_router(create_legacy_tools_router(_cached_call))
 app.state.espn_pool = NBA_POOL
 app.state.espn_slots = NBA_SLOTS
 app.include_router(espn_fantasy_router)
@@ -108,6 +110,8 @@ app.include_router(espn_fantasy_router)
 @app.get("/fantasy")
 @app.get("/players")
 @app.get("/players/{player_id}")
+@app.get("/tools")
+@app.get("/tools/{tool}")
 async def index() -> FileResponse:
     if not (WEB_DIST / "index.html").is_file():
         raise HTTPException(status_code=503, detail="Web client is not built. Run `bun run build` in nba_terminal/web.")

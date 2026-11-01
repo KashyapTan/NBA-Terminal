@@ -15,13 +15,13 @@ import uvicorn
 from nba_api.stats.library.http import NBAStatsHTTP, NBAStatsResponse
 
 from nba_terminal import webapp
-from nba_terminal.services import game_center
+from nba_terminal.services import game_center, legacy_tools
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SCHEDULE = json.loads((FIXTURES / "nba_schedule_2026_11_01.json").read_text())["rows"]
 FINAL = dict(
     SCHEDULE[0],
-    gameDateEst="2025-06-22",
+    gameDateEst="2025-06-22T00:00:00Z",
     gameDateTimeUTC="2025-06-23T00:00:00Z",
     gameId="0042400407",
     gameStatus=3,
@@ -50,6 +50,9 @@ def rowset(name, records):
 
 
 def fixture_request(self, endpoint, parameters, **kwargs):
+    if endpoint == "playergamelog" and int(parameters["PlayerID"]) == 1628983:
+        raw = (FIXTURES / "nba_playergamelog_playoffs_2025.json").read_text()
+        return NBAStatsResponse(response=raw, status_code=200, url="captured-public-playergamelog")
     if endpoint == "boxscoreadvancedv3":
         raw = (FIXTURES / "nba_boxscoreadvancedv3_finals_2025.json").read_text()
         return NBAStatsResponse(response=raw, status_code=200, url="captured-public-fixture")
@@ -84,6 +87,8 @@ def fixture_request(self, endpoint, parameters, **kwargs):
             table = payload["resultSets"][0]
             extra = list(table["rowSet"][0])
             extra[table["headers"].index("PLAYER_ID")] = 203999
+            if "PLAYER_NAME" in table["headers"]:
+                extra[table["headers"].index("PLAYER_NAME")] = "Nikola Jokić"
             table["rowSet"].append(extra)  # Explicitly synthetic second-player dashboard copy.
     elif endpoint == "playerdashboardbyshootingsplits":
         payload = json.loads((FIXTURES / "nba_player_shooting_splits_2025.json").read_text())
@@ -131,7 +136,7 @@ def fixture_request(self, endpoint, parameters, **kwargs):
                             "AST": 12,
                             "STL": 1,
                             "BLK": 2,
-                            "TOV": 2,
+                            "TO": 2,
                             "FGM": 8,
                             "FGA": 16,
                             "FG3M": 2,
@@ -159,6 +164,64 @@ def fixture_request(self, endpoint, parameters, **kwargs):
     else:
         raise RuntimeError(f"Unmocked NBA endpoint in deterministic V5 server: {endpoint}")
     return NBAStatsResponse(response=json.dumps(payload), status_code=200, url="synthetic-provider-transport")
+
+
+# Synthetic provider DataFrames for the standalone batched endpoints. The actual
+# LegacyToolsService/cache/router/formulas still run; no normalized tool result is mocked.
+def provider_frame(frame):
+    return SimpleNamespace(get_data_frames=lambda: [frame])
+
+
+BATCH_LOGS = pd.DataFrame(
+    [
+        {
+            "PLAYER_ID": player,
+            "TEAM_ID": 1610612760,
+            "GAME_ID": f"00424003{i:02d}",
+            "GAME_DATE": f"2025-06-{21 - i:02d}",
+            "PTS": 40 + i % 5,
+            "MIN": 37,
+            "REB": 5 + i % 4,
+            "AST": 6 + i % 3,
+            "STL": i % 2,
+            "BLK": i % 3,
+        }
+        for player in (1628983, 203999)
+        for i in range(20)
+    ]
+)
+legacy_tools.playergamelogs.PlayerGameLogs = lambda **kwargs: provider_frame(BATCH_LOGS.copy())
+legacy_tools.commonteamroster.CommonTeamRoster = lambda **kwargs: provider_frame(
+    pd.DataFrame(
+        [
+            {"PLAYER_ID": 1628983, "PLAYER": "Shai Gilgeous-Alexander"},
+            {"PLAYER_ID": 203999, "PLAYER": "Nikola Jokić"},
+        ]
+    )
+)
+legacy_tools.leaguedashteamstats.LeagueDashTeamStats = lambda **kwargs: provider_frame(
+    pd.DataFrame(
+        [
+            {"TEAM_ID": 1610612760, "DEF_RATING": 108, "PACE": 98, "OPP_FG_PCT": 0.45, "OPP_FG3_PCT": 0.34},
+            {"TEAM_ID": 1610612754, "DEF_RATING": 114, "PACE": 102, "OPP_FG_PCT": 0.48, "OPP_FG3_PCT": 0.37},
+        ]
+    )
+)
+ZONE_NAMES = [
+    "Restricted Area",
+    "In The Paint (Non-RA)",
+    "Mid-Range",
+    "Left Corner 3",
+    "Right Corner 3",
+    "Above the Break 3",
+]
+ZONE_FRAME = pd.DataFrame(
+    [[1610612760, 0.6, 0.45, 0.4, 0.3, 0.4, 0.35], [1610612754, 0.65, 0.5, 0.45, 0.35, 0.4, 0.38]],
+    columns=pd.MultiIndex.from_tuples([("", "TEAM_ID"), *[(name, "OPP_FG_PCT") for name in ZONE_NAMES]]),
+)
+legacy_tools.leaguedashteamshotlocations.LeagueDashTeamShotLocations = lambda **kwargs: provider_frame(
+    ZONE_FRAME.copy()
+)
 
 
 NBAStatsHTTP.send_api_request = fixture_request

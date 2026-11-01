@@ -193,7 +193,7 @@ test("all six standalone tools are usable, compact and accessible", async ({ pag
   });
   await page.goto("/e2e/analytics-tools.html");
   await page.getByRole("combobox", { name: "Player", exact: true }).selectOption("30");
-  const evidence = "../../docs/evidence/v5_legacy";
+  const evidence = "../../code_review/v5_app/generated/legacy-harness";
   await mkdir(evidence, { recursive: true });
   for (const [tool, title] of [
     ["predictor", "Points Predictor"],

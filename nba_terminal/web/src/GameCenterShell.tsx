@@ -20,7 +20,12 @@ export type PlayerBrowserContentProps = {
 const phases = ["Regular Season", "Pre Season", "Playoffs", "All Star", "Play In", "NBA Cup Final"];
 
 export type AnalyticsTool = "predictor" | "consistency" | "defense" | "slate" | "picks" | "catalog";
-export type AnalyticsToolsContentProps = { initialTool?: AnalyticsTool };
+export type AnalyticsToolsContentProps = {
+  initialTool?: AnalyticsTool;
+  initialSeason?: string;
+  initialPhase?: string;
+  onToolSelect?: (tool: AnalyticsTool) => void;
+};
 const analyticsTools: AnalyticsTool[] = [
   "predictor",
   "consistency",
@@ -167,6 +172,7 @@ export function AnalyticsWorkspace({
   Tools: ComponentType<AnalyticsToolsContentProps>;
 }) {
   const { tool } = useParams();
+  const navigate = useNavigate();
   const [search] = useSearchParams();
   const requestedTool = tool || search.get("tool");
   const selected = analyticsTools.find((item) => item === requestedTool);
@@ -176,5 +182,16 @@ export function AnalyticsWorkspace({
         Unknown analytics tool. <Link to="/tools">Browse analytics tools</Link>
       </p>
     );
-  return <Tools key={selected || "default"} initialTool={selected} />;
+  return (
+    <Tools
+      initialTool={selected}
+      initialSeason={search.get("season") || undefined}
+      initialPhase={search.get("phase") || undefined}
+      onToolSelect={(tool) => {
+        const next = new URLSearchParams(search);
+        next.delete("tool");
+        navigate(`/tools/${tool}${next.size ? `?${next}` : ""}`);
+      }}
+    />
+  );
 }

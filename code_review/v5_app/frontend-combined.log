@@ -1,0 +1,45 @@
+$ vitest run --coverage
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/5b8ab95cd6ca308f98d0848d8f1e5dbb56f3447b5a0afac52d3b27cbb8323b4c/nba_terminal/web
+      Coverage enabled with v8
+
+
+ Test Files  19 passed (19)
+      Tests  104 passed (104)
+   Start at  11:58:10
+   Duration  3.25s (environment 48%, tests 27%, setup 14%, transform 6%, import 4%, worker 2%)
+
+Environment  jsdom was created 19 times · 13.99s total, 48% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   92.46 |    78.38 |   88.87 |   93.71 |                   
+ ActualSources.tsx |    92.3 |    78.37 |   86.66 |   91.66 | 146-148           
+ ...yticsTools.tsx |   96.35 |    87.68 |   92.98 |   96.87 | 331,466,599,702   
+ App.tsx           |   92.67 |    78.02 |   86.95 |   95.23 | ...16,805-814,876 
+ ...serConnect.tsx |   90.56 |       75 |   91.66 |   93.61 | 60-61,73          
+ FantasyPage.tsx   |   88.93 |       75 |   88.29 |   90.76 | ...,769,1022,1166 
+ ...enterShell.tsx |   93.47 |    93.87 |    90.9 |   93.18 | 191-193           
+ LeagueFantasy.tsx |   83.68 |    70.64 |   79.23 |   85.36 | ...1434,1482,1492 
+ ...erAnalysis.tsx |   98.63 |    78.36 |   98.18 |   99.21 | 602               
+ PlayerBrowser.tsx |   94.02 |    77.14 |    87.5 |   94.82 | 74,257-265        
+ ...ileDetails.tsx |   92.59 |    82.16 |   86.76 |   94.16 | ...38,452,470,596 
+ ShotChart.tsx     |     100 |     82.1 |     100 |     100 | ...50-257,338-344 
+ ...Arithmetic.tsx |   91.89 |       75 |   83.33 |   94.28 | 44-51             
+ WaiverStatus.tsx  |     100 |    94.11 |     100 |     100 | 9                 
+ api.ts            |     100 |    83.33 |     100 |     100 | 16                
+ fantasy-model.ts  |     100 |    94.73 |     100 |     100 | 215-216,243-245   
+ game-groups.ts    |     100 |    83.33 |     100 |     100 | 17                
+ ...fantasy-api.ts |      90 |    72.22 |      80 |      90 | 71,73             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 92.46% ( 1509/1632 )
+Branches     : 78.38% ( 1766/2253 )
+Functions    : 88.87% ( 575/647 )
+Lines        : 93.71% ( 1343/1433 )
+================================================================================
