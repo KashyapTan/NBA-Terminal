@@ -1,8 +1,21 @@
-import { createContext, useContext, useEffect, useId, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+  type ReactNode,
+  type ComponentType,
+} from "react";
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { getGame, getGames, getMeta, getPlayerAnalysis, getUpcoming } from "./api";
 import { groupGamesByDate } from "./game-groups";
 import FantasyPage from "./FantasyPage";
+import {
+  GameCenterShell,
+  PlayersWorkspace,
+  type PlayerBrowserContentProps,
+} from "./GameCenterShell";
 import { LeagueDashboardSummary, Matchups, useLeagueFantasy, WaiverWire } from "./LeagueFantasy";
 import { requestWaiverPlan } from "./league-fantasy-api";
 import type {
@@ -802,7 +815,11 @@ function FantasyWorkspace({ meta }: { meta: Meta }) {
   );
 }
 
-export function AppRoutes() {
+export function AppRoutes({
+  playerBrowser: PlayerBrowser,
+}: {
+  playerBrowser?: ComponentType<PlayerBrowserContentProps>;
+} = {}) {
   const { meta, error } = useMeta();
   if (error)
     return (
@@ -819,10 +836,18 @@ export function AppRoutes() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
         <Route path="/fantasy" element={<FantasyWorkspace meta={meta} />} />
-        <Route path="/game/:gameId" element={<GameDetails />} />
-        <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
+        <Route element={<GameCenterShell players={Boolean(PlayerBrowser)} />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/game/:gameId" element={<GameDetails />} />
+          <Route path="/game/:gameId/player/:playerId" element={<PlayerDetails />} />
+          {PlayerBrowser && (
+            <Route
+              path="/players/:playerId?"
+              element={<PlayersWorkspace meta={meta} Browser={PlayerBrowser} />}
+            />
+          )}
+        </Route>
         <Route
           path="*"
           element={
