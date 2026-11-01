@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 
 from nba_terminal.espn_fantasy_api import router as espn_fantasy_router
 from nba_terminal.fantasy_api import router as fantasy_router
-from nba_terminal.services import game_center
+from nba_terminal.services import game_center, player_data
 from nba_terminal.services import player_analysis as player_analysis_service
 from nba_terminal.services.nba_http import configure_nba_stats_client
 
@@ -70,7 +70,7 @@ async def _fetch_and_cache(key: str, ttl: int, function: Callable[..., Any], arg
                 status_code=502,
                 detail="NBA Stats could not return this data. Check server logs for the upstream cause.",
             ) from exc
-        transient_error_states = {"shot_chart_state", "advanced_stats_state", "history_state"}
+        transient_error_states = {"shot_chart_state", "advanced_stats_state", "history_state", "state"}
         cache_result = not (
             isinstance(result, dict) and any(result.get(state) == "error" for state in transient_error_states)
         )
@@ -96,6 +96,7 @@ def _run_nba_fetch(function: Callable[..., Any], *args: Any) -> Any:
     configure_nba_stats_client()
     return function(*args)
 
+
 app.state.cached_nba_call = _cached_call
 app.include_router(fantasy_router)
 app.state.espn_pool = NBA_POOL
@@ -105,6 +106,8 @@ app.include_router(espn_fantasy_router)
 
 @app.get("/")
 @app.get("/fantasy")
+@app.get("/players")
+@app.get("/players/{player_id}")
 async def index() -> FileResponse:
     if not (WEB_DIST / "index.html").is_file():
         raise HTTPException(status_code=503, detail="Web client is not built. Run `bun run build` in nba_terminal/web.")
@@ -143,9 +146,7 @@ async def upcoming() -> dict[str, Any]:
     today = game_center.nba_today()
     season = game_center.current_season(today)
     schedule = await _cached_call(f"schedule:{season}", 120, game_center.fetch_season_schedule, season)
-    return await _cached_call(
-        f"upcoming:{today.isoformat()}", 120, game_center.fetch_upcoming_games, today, schedule
-    )
+    return await _cached_call(f"upcoming:{today.isoformat()}", 120, game_center.fetch_upcoming_games, today, schedule)
 
 
 @app.get("/api/games")
@@ -157,8 +158,11 @@ async def games(season: str = Query(..., min_length=7, max_length=7)) -> dict[st
 @app.get("/api/games/{game_id}")
 async def game(game_id: str, season: str | None = None) -> dict[str, Any]:
     return await _cached_call(
-        f"game:{game_id}:{season or 'from-game-id'}", 3600,
-        game_center.fetch_game_boxscore, game_id, season,
+        f"game:{game_id}:{season or 'from-game-id'}",
+        3600,
+        game_center.fetch_game_boxscore,
+        game_id,
+        season,
     )
 
 
@@ -176,6 +180,115 @@ async def player_analysis(
         3600,
         player_analysis_service.fetch_player_game_analysis,
         game_id,
+        player_id,
+        season,
+        phase,
+    )
+
+
+@app.get("/api/players")
+async def search_players(q: str = Query("", max_length=100)) -> dict[str, Any]:
+    return {"players": player_data.search_players(q)}
+
+
+def _validate_player_scope(season: str, phase: str) -> None:
+    if phase not in game_center.GAME_PHASES:
+        raise HTTPException(status_code=400, detail="Unsupported season phase.")
+    if int(season[-2:]) != (int(season[:4]) + 1) % 100:
+        raise HTTPException(status_code=400, detail="Season must use consecutive years, for example 2025-26.")
+
+
+@app.get("/api/players/{player_id}")
+async def player_profile(
+    player_id: int,
+    season: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    phase: str = Query("Regular Season", max_length=30),
+) -> dict[str, Any]:
+    _validate_player_scope(season, phase)
+    profile = await _cached_call(
+        f"profile:{player_id}:{season}:{phase}",
+        900,
+        player_analysis_service.fetch_player_profile,
+        player_id,
+        season,
+        phase,
+    )
+    dashboard = await _cached_call(
+        f"season-advanced:{season}:{phase}",
+        900,
+        player_analysis_service.fetch_season_advanced,
+        season,
+        phase,
+    )
+    row = dashboard["players"].get(str(player_id), {})
+    state = "available" if row else "error" if dashboard["state"] == "error" else "unavailable"
+    return {
+        **profile,
+        "advanced": row,
+        "advanced_state": state,
+        "advanced_note": dashboard["note"] or ("No advanced season line returned." if not row else ""),
+        "advanced_source": "LeagueDashPlayerStats · Advanced · PerGame",
+    }
+
+
+@app.get("/api/players/{player_id}/measures/{measure}")
+async def player_measure(
+    player_id: int,
+    measure: str,
+    season: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    phase: str = Query("Regular Season", max_length=30),
+) -> dict[str, Any]:
+    _validate_player_scope(season, phase)
+    if measure not in player_data.PLAYER_PROFILE_MEASURES:
+        raise HTTPException(status_code=400, detail="Unsupported profile measure.")
+    dashboard = await _cached_call(
+        f"season-{measure.lower()}:{season}:{phase}",
+        900,
+        player_analysis_service.fetch_season_advanced,
+        season,
+        phase,
+        measure,
+    )
+    row = dashboard["players"].get(str(player_id), {})
+    return {
+        "measure": measure,
+        "row": row,
+        "state": "available" if row else "error" if dashboard["state"] == "error" else "unavailable",
+        "note": dashboard["note"] or ("No season line returned for this player." if not row else ""),
+        "source": f"LeagueDashPlayerStats · {measure} · PerGame",
+        "season": season,
+        "phase": phase,
+    }
+
+
+@app.get("/api/players/{player_id}/shooting")
+async def player_shooting(
+    player_id: int,
+    season: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    phase: str = Query("Regular Season", max_length=30),
+) -> dict[str, Any]:
+    _validate_player_scope(season, phase)
+    return await _cached_call(
+        f"shooting:{player_id}:{season}:{phase}",
+        900,
+        player_analysis_service.fetch_player_shooting_tables,
+        player_id,
+        season,
+        phase,
+    )
+
+
+@app.get("/api/players/{player_id}/history")
+async def player_history(
+    player_id: int,
+    season: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    phase: str = Query("Regular Season", max_length=30),
+) -> dict[str, Any]:
+    _validate_player_scope(season, phase)
+    return await _cached_call(
+        f"profile:{player_id}:{season}:{phase}",
+        900,
+        player_analysis_service.fetch_player_profile,
         player_id,
         season,
         phase,

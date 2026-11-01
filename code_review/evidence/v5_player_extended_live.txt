@@ -1,0 +1,8 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Observed UTC: 2026-11-01T16:16:40.565148+00:00
+Shooting split frames: [(1, 30), (9, 30), (5, 30), (7, 30), (2, 30), (9, 16), (42, 30), (7, 31)]
+Base frames: [(219, 69)] Shai row captured
+Misc frames: [(219, 43)] Shai row captured
+Scoring frames: [(219, 53)] Shai row captured
+Usage frames: [(219, 53)] Shai row captured
+Defense frames: [(219, 43)] Shai row captured

@@ -263,7 +263,7 @@ test("shows an honest unavailable shot chart while retaining player stats", asyn
   await expect(page.getByText("Shot chart unavailable")).toBeVisible();
   await expect(page.getByText(/No locations are estimated/)).toBeVisible();
   await expect(
-    page.locator(".player-analysis__metrics").getByText("28", { exact: true }),
+    page.getByRole("table", { name: "Selected game stats" }).getByText("28", { exact: true }),
   ).toBeVisible();
 });
 
@@ -310,3 +310,56 @@ test("renders an honest API failure state", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("alert")).toContainText("Mock NBA service error");
 });
+
+test("season log keyboard link opens the actual historical box score with phase context", async ({
+  page,
+}) => {
+  await mockLeagueApi(page);
+  await page.route("**/api/games/0022400002?*", (route) =>
+    route.fulfill({
+      json: {
+        game_id: "0022400002",
+        away_team: away,
+        home_team: home,
+        teams: [
+          { team: away, pts: 100 },
+          { team: home, pts: 110 },
+        ],
+        players: [player],
+      },
+    }),
+  );
+  await page.goto("/game/0022400001/player/7?season=2025-26&phase=Regular%20Season");
+  const link = page.getByRole("link", { name: /Open box score 2025-10-30/ }).first();
+  await expect(link).toHaveAttribute(
+    "href",
+    "/game/0022400002?season=2025-26&phase=Regular+Season&player=7",
+  );
+  await link.focus();
+  await link.press("Enter");
+  await expect(page).toHaveURL(/\/game\/0022400002\?season=2025-26&phase=Regular\+Season&player=7/);
+  await page.reload();
+  await expect(page).toHaveURL(/\/game\/0022400002\?/);
+  await expect(page.getByText("Jayson Tatum").first()).toBeVisible();
+});
+
+for (const width of [390, 1440]) {
+  test(`selected player game stats and charts stay compact at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockLeagueApi(page);
+    await page.goto("/game/0022400001/player/7?season=2025-26&phase=Regular%20Season");
+    const stats = page.getByRole("table", { name: "Selected game stats" });
+    await expect(stats).toBeVisible();
+    const size = await stats.boundingBox();
+    expect(size!.height).toBeLessThan(100);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    for (const chart of await page.locator(".player-analysis__visuals svg").all()) {
+      const box = await chart.boundingBox();
+      expect(box!.height).toBeGreaterThan(80);
+      expect(box!.height).toBeLessThanOrEqual(221);
+    }
+    await page.screenshot({ path: `test-results/player-game-${width}.png`, fullPage: true });
+  });
+}
