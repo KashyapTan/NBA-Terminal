@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { LEAGUE_CATEGORIES, type WaiverPlan } from "../src/league-fantasy-model";
 
 // Real HTTP routes, normalizer, auth/session and planner; only external transport is synthetic.
@@ -169,7 +169,11 @@ test("missing schedules, unsupported formats and failed connections stay honest"
   await expect(
     page.getByRole("region", { name: "Recommended ordered plan" }).locator(".pickup-list > li"),
   ).toHaveCount(0);
-  await expect(page.getByText(/Matchup calendar unverified:/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Waiver evaluation status" })).toContainText(
+    "not yet determinable",
+  );
+  await page.getByText(/Evaluation diagnostics/).click();
+  await expect(page.getByText(/matchup_calendar: ESPN scoring-date anchor/).first()).toBeVisible();
   const fallbackSnapshot = await (await page.request.get("/api/fantasy/espn/snapshot")).json();
   expect(fallbackSnapshot.free_agents[0].schedule_source).toBe("nba_schedule");
   expect(fallbackSnapshot.free_agents[0].current_rates_source).toBe("nba_stats");
@@ -283,4 +287,40 @@ test("real routes preserve two-move ownership and nonzero 30-PTS drop arithmetic
   await expect(pts.locator(".league-losing")).toContainText(
     String(move.arithmetic!.categories.pts.net),
   );
+});
+
+test("unknown budget displays conditional pairs without a false no-benefit conclusion", async ({
+  page,
+}, info) => {
+  await connect(page, 130);
+  await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+  const status = page.getByRole("region", { name: "Waiver evaluation status" });
+  await expect(status).toContainText("Acquisition budget unknown");
+  await expect(status).toContainText("no transaction is confirmed");
+  await expect(
+    page.getByText(
+      "No materially beneficial legal ordered plan passed the selected-category guards.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(page.locator(".secondary-alternatives")).toHaveAttribute("open", "");
+  await expect(page.locator(".secondary-alternatives .pickup-list > li").first()).toBeVisible();
+  const evidence = resolve(process.cwd(), "../../visual-evidence/fantasy-v5");
+  mkdirSync(evidence, { recursive: true });
+  for (const [name, width, height] of [
+    ["desktop", 1440, 1000],
+    ["mobile", 390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      .toBe(true);
+    await page.screenshot({
+      path: resolve(evidence, `${info.project.name}-conditional-${name}.png`),
+      fullPage: true,
+    });
+    await status.screenshot({ path: resolve(evidence, `${info.project.name}-status-${name}.png`) });
+  }
+  await page.getByRole("button", { name: "Review missing inputs & recovery controls" }).click();
+  await expect(page.getByLabel("Use my verified matchup counts")).toBeVisible();
 });

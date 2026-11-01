@@ -50,7 +50,7 @@ def fetch_logs(year, first, last):
     data = playergamelogs.PlayerGameLogs(
         season_nullable=nba.season_name(year),
         season_type_nullable="Regular Season",
-        per_mode_simple="Totals",
+        per_mode_simple_nullable="Totals",
         date_from_nullable=date.fromisoformat(first).strftime("%m/%d/%Y"),
         date_to_nullable=date.fromisoformat(last).strftime("%m/%d/%Y"),
         timeout=6,
@@ -162,9 +162,11 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
     gaps, credited = [], set()
     expected, covered = 0, 0
     fresh, finalized = True, True
+    expected_known = bool(days) and history_complete
     for period, day in sorted(days.items()):
         entries = lineups.get(period, {}).get(team_id)
         if entries is None:
+            expected_known = False
             gaps.append({"period": period, "reason": "historical_daily_lineup_missing"})
             continue
         for entry in entries:
@@ -180,10 +182,12 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
                 or slot not in eligible
                 or entry.get("playerPoolEntry", {}).get("teamId", team_id) != team_id
             ):
+                expected_known = False
                 gaps.append({"period": period, "player_id": player.get("id"), "reason": "active_eligibility_unknown"})
                 continue
             games = schedules.get(player.get("proTeamId"))
             if games is None:
+                expected_known = False
                 gaps.append({"period": period, "player_id": player.get("id"), "reason": "schedule_missing"})
                 continue
             _, identity = nba.match_player({"name": player.get("fullName"), "pro_team_id": player.get("proTeamId")}, [])
@@ -223,7 +227,8 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
             "totals": derived,
             "complete": is_complete,
             "provisional": not is_complete or not finalized,
-            "expected_player_games": expected,
+            "expected_player_games": expected if expected_known else None,
+            "eligible_coverage_known": expected_known,
             "covered_player_games": covered,
             "gaps": gaps,
             "fetched_at": fetched_at,

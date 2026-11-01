@@ -727,10 +727,6 @@ def normalize(
         )
     if any(p["schedule"] is None for p in all_players):
         gaps.append("Some professional team schedules are unavailable; missing schedules are not zero games.")
-    if any(p["current_rates"] is None or p["prior_rates"] is None for p in all_players):
-        gaps.append("Some current/prior season average samples are unavailable.")
-    if any((p["current_rates"] or {}).get(key) is None for p in all_players for key in ("fgm", "fga", "ftm", "fta")):
-        gaps.append("Some shooting attempts/makes are unavailable; percentage gains cannot be weighted safely.")
     if not swid:
         gaps.append("Public league team selection does not verify ownership.")
     compare_id = comparison if comparison is not None else opponent
@@ -780,7 +776,8 @@ def normalize(
                 "complete": calendar_verified,
                 "source": "espn_scoring_date_anchors",
                 "reason": (
-                    "Verified ESPN scoring-date anchor" if calendar_verified
+                    "Verified ESPN scoring-date anchor"
+                    if calendar_verified
                     else "ESPN scoring-date anchor unavailable or conflicting; NBA dates alone cannot verify matchup"
                 ),
             }
@@ -832,4 +829,12 @@ def normalize(
 
     if nba is not None:
         fantasy_nba.enrich_players(result, nba)
+    # Report the selected forecast basis after enrichment, not missing unused ESPN samples.
+    selected_rates = [p.get("season_rates") or p.get("current_rates") or p.get("prior_rates") for p in all_players]
+    if any(rates is None for rates in selected_rates):
+        result["data_gaps"].append("Some current/prior season average samples are unavailable after NBA enrichment.")
+    if any((rates or {}).get(key) is None for rates in selected_rates for key in ("fgm", "fga", "ftm", "fta")):
+        result["data_gaps"].append(
+            "Some shooting attempts/makes are unavailable; percentage gains cannot be weighted safely."
+        )
     return result

@@ -68,6 +68,7 @@ export interface TeamActuals {
     complete: boolean;
     provisional: boolean;
     expected_player_games: number | null;
+    eligible_coverage_known?: boolean;
     covered_player_games: number | null;
     gaps: (
       | string
@@ -252,6 +253,7 @@ export interface PickupRecommendation {
   score_before?: number;
   score_after?: number;
   add_starts?: number;
+  add_usable_dates?: string[];
   drop_starts?: number;
   zero_drop_reason?: string | null;
   lineup_changes?: {
@@ -331,6 +333,12 @@ export interface RecommendedPlan {
   optimality: string;
 }
 export interface WaiverPlan {
+  evaluation_state?:
+    | "required_inputs_unknown"
+    | "known_zero_acquisitions"
+    | "evaluated_no_material_benefit"
+    | "confirmed_ordered_plan"
+    | "conditional_opportunities";
   recommended_plan?: RecommendedPlan | null;
   search?: {
     first_layer_pairs_evaluated?: number;

@@ -1,0 +1,40 @@
+$ bun run build && playwright test --config playwright.fantasy.config.ts
+$ tsc --noEmit && vite build
+vite v8.3.3 building client environment for production...
+transforming...
+✓ 40 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.44 kB │ gzip:   0.28 kB
+dist/assets/index-CPuKoBB8.css   66.83 kB │ gzip:  14.57 kB
+dist/assets/index-DkRTDMmE.js   389.73 kB │ gzip: 117.01 kB
+
+✓ built in 94ms
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/bb63ebfa7622a9a3bd7f81b7fc5bda84a90c895659c9b3bb40e85365a766a101/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:90720) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 2 workers
+
+(node:90735) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:90734) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [vite-proxy] › e2e/league-production.spec.ts:131:1 › private cookie flow uses the local session and enforces selectable ownership (1.6s)
+  ✓   2 [vite-proxy] › e2e/league-production.spec.ts:23:1 › production API returns one coherent pair, visible all-nine arithmetic and rerun controls (4.4s)
+  ✓   3 [vite-proxy] › e2e/league-production.spec.ts:164:1 › missing schedules, unsupported formats and failed connections stay honest (3.0s)
+  ✓   4 [vite-proxy] › e2e/league-production.spec.ts:192:1 › selected-five edits and saved league cap fallback use actual planner routes (1.8s)
+  ✓   5 [vite-proxy] › e2e/league-production.spec.ts:225:1 › real routes preserve two-move ownership and nonzero 30-PTS drop arithmetic (4.2s)
+(node:94908) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [vite-proxy] › e2e/league-production.spec.ts:292:1 › unknown budget displays conditional pairs without a false no-benefit conclusion (4.2s)
+(node:95793) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 [production-build] › e2e/league-production.spec.ts:131:1 › private cookie flow uses the local session and enforces selectable ownership (950ms)
+  ✓   7 [production-build] › e2e/league-production.spec.ts:23:1 › production API returns one coherent pair, visible all-nine arithmetic and rerun controls (3.0s)
+  ✓  10 [production-build] › e2e/league-production.spec.ts:192:1 › selected-five edits and saved league cap fallback use actual planner routes (2.0s)
+  ✓   9 [production-build] › e2e/league-production.spec.ts:164:1 › missing schedules, unsupported formats and failed connections stay honest (2.8s)
+  ✓  11 [production-build] › e2e/league-production.spec.ts:225:1 › real routes preserve two-move ownership and nonzero 30-PTS drop arithmetic (2.5s)
+  ✓  12 [production-build] › e2e/league-production.spec.ts:292:1 › unknown budget displays conditional pairs without a false no-benefit conclusion (4.1s)
+
+  12 passed (19.9s)

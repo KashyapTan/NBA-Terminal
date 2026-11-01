@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { ActualSources } from "./ActualSources";
 import { testSnapshot } from "./league-fantasy.test-fixtures";
+
 afterEach(cleanup);
 it("keeps official totals distinct from partial NBA reconstruction and exposes historical gaps", () => {
   const team = testSnapshot().teams[0];
@@ -69,7 +70,11 @@ it("renders exact DATA structured gaps and preserves provider timestamps separat
   screen.getByText("Compare official and NBA-derived totals").closest("details")!.open = true;
   expect(
     screen.getByText(/Historical active scoring lineup missing · scoring day 3/),
-  ).toHaveTextContent("NBA player/game production missing · scoring day 4 · player 8 · game 002");
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("NBA player/game production missing · scoring day 4 · player 8 · game 002"),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Reconstruction gaps/).closest("details")).not.toHaveAttribute("open");
   expect(screen.getByText(/NBA player game logs · stale/)).toHaveTextContent(
     "provider response fetched 2026-10-31T20:00:00Z · provider update time unverified",
   );
@@ -77,4 +82,34 @@ it("renders exact DATA structured gaps and preserves provider timestamps separat
   expect(screen.getByText(/Forecast actuals basis:/).closest("p")).toHaveTextContent(
     "ESPN official scoring (NBA reconstruction fallback) · Complete scoring basis",
   );
+});
+
+it("groups repeated optional schedule gaps, shows unknown coverage and omits empty totals tables", () => {
+  const team = testSnapshot().teams[0];
+  team.actuals = {
+    official: { totals: null, source: "espn_official", fetched_at: null },
+    nba_derived: {
+      totals: null,
+      complete: false,
+      provisional: true,
+      expected_player_games: 0,
+      covered_player_games: 0,
+      gaps: [
+        { reason: "schedule_missing", period: 7, player_id: "1" },
+        { reason: "schedule_missing", period: 8, player_id: "1" },
+        { reason: "schedule_missing", period: 7, player_id: "1" },
+      ],
+      fetched_at: null,
+    },
+    forecast_source: null,
+    forecast_complete: false,
+    forecast_totals: null,
+  };
+  render(<ActualSources teams={[team]} />);
+  expect(screen.getByText(/0 covered · eligible-game total unknown/)).toBeInTheDocument();
+  expect(screen.queryByText(/0 \/ 0 eligible/)).not.toBeInTheDocument();
+  expect(screen.getByText(/2 distinct player\/day records/)).toBeInTheDocument();
+  expect(screen.getAllByText("NBA schedule missing · scoring day 7 · player 1")).toHaveLength(1);
+  expect(screen.queryByText("Compare official and NBA-derived totals")).not.toBeInTheDocument();
+  expect(screen.getByText(/Category totals unavailable from both sources/)).toBeInTheDocument();
 });

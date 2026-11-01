@@ -1,26 +1,27 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { leagueFantasyApi, type LeagueFantasyApi } from "./league-fantasy-api";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type LeagueFantasyApi, leagueFantasyApi } from "./league-fantasy-api";
 import {
-  LEAGUE_CATEGORIES,
-  DEFAULT_ESPN_LEAGUE_ID,
-  DEFAULT_ESPN_SEASON_ID,
+  type Category,
+  type ConnectLeague,
   categoryValue,
   compareCategory,
+  DEFAULT_ESPN_LEAGUE_ID,
+  DEFAULT_ESPN_SEASON_ID,
   eligibleCandidates,
   formatCategory,
-  type ConnectLeague,
-  type Category,
+  LEAGUE_CATEGORIES,
   type LeagueSnapshot,
   type LeagueStatus,
   type LeagueTeam,
-  type PlannerPreferences,
   type PlanForecast,
+  type PlannerPreferences,
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
 import { ActualSources } from "./ActualSources";
-import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
+import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
+import { WaiverStatus } from "./WaiverStatus";
 
 /** Mount once in the integrating app; pass the returned state to the named components. */
 export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
@@ -546,6 +547,7 @@ function WaiverStrategy({
   });
   const [categoryDraft, setCategoryDraft] = useState<Category[] | null>(null);
   const availabilityPanel = useRef<HTMLDetailsElement>(null);
+  const advancedPanel = useRef<HTMLDetailsElement>(null);
   const [plan, setPlan] = useState<WaiverPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -608,6 +610,12 @@ function WaiverStrategy({
     ]),
   );
   const recommendations = plan?.recommendations ?? [];
+  const evaluationDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(
+    new Date(snapshot.fetched_at),
+  );
+  const todayPairs = recommendations.filter((item) =>
+    item.add_usable_dates?.includes(evaluationDate),
+  );
   const filteredRecommendations = recommendations.filter(
     (item) => !dropFilter || item.drop_id === dropFilter,
   );
@@ -786,6 +794,32 @@ function WaiverStrategy({
           </small>
         </div>
       </div>
+      {!busy && (
+        <WaiverStatus
+          plan={
+            plan &&
+            (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
+              [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
+              ? {
+                  ...plan,
+                  evaluation_state: "required_inputs_unknown",
+                  data_gaps: [
+                    ...plan.data_gaps,
+                    ...Object.entries(snapshot.projection_metadata ?? {})
+                      .filter(([, part]) => !part.complete)
+                      .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
+                  ],
+                }
+              : plan
+          }
+          onRecover={() => {
+            if (advancedPanel.current) {
+              advancedPanel.current.open = true;
+              advancedPanel.current.scrollIntoView?.({ block: "start" });
+            }
+          }}
+        />
+      )}
       {leagueError && <p role="alert">{leagueError}</p>}
       {!snapshot.league.supported && (
         <p role="alert">
@@ -895,18 +929,30 @@ function WaiverStrategy({
         <span className="league-losing">↓ Trailing: lower priority</span>
         <span>— Unknown: missing evidence</span>
       </div>
-      {snapshot.projection_metadata?.matchup_calendar?.complete === false && (
-        <p className="league-tied" role="status">
-          Matchup calendar unverified: ESPN scoring-date anchor is missing or conflicting. Official
-          banked totals remain visible, but future matchup dates cannot support confirmed plans or
-          cushion labels.
-        </p>
-      )}
-      {!confidenceComplete && (
-        <p className="league-tied">
-          Outlook unverified: required roster, rates, schedules or historical active scoring lineups
-          are incomplete. No safe or favored claims are supported.
-        </p>
+      {!busy && todayPairs.length > 0 && (
+        <div className="today-pairs" aria-label="Today’s supported pickup pairs">
+          <h3>
+            {plan?.evaluation_state === "conditional_opportunities" ? "Conditional" : "Modeled"}{" "}
+            opportunities playing today
+          </h3>
+          <p>
+            These pairs have a usable start on {evaluationDate} and improve the remaining-matchup
+            comparison after drop losses. They do not isolate today’s statistical gain.
+            {plan?.evaluation_state === "conditional_opportunities"
+              ? " At least one available acquisition must be verified before acting."
+              : ""}
+          </p>
+          <ul>
+            {todayPairs.slice(0, 3).map((pair) => (
+              <li key={`${pair.add_id}:${pair.drop_id}`}>
+                Add <b>{players.get(pair.add_id)?.name ?? pair.add_id}</b> → drop{" "}
+                <b>{players.get(pair.drop_id)?.name ?? pair.drop_id}</b> · {pair.add_starts} usable
+                pickup starts / {pair.drop_starts} lost drop starts · review all nine net changes
+                below.
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="category-strategy-grid" aria-label="Category opportunities">
         {LEAGUE_CATEGORIES.map(({ key, label }) => {
@@ -1105,23 +1151,16 @@ function WaiverStrategy({
           </>
         ) : (
           !busy && (
-            <div className="strategy-empty">
-              <h4>
-                {plan?.remaining_adds === 0
-                  ? "No acquisition budget remaining"
-                  : plan?.status === "incomplete"
-                    ? "Plan unavailable: required inputs incomplete"
-                    : "No supported beneficial sequence"}
-              </h4>
-              <p>
-                {plan?.reasons.join(" ") ||
-                  "Waiting for a verified ordered plan; competing alternatives do not establish an executable sequence."}
-              </p>
-            </div>
+            <p className="strategy-empty">
+              No ordered moves confirmed. See the evaluation status and any conditional pairs below.
+            </p>
           )
         )}
       </section>
-      <details className="secondary-alternatives">
+      <details
+        className="secondary-alternatives"
+        open={plan?.evaluation_state === "conditional_opportunities" && recommendations.length > 0}
+      >
         <summary>Optional competing single-move alternatives ({recommendations.length})</summary>
         <section className="pickup-section" aria-label="Ranked pickup alternatives">
           <div className="strategy-section-heading">
@@ -1262,7 +1301,13 @@ function WaiverStrategy({
           ) : (
             !busy && (
               <div className="strategy-empty">
-                <h4>No supported pickup improvement yet</h4>
+                <h4>
+                  {plan?.evaluation_state === "required_inputs_unknown" || !plan
+                    ? "Pickup comparison awaiting required inputs"
+                    : plan.evaluation_state === "known_zero_acquisitions"
+                      ? "Pickup comparison withheld: zero acquisition allowance"
+                      : "No supported pickup improvement in explored pairs"}
+                </h4>
                 <p>
                   {plan?.reasons.join(" ") ||
                     "The analysis needs usable current rates, remaining schedules and an eligible add/drop pair. No pickups have been invented."}
@@ -1314,7 +1359,7 @@ function WaiverStrategy({
           {controls(candidates.filter((player) => !relevantIds.has(player.id)))}
         </details>
       </details>
-      <details className="waiver-advanced">
+      <details className="waiver-advanced" ref={advancedPanel}>
         <summary>Advanced inputs & data notes</summary>
         <p>
           Only override acquisition counts with verified matchup values. Unknown usage is never
