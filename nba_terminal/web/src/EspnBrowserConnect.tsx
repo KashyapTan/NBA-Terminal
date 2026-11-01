@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { browserBridgeApi, type BrowserBridgeStatus } from "./league-fantasy-api";
+import { DEFAULT_ESPN_LEAGUE_ID, DEFAULT_ESPN_SEASON_ID } from "./league-fantasy-model";
 
 const setup = "/api/fantasy/espn/bridge/setup";
 const messages: Record<NonNullable<BrowserBridgeStatus["state"]>, string> = {
@@ -16,6 +17,8 @@ const messages: Record<NonNullable<BrowserBridgeStatus["state"]>, string> = {
 
 export function EspnBrowserConnect({ onConnected }: { onConnected?: () => Promise<void> }) {
   const [bridge, setBridge] = useState<BrowserBridgeStatus>({ enabled: false });
+  const [league, setLeague] = useState<string>();
+  const [season, setSeason] = useState<string>();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
@@ -114,7 +117,8 @@ export function EspnBrowserConnect({ onConnected }: { onConnected?: () => Promis
               min="1"
               step="1"
               required
-              defaultValue={bridge.league_id}
+              value={league ?? bridge.league_id ?? DEFAULT_ESPN_LEAGUE_ID}
+              onChange={(event) => setLeague(event.target.value)}
             />
           </label>
           <label>
@@ -126,8 +130,8 @@ export function EspnBrowserConnect({ onConnected }: { onConnected?: () => Promis
               max="2100"
               step="1"
               required
-              placeholder="2027"
-              defaultValue={bridge.season_id}
+              value={season ?? bridge.season_id ?? DEFAULT_ESPN_SEASON_ID}
+              onChange={(event) => setSeason(event.target.value)}
             />
           </label>
         </div>

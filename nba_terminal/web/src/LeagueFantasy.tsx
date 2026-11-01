@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { leagueFantasyApi, type LeagueFantasyApi } from "./league-fantasy-api";
 import {
   LEAGUE_CATEGORIES,
+  DEFAULT_ESPN_LEAGUE_ID,
+  DEFAULT_ESPN_SEASON_ID,
   categoryValue,
   compareCategory,
   eligibleCandidates,
@@ -177,7 +179,14 @@ export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
               <div className="league-fields">
                 <label>
                   Manual league ID
-                  <input name="league" type="number" min="1" step="1" required />
+                  <input
+                    name="league"
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    defaultValue={state.status.league_id ?? DEFAULT_ESPN_LEAGUE_ID}
+                  />
                 </label>
                 <label>
                   Manual season ending year
@@ -188,7 +197,7 @@ export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
                     max="2100"
                     step="1"
                     required
-                    placeholder="2027"
+                    defaultValue={state.status.season_id ?? DEFAULT_ESPN_SEASON_ID}
                   />
                 </label>
               </div>

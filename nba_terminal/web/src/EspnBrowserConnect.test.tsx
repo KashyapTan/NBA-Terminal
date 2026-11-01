@@ -16,7 +16,11 @@ it("pairs without secrets and refetches the app after automatic extension connec
   const connected = vi.fn().mockResolvedValue(undefined);
   const user = userEvent.setup();
   render(<EspnBrowserConnect onConnected={connected} />);
+  expect(screen.getByLabelText("League ID")).toHaveValue(604550749);
+  expect(screen.getByLabelText("Season ending year")).toHaveValue(2027);
+  await user.clear(screen.getByLabelText("League ID"));
   await user.type(screen.getByLabelText("League ID"), "123");
+  await user.clear(screen.getByLabelText("Season ending year"));
   await user.type(screen.getByLabelText("Season ending year"), "2027");
   await user.click(screen.getByRole("button", { name: "Connect ESPN" }));
   expect(browserBridgeApi.pair).toHaveBeenCalledWith({ league_id: 123, season_id: 2027 });
@@ -25,18 +29,29 @@ it("pairs without secrets and refetches the app after automatic extension connec
     "href",
     "https://www.espn.com/login/",
   );
-  vi.mocked(browserBridgeApi.status).mockResolvedValue({ enabled: true, state: "connected" });
+  vi.mocked(browserBridgeApi.status).mockResolvedValue({
+    enabled: true,
+    state: "connected",
+    league_id: 456,
+    season_id: 2028,
+  });
   window.dispatchEvent(new CustomEvent("nba-espn-bridge", { detail: { state: "connected" } }));
   await waitFor(() => expect(connected).toHaveBeenCalledOnce());
+  expect(screen.getByLabelText("League ID")).toHaveValue(123);
+  expect(screen.getByLabelText("Season ending year")).toHaveValue(2027);
 });
 it("cancels pairing and exposes concrete setup artifacts and permission guidance", async () => {
   vi.mocked(browserBridgeApi.status).mockResolvedValue({
     enabled: true,
     state: "permission_denied",
+    league_id: 456,
+    season_id: 2026,
   });
   vi.mocked(browserBridgeApi.cancel).mockResolvedValue({ connected: false });
   render(<EspnBrowserConnect />);
   await screen.findByText(/ESPN permission is required/);
+  expect(screen.getByLabelText("League ID")).toHaveValue(456);
+  expect(screen.getByLabelText("Season ending year")).toHaveValue(2026);
   await userEvent.click(screen.getByRole("button", { name: "Cancel connection" }));
   expect(browserBridgeApi.cancel).toHaveBeenCalledOnce();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
