@@ -17,7 +17,7 @@ def new_week_payload():
     raw["settings"]["acquisitionSettings"].update(
         matchupAcquisitionLimit=1, matchupLimitPerScoringPeriod=True, acquisitionLimit=-1
     )
-    raw["teams"][0].update(name="Kashyap", location="Kashyap", nickname="")
+    raw["teams"][0].update(name="Kashyap's Team", location="Kashyap's", nickname="Team")
     for team in raw["teams"]:
         team["transactionCounter"] = {"acquisitions": 21}  # Whole map missing; explicit user fallback required.
     for match in raw["schedule"]:

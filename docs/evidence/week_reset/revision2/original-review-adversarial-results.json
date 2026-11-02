@@ -1,0 +1,56 @@
+{
+  "normalized_fixture_team_name": "Kashyap",
+  "missing_map_no_bootstrap": {
+    "state": "conditional_opportunities",
+    "budget": {
+      "matchup_cap": 7,
+      "used": null,
+      "remaining": null,
+      "cap_source": "espn_acquisition_settings",
+      "usage_source": null,
+      "daily_limit": null,
+      "daily_applicability": "matchup"
+    },
+    "moves": 0
+  },
+  "partial_nba_started_erasure": {
+    "before": {
+      "no_started_games_verified": false,
+      "bankable_scoring_period_ids": [
+        13
+      ]
+    },
+    "after": {
+      "no_started_games_verified": true,
+      "bankable_scoring_period_ids": []
+    }
+  },
+  "false_zero_actuals": {
+    "forecast_complete": true,
+    "forecast_source": "nba_derived"
+  },
+  "weekly_expansion": {
+    "periods": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+    ],
+    "source": "espn_weekly_calendar"
+  },
+  "map_{}": 0,
+  "map_{'3': 2}": 2,
+  "map_None": null,
+  "map_{'3': False}": null,
+  "map_{'3': 0.5}": null
+}

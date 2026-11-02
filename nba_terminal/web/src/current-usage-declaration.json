@@ -1,12 +1,12 @@
 {
-  "id": "user-2026-11-02-new-matchup",
+  "id": "user-2026-11-02-new-matchup-v2",
   "league_id": 604550749,
   "season_id": 2027,
-  "team_name": "Kashyap",
+  "team_name": "Kashyap's Team",
   "matchup_start_date": "2026-11-02",
   "evidence_snapshot_at": "2026-11-02T17:02:22.264988Z",
   "confirmed_at": "2026-11-02T17:02:22.264988Z",
   "expires_at": "2026-11-02T18:02:22.264988Z",
   "used": 0,
-  "source": "User explicitly confirmed current new-matchup 7 cap / 0 used in accepted 2026-11-02 handoff; timestamp anchors displayed evidence, not an ESPN counter."
+  "source": "User explicitly confirmed current new-matchup 7 cap / 0 used in accepted 2026-11-02 handoff; fixed evidence-time lease, not an ESPN counter or renewed confirmation."
 }

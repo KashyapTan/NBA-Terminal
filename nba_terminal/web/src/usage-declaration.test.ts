@@ -11,50 +11,102 @@ function current() {
   const snapshot = testSnapshot();
   snapshot.league.id = config.league_id;
   snapshot.league.season_id = config.season_id;
-  snapshot.fetched_at = config.evidence_snapshot_at;
+  // A first post-deploy fetch forty minutes after the user's original statement.
+  snapshot.fetched_at = "2026-11-02T17:42:22.264988Z";
   snapshot.period.start_date = config.matchup_start_date;
-  snapshot.teams[0].name = config.team_name;
+  snapshot.period.calendar_verified = true;
+  snapshot.period.context_verified = true;
+  snapshot.teams[0].name = "Kashyap's Team";
   snapshot.teams[0].season_acquisitions = 21;
-  vi.spyOn(Date, "now").mockReturnValue(Date.parse(config.confirmed_at) + 1000);
+  snapshot.teams[0].weekly_used_adds = null;
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse(snapshot.fetched_at) + 1000);
   return snapshot;
 }
-it("automatically binds today's explicit zero once, preserving evidence over harmless refresh", () => {
+it("binds today's current statement to a fresh post-deploy snapshot, preserving original evidence and fixed expiry", () => {
   const snapshot = current();
+  expect(snapshot.fetched_at).not.toBe(config.evidence_snapshot_at);
   const declaration = declaredUsage(snapshot)!;
   expect(declaration.used).toBe(0);
-  expect(declaration.season_id).toBe(2027);
   expect(declaration.team_id).toBe(snapshot.selected_team_id);
-  expect(declaration.roster_ids).toEqual(snapshot.teams[0].roster.map((p) => p.id).sort());
-  snapshot.fetched_at = "2026-11-02T17:03:00Z";
+  expect(declaration.snapshot_at).toBe(snapshot.fetched_at);
+  expect(declaration.confirmed_at).toBe(config.confirmed_at);
+  expect(declaration.expires_at).toBe(config.expires_at);
+  snapshot.fetched_at = "2026-11-02T17:43:00Z";
   expect(declaredUsage(snapshot)).toEqual(declaration);
-  expect(declaredUsage(snapshot)?.confirmed_at).toBe(config.confirmed_at);
 });
-it("never seeds zero for an unseen snapshot, another team/week/season, expiry or failed storage", () => {
-  let snapshot = current();
-  snapshot.fetched_at = "2026-11-02T17:04:00Z";
-  expect(declaredUsage(snapshot)).toBeUndefined();
-  snapshot = current();
-  snapshot.league.season_id++;
-  expect(declaredUsage(snapshot)).toBeUndefined();
-  snapshot = current();
-  snapshot.period.start_date = "2026-11-09";
-  expect(declaredUsage(snapshot)).toBeUndefined();
-  snapshot = current();
-  snapshot.selected_team_id = 2;
-  expect(declaredUsage(snapshot)).toBeUndefined();
-  snapshot = current();
+it("rejects wrong team/name/week/season, unverified periods, stale/future snapshot and fixed expiry", () => {
+  for (const mutate of [
+    (s: ReturnType<typeof current>) => {
+      s.teams[0].name = "Kashyap";
+    },
+    (s: ReturnType<typeof current>) => {
+      s.league.season_id++;
+    },
+    (s: ReturnType<typeof current>) => {
+      s.period.start_date = "2026-11-09";
+    },
+    (s: ReturnType<typeof current>) => {
+      s.selected_team_id = 2;
+    },
+    (s: ReturnType<typeof current>) => {
+      s.period.calendar_verified = false;
+    },
+    (s: ReturnType<typeof current>) => {
+      s.period.context_verified = false;
+    },
+    (s: ReturnType<typeof current>) => {
+      s.fetched_at = config.evidence_snapshot_at;
+    },
+    (s: ReturnType<typeof current>) => {
+      s.fetched_at = "2026-11-02T17:50:00Z";
+    },
+  ]) {
+    const snapshot = current();
+    mutate(snapshot);
+    expect(declaredUsage(snapshot)).toBeUndefined();
+  }
+  const snapshot = current();
   vi.mocked(Date.now).mockReturnValue(Date.parse(config.expires_at));
   expect(declaredUsage(snapshot)).toBeUndefined();
-  snapshot = current();
+});
+it("permanently consumes the seed after positive API usage, including before first binding", () => {
+  const snapshot = current();
+  snapshot.teams[0].weekly_used_adds = 2;
+  snapshot.teams[0].weekly_usage_complete = true;
+  expect(declaredUsage(snapshot)).toBeUndefined();
+  snapshot.teams[0].weekly_used_adds = null;
+  expect(declaredUsage(snapshot)).toBeUndefined();
+});
+it("does not resurrect zero after a later add or changed bound roster/aggregate even if the old evidence returns", () => {
+  for (const change of ["positive", "roster", "aggregate"] as const) {
+    localStorage.clear();
+    const snapshot = current();
+    const original = structuredClone(snapshot);
+    expect(declaredUsage(snapshot)?.used).toBe(0);
+    if (change === "positive") {
+      snapshot.teams[0].weekly_used_adds = 1;
+      snapshot.teams[0].weekly_usage_complete = true;
+    }
+    if (change === "roster") snapshot.teams[0].roster.pop();
+    if (change === "aggregate") snapshot.teams[0].season_acquisitions = 22;
+    expect(declaredUsage(snapshot)).toBeUndefined();
+    expect(declaredUsage(original)).toBeUndefined();
+  }
+});
+it("does not bind without durable storage and binds explicit manual zero with immutable evidence", () => {
+  const snapshot = current();
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
     throw new Error("blocked");
   });
   expect(declaredUsage(snapshot)).toBeUndefined();
-});
-it("binds manual current zero to season/team/matchup with immutable confirmation and expiry", () => {
-  const snapshot = current();
   const declaration = bindUsage(snapshot, 0, config.confirmed_at);
   expect(declaration.used).toBe(0);
   expect(declaration.season_acquisitions).toBe(21);
   expect(declaration.expires_at).toBe("2026-11-02T18:02:22.264Z");
+});
+
+it("matches the actual team label across apostrophe/whitespace typography without accepting a short alias", () => {
+  const snapshot = current();
+  snapshot.teams[0].name = "  Kashyap’s   Team ";
+  expect(declaredUsage(snapshot)?.team_id).toBe(snapshot.selected_team_id);
 });

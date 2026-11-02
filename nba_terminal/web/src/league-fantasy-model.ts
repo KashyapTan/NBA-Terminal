@@ -144,6 +144,7 @@ export interface LeagueSnapshot {
     scoring_period_id: number;
     dates: string[];
     remaining_dates: string[];
+    calendar_verified?: boolean;
     context_verified?: boolean | null;
     no_started_games_verified?: boolean;
     bankable_periods_verified?: boolean;

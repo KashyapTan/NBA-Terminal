@@ -1,0 +1,14 @@
+{
+  "accepted_brief_revision": 2,
+  "provider_boundary": "synthetic public shapes; actual normalizer/session/planner/UI",
+  "snapshot_at": "2026-11-02T17:42:22.264988+00:00",
+  "team_label": "Kashyap's Team",
+  "original_confirmed_at": "2026-11-02T17:02:22.264988Z",
+  "fixed_expires_at": "2026-11-02T18:02:22.264988Z",
+  "evaluation_state": "confirmed_ordered_plan",
+  "budget_before": 7,
+  "budget_after": 6,
+  "moves": 1,
+  "categories": 9,
+  "private_payload_observed": false
+}

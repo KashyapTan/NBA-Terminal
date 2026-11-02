@@ -2,21 +2,26 @@
 
 import copy
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import fantasy_e2e_server as base
 import uvicorn
 from week_reset_fixture import NOW, new_week_payload
 
+CLOCK_SHIFT = 0
+COUNTER = None
+
 
 class Clock(datetime):
     @classmethod
     def now(cls, tz=None):
-        return NOW
+        return NOW + timedelta(minutes=40, seconds=CLOCK_SHIFT)
 
 
 def get(self, views, *args, **kwargs):
     data = new_week_payload()
+    if COUNTER is not None:
+        data["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {"3": COUNTER}
     key = {
         "mSettings": "league",
         "mTeam": "league",
@@ -27,6 +32,20 @@ def get(self, views, *args, **kwargs):
         "mMatchupScore": "league",
     }[views[0]]
     return copy.deepcopy(data[key])
+
+
+@base.webapp.app.post("/__test__/week-clock")
+def advance(seconds: int):
+    global CLOCK_SHIFT
+    CLOCK_SHIFT += seconds
+    return {"synthetic": True}
+
+
+@base.webapp.app.post("/__test__/week-counter")
+def counter(used: int | None = None):
+    global COUNTER
+    COUNTER = used
+    return {"synthetic": True}
 
 
 base.nba.load = lambda *args, **kwargs: {

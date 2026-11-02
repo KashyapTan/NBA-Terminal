@@ -744,28 +744,38 @@ def normalize(
     espn_schedules = schedules
     schedule_sources = {team: "espn_schedule" for team in schedules}
     calendar_verified = len(scoring_date_anchors(anchor_schedules)) == 1
+    nba_schedules = {}
+    schedule_sources_consistent = True
     if nba is not None:
-        fallback = fantasy_nba.schedule_games(nba.get("schedule"), raw["seasonId"], now)
+        nba_schedules = fantasy_nba.schedule_games(nba.get("schedule"), raw["seasonId"], now)
         anchors = scoring_date_anchors(anchor_schedules)
         if len(anchors) == 1:
             anchor = next(iter(anchors))
-            for games in fallback.values():
+            for games in nba_schedules.values():
                 for game in games:
                     game["scoring_period_id"] = (date.fromisoformat(game["date"]) - anchor).days
-        # A partial NBA response with no current-matchup rows must not erase a
-        # complete ESPN week while retaining NBA priority for covered periods.
-        fallback = {
-            team: games
-            for team, games in fallback.items()
-            if team not in schedules or any(g["scoring_period_id"] in scoped_periods for g in games)
-        }
-        for team in fallback:
-            if nba.get("schedule_status") in ("fresh", "cached") or team not in schedules:
-                schedule_sources[team] = "nba_schedule"
-        # Fresh NBA schedule is primary; stale NBA never displaces a usable ESPN schedule.
-        schedules = (
-            (schedules | fallback) if nba.get("schedule_status") in ("fresh", "cached") else (fallback | schedules)
+
+        # A successful/30-key NBA parser result is not evidence that its payload
+        # covers the whole matchup. Preserve validated ESPN team coverage; NBA
+        # fills missing teams and separately contributes all credible started
+        # evidence to the banked proof below. Never union team dictionaries to
+        # establish a union of game observations.
+        def observations(games):
+            return {
+                (g["scoring_period_id"], g.get("opponent_pro_team_id"), g["start_at"], g["started"])
+                for g in games
+                if g["scoring_period_id"] in scoped_periods
+            }
+
+        schedule_sources_consistent = all(
+            observations(games) == observations(nba_schedules[team])
+            for team, games in espn_schedules.items()
+            if team in nba_schedules
         )
+        for team, games in nba_schedules.items():
+            if team not in schedules:
+                schedules = schedules | {team: games}
+                schedule_sources[team] = "nba_schedule"
     periods, period_source = (
         (scoped_periods, scoped_source) if calendar_verified else matchup_scoring_periods(raw, schedules)
     )
@@ -953,23 +963,31 @@ def normalize(
             "bankable_periods_verified": calendar_verified
             and context_verified is True
             and len(espn_schedules) == 30
+            and schedule_sources_consistent
             and not period_source.endswith("partial"),
             "bankable_scoring_period_ids": sorted(
                 {
                     g["scoring_period_id"]
-                    for games in (espn_schedules | schedules).values()
+                    for source in (espn_schedules, nba_schedules)
+                    for games in source.values()
                     for g in games
                     if g["started"] and g["scoring_period_id"] in periods
                 }
             ),
+            "schedule_sources_consistent": schedule_sources_consistent,
             "no_started_games_verified": calendar_verified
             and context_verified is True
             and len(espn_schedules) == 30
             and len(schedules) == 30
+            and schedule_sources_consistent
             and bool(periods)
             and not period_source.endswith("partial")
             and not any(
-                g["started"] for games in schedules.values() for g in games if g["scoring_period_id"] in periods
+                g["started"]
+                for source in (espn_schedules, nba_schedules)
+                for games in source.values()
+                for g in games
+                if g["scoring_period_id"] in periods
             ),
             "start_date": dates[0] if dates else None,
             "end_date": dates[-1] if dates else None,

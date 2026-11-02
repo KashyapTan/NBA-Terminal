@@ -309,3 +309,56 @@ def test_incomplete_league_game_day_coverage_uses_explicit_cap_without_inventing
     assert result["acquisition_budget"]["matchup_cap"] == 7
     assert result["acquisition_budget"]["cap_source"] == "scoped user-declared matchup cap"
     assert result["plan"]
+
+
+def test_review_partial_current_nba_schedule_cannot_erase_started_espn_games_or_certify_zero():
+    from tests.fantasy_v2_fixture import nba_schedule_payload
+
+    data = new_week_payload()
+    for team in data["schedule"]["settings"]["proTeams"]:
+        if team["id"] in (1, 2):
+            team["proGamesByScoringPeriod"]["13"][0]["date"] = (NOW - timedelta(hours=1)).timestamp() * 1000
+    nba = nba_schedule_payload()
+    game = nba["leagueSchedule"]["gameDates"][0]["games"][0]
+    game["gameDateTimeUTC"] = "2026-11-03T00:00:00Z"
+    nba["leagueSchedule"]["gameDates"] = [{"games": [game]}]
+    snapshot = espn.normalize(
+        data["league"],
+        data["schedule"],
+        data["pool"],
+        data["cards"],
+        {},
+        1,
+        now=NOW,
+        nba={"schedule": nba, "schedule_status": "fresh"},
+    )
+    assert snapshot["period"]["no_started_games_verified"] is False
+    assert snapshot["period"]["bankable_scoring_period_ids"] == [13]
+    assert snapshot["period"]["bankable_periods_verified"] is False
+    assert snapshot["teams"][0]["roster"][0]["schedule"][0]["started"] is True
+    assert snapshot["teams"][0]["roster"][0]["schedule_source"] == "espn_schedule"
+    missing = actuals.reconstruct(
+        1,
+        {13: "2026-11-02"},
+        {},
+        {},
+        {},
+        None,
+        snapshot["fetched_at"],
+        no_started_games=snapshot["period"]["no_started_games_verified"],
+    )
+    assert missing["forecast_complete"] is False
+    assert missing["nba_derived"]["expected_player_games"] is None
+    official = actuals.reconstruct(
+        1,
+        {13: "2026-11-02"},
+        {},
+        {},
+        {},
+        snapshot["teams"][0]["totals"],
+        snapshot["fetched_at"],
+        no_started_games=snapshot["period"]["no_started_games_verified"],
+    )
+    assert official["forecast_source"] == "espn_official"
+    assert official["forecast_complete"] is True
+    assert official["nba_derived"]["expected_player_games"] is None

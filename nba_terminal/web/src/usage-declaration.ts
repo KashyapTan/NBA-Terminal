@@ -18,28 +18,59 @@ export function bindUsage(snapshot: LeagueSnapshot, used: number, confirmedAt: s
   };
 }
 
-/** One authorized declaration, never a zero default for arbitrary weeks/teams.
- * Persist the first observed scope/evidence; reload/refresh cannot renew its lease.
- * Private browser access was unavailable: this reviewed bootstrap is only usable
- * against the exact snapshot the user confirmed, until its fixed expiry.
+/** Bind the current user statement to the first fresh, verified selected matchup.
+ * Its original confirmation/expiry never changes on deployment, reload or refresh.
+ * Observed acquisitions or changed bound evidence permanently consume this seed.
  */
 export function declaredUsage(snapshot: LeagueSnapshot): PlannerPreferences["usage_declaration"] {
   const team = snapshot.teams.find((team) => team.id === snapshot.selected_team_id);
   const config = currentDeclaration;
+  const now = Date.now();
+  const teamName = (name: string) =>
+    name.trim().replace(/[’‘]/g, "'").replace(/\s+/g, " ").toLowerCase();
   if (
     !team ||
     snapshot.league.id !== config.league_id ||
     snapshot.league.season_id !== config.season_id ||
-    team.name !== config.team_name ||
+    teamName(team.name) !== teamName(config.team_name) ||
+    snapshot.teams.filter((t) => teamName(t.name) === teamName(config.team_name)).length !== 1 ||
     snapshot.period.start_date !== config.matchup_start_date ||
-    Date.now() >= Date.parse(config.expires_at)
+    snapshot.period.calendar_verified !== true ||
+    snapshot.period.context_verified === false ||
+    now < Date.parse(config.confirmed_at) ||
+    now >= Date.parse(config.expires_at)
   )
     return undefined;
   const key = `nba-terminal:usage-declaration:${config.id}`;
   try {
     const saved = localStorage.getItem(key);
-    if (saved !== null) return JSON.parse(saved);
-    if (Date.parse(snapshot.fetched_at) !== Date.parse(config.evidence_snapshot_at))
+    const binding = saved === null ? null : JSON.parse(saved);
+    if (binding?.invalidated) return undefined;
+    const roster = team.roster.map((p) => p.id).sort();
+    const authoritativePositive =
+      team.weekly_usage_complete !== false &&
+      Number.isInteger(team.weekly_used_adds) &&
+      team.weekly_used_adds! > config.used;
+    const changed =
+      binding &&
+      (binding.team_id !== snapshot.selected_team_id ||
+        binding.matchup_period_id !== snapshot.period.matchup_period_id ||
+        JSON.stringify(binding.roster_ids) !== JSON.stringify(roster) ||
+        binding.season_acquisitions !== (team.season_acquisitions ?? null));
+    if (authoritativePositive || changed) {
+      localStorage.setItem(key, JSON.stringify({ invalidated: true }));
+      return undefined;
+    }
+    if (binding) return binding;
+    const fetchedAt = Date.parse(snapshot.fetched_at);
+    // The statement is current evidence within a fixed lease, not an obsolete
+    // snapshot token. Bind a fresh post-deploy snapshot, never a stale/future one.
+    if (
+      !Number.isFinite(fetchedAt) ||
+      fetchedAt < Date.parse(config.confirmed_at) ||
+      fetchedAt > now ||
+      now - fetchedAt > 120000
+    )
       return undefined;
     const declaration = {
       league_id: config.league_id,
@@ -50,14 +81,14 @@ export function declaredUsage(snapshot: LeagueSnapshot): PlannerPreferences["usa
       confirmed_at: config.confirmed_at,
       expires_at: config.expires_at,
       snapshot_at: snapshot.fetched_at,
-      roster_ids: team.roster.map((player) => player.id).sort(),
+      roster_ids: roster,
       season_acquisitions: team.season_acquisitions ?? null,
       source: config.source,
     };
     localStorage.setItem(key, JSON.stringify(declaration));
     return declaration;
   } catch {
-    // Without durable binding, do not re-seed usage on each render/reload.
+    // Without durable binding/tombstones, reload must not resurrect a consumed zero.
     return undefined;
   }
 }
