@@ -2,8 +2,10 @@
 
 import copy
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+
+from tests.fantasy_v7_fixture import pad_synthetic_inventory
 
 NOW = datetime(2026, 11, 2, 17, 2, 22, 264988, tzinfo=timezone.utc)
 
@@ -47,6 +49,7 @@ def new_week_payload():
             ]
         pro_teams.append(team)
     data["schedule"]["settings"]["proTeams"] = pro_teams
+    pad_synthetic_inventory(data["schedule"], date(2026, 10, 20), range(13, 20))
     for collection in (data["pool"], data["cards"]):
         for entry in collection["players"]:
             player = entry.get("player", entry.get("playerPoolEntry", {}).get("player", {}))

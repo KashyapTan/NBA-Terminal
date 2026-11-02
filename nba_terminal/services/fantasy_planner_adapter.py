@@ -76,6 +76,9 @@ def _forecast_view(forecast):
         "actual_primitives": forecast["actual_primitives"],
         "remaining_primitives": forecast["remaining_primitives"],
         "starts": forecast["starts"],
+        "schedule_explanations": forecast["schedule_explanations"],
+        "games_by_team": forecast["games"],
+        "minutes_by_team": forecast["minutes"],
     }
 
 
@@ -104,6 +107,21 @@ def _schedule(player, override, remaining, now):
         if not game["started"] and start > now and game["date"] in remaining:
             dates.append(game["date"])
     return sorted(set(dates)), player.get("schedule_source") or "upstream schedule checked against server time"
+
+
+def _schedule_observations(player, now):
+    """Retain the full week while advancing lock flags to the planner's current clock."""
+    observations = player.get("schedule")
+    if observations is None:
+        return None
+    result = []
+    try:
+        for game in observations:
+            start = datetime.fromisoformat(game["start_at"].replace("Z", "+00:00"))
+            result.append(game | {"started": game["started"] or start <= now})
+    except (KeyError, ValueError, TypeError):
+        return None
+    return result
 
 
 def _remaining_lineup_slots(roster, lineup, remaining, now):
@@ -611,6 +629,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
                 "protected": protection,
                 "active": not inactive,
                 "core_protection_override": override.get("core_protection_override") is True,
+                "schedule_observations": _schedule_observations(player, now),
+                "schedule_coverage": snapshot["period"].get("schedule_coverage"),
                 "schedule": dates,
                 "injury_status": "out" if injured else "active",
                 "current_rates": rates,
@@ -666,6 +686,25 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             "source": "espn_scoring_date_anchors",
             "reason": "ESPN scoring-date anchor unavailable or conflicting; future matchup calendar unverified",
         }
+
+    for team, side in ((user, "user"), (target, "opponent")):
+        advanced = []
+        for player in team["roster"]:
+            if player.get("lineup_slot") not in ACTIVE_SLOTS:
+                continue
+            observations = _schedule_observations(player, now)
+            if observations is not None and any(
+                old.get("started") is False and new["started"]
+                for old, new in zip(player.get("schedule") or [], observations, strict=True)
+            ):
+                advanced.append(player["id"])
+        if advanced:
+            projection_metadata[f"newly_started:{side}"] = {
+                "complete": False,
+                "source": "server_clock_game_locks",
+                "reason": "Games started since this snapshot; refresh banked actuals before forecasting",
+                "player_ids": advanced,
+            }
 
     def banked(team, side):
         actuals = team.get("actuals")

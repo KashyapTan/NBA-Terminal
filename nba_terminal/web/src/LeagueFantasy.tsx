@@ -18,6 +18,7 @@ import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
 import { useWaiverPlan } from "./fantasy-lifecycle";
 import { InfoTooltip } from "./InfoTooltip";
+import { matchupForecastData } from "./MatchupForecast";
 import { bindUsage } from "./usage-declaration";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
 import { DEFAULT_PICKUP_FILTERS, WaiverWorkspace, type WorkspaceStop } from "./WaiverWorkspace";
@@ -690,6 +691,11 @@ function WaiverStrategy({
       moves={moves}
       players={players}
       samples={samples}
+      forecast={matchupForecastData(plan)}
+      scheduleCounts={moves.map((move) => ({
+        addRemainingGames: move.schedule_explanations?.add.remaining_games ?? null,
+        dropRemainingGames: move.schedule_explanations?.drop.remaining_games ?? null,
+      }))}
       stop={stop}
       rosterControls={
         <details className="ww-control">

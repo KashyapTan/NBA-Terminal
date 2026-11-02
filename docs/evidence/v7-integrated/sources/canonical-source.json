@@ -1,0 +1,130 @@
+{
+  "task_id": "NBA_WAIVER_V7_SCHEDULE",
+  "role": "implementer",
+  "artifact": "implementation",
+  "persistent": true,
+  "legacy_unknown": false,
+  "handle": {
+    "task_id": "NBA_WAIVER_V7_SCHEDULE",
+    "owner_state": "/Users/kash/.local/share/multplx/home/state",
+    "attempt": {
+      "id": "attempt-18e45d0c5d02b020-44690-0",
+      "generation": 1,
+      "brief_revision": 1
+    }
+  },
+  "parent_id": "root-home:/Users/kash/.local/share/multplx/home",
+  "parent_state": "/Users/kash/.local/share/multplx/home/state",
+  "parent_home": "/Users/kash/.local/share/multplx/home",
+  "owner_home": "/Users/kash/.local/share/multplx/home",
+  "owner_state": "/Users/kash/.local/share/multplx/home/state",
+  "child_state": "/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V7_SCHEDULE/state",
+  "accepted_brief_revision": 1,
+  "brief": {
+    "path": "/Users/kash/.local/share/multplx/home/state/brief-revisions/NBA_WAIVER_V7_SCHEDULE-1.md",
+    "digest": "34e00bcd7523051141d601b3929a47bf7d1c1f0e50687a78875507da6e5304e0",
+    "source_artifacts": [
+      "/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V7_SCHEDULE/data/charter.md"
+    ]
+  },
+  "runtime": {
+    "provider": "herdr",
+    "session_id": null,
+    "endpoint": "default:wN:p17"
+  },
+  "allocation": {
+    "allocation_id": "8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e",
+    "lease_id": "b5012a37a1df49f65c63aa6188b1967683c737dee179d7fdb1ffc0d4530a8a53",
+    "generation": 1,
+    "project_id": "project-ff5b3c227fe18eb42a0a749982d5ee8786a01754440b3f6e7737c42c21dd7a0d",
+    "checkout_id": "checkout-f2fb2c894566073a239f52b4c7dbebefa32927917629173e95be91315b314352",
+    "common_git_identity": "16777234:102851149:Some(1791248272838674172)",
+    "path": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e",
+    "base_revision": "80f2e6c26cf4d1f19acc78703538b9416c7fee9a",
+    "task_id": "NBA_WAIVER_V7_SCHEDULE",
+    "attempt_id": "attempt-18e45d0c5d02b020-44690-0",
+    "persistent": true
+  },
+  "home_allocation": {
+    "id": "NBA_WAIVER_V7_SCHEDULE",
+    "owner_home": "/Users/kash/.local/share/multplx/home",
+    "path": "/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V7_SCHEDULE",
+    "lease_id": "home-18e45d0c364ed210-43945-0",
+    "generation": 1
+  },
+  "project": {
+    "project_id": "project-ff5b3c227fe18eb42a0a749982d5ee8786a01754440b3f6e7737c42c21dd7a0d",
+    "checkout_id": "checkout-f2fb2c894566073a239f52b4c7dbebefa32927917629173e95be91315b314352",
+    "canonical_path": "/Users/kash/Documents/NBA-Terminal",
+    "checkout_identity": "16777234:102851148:Some(1791248272838396628)",
+    "common_git_dir": "/Users/kash/Documents/NBA-Terminal/.git",
+    "common_git_identity": "16777234:102851149:Some(1791248272838674172)",
+    "starting_revision": "80f2e6c26cf4d1f19acc78703538b9416c7fee9a",
+    "ownership": "user-owned"
+  },
+  "schedule": {
+    "state": "completed",
+    "waiting_condition": null,
+    "dependencies": [],
+    "dependencies_total": 0,
+    "decisions": [],
+    "decisions_total": 0
+  },
+  "launch_reservation": {
+    "intent_path": "/Users/kash/.local/share/multplx/home/state/.spawn-NBA_WAIVER_V7_SCHEDULE.intent",
+    "present": false,
+    "operation_path": "/Users/kash/.local/share/multplx/home/state/.spawn-NBA_WAIVER_V7_SCHEDULE.operation",
+    "retry_command": null
+  },
+  "pending_correlations": [],
+  "pending_correlations_total": 0,
+  "pending_correlations_truncated": false,
+  "expected_current_commit": "91b85cd73c706f996ac4c2e84290d0f4360a8636",
+  "current_delivery_evidence": {
+    "evidence_id": "v7-schedule-91b85cd-1",
+    "commit": "91b85cd73c706f996ac4c2e84290d0f4360a8636",
+    "attempt_id": "attempt-18e45d0c5d02b020-44690-0",
+    "brief_revision": 1,
+    "outcome": "evidence-updated",
+    "pr_url": null,
+    "observed_at": "2026-11-02T23:28:04.187798+00:00",
+    "checks_total": 7,
+    "checks": [
+      {
+        "name": "Repository Ruff",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/ruff.txt"
+      },
+      {
+        "name": "Full Python suite",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/pytest-coverage.txt"
+      },
+      {
+        "name": "Combined coverage",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/coverage.txt"
+      },
+      {
+        "name": "Service coverage",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/coverage-game-center.txt"
+      },
+      {
+        "name": "Webapp coverage",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/coverage-webapp.txt"
+      },
+      {
+        "name": "Exact clean local source",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/README.md"
+      },
+      {
+        "name": "Public source probes",
+        "outcome": "passed",
+        "artifact": "/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/8cf4183f8cc7db87e387fdd2a3e1afd48862c322a05d091d9cabfef89da0a30e/docs/evidence/v7-schedule/public-probes.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "nba-cdn": {
+    "url": "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json",
+    "requested_at": "2026-11-02T23:08:59.284232+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "status": 403,
+    "bytes": 425,
+    "content_type": "text/html"
+  },
+  "nba-cdn-int": {
+    "url": "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2Int.json",
+    "requested_at": "2026-11-02T23:08:59.284521+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "status": 403,
+    "bytes": 428,
+    "content_type": "text/html"
+  },
+  "nba-stats": {
+    "url": "https://stats.nba.com/stats/scheduleleaguev2?LeagueID=00&Season=2026-27",
+    "requested_at": "2026-11-02T23:08:59.284609+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "error": "HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=8)"
+  },
+  "upstream-doc": {
+    "url": "https://raw.githubusercontent.com/swar/nba_api/master/docs/nba_api/stats/endpoints/scheduleleaguev2.md",
+    "requested_at": "2026-11-02T23:08:59.284698+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "status": 200,
+    "bytes": 12326,
+    "content_type": "text/plain; charset=utf-8"
+  },
+  "upstream-parser": {
+    "url": "https://raw.githubusercontent.com/swar/nba_api/master/src/nba_api/stats/endpoints/_parsers/scheduleleaguev2.py",
+    "requested_at": "2026-11-02T23:08:59.284781+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "status": 200,
+    "bytes": 8140,
+    "content_type": "text/plain; charset=utf-8"
+  },
+  "espn-season": {
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/2027?view=proTeamSchedules_wl",
+    "requested_at": "2026-11-02T23:08:59.284853+00:00",
+    "timeout_seconds": [
+      3.05,
+      8
+    ],
+    "status": 200,
+    "bytes": 422881,
+    "content_type": "application/json;charset=utf-8",
+    "season": null,
+    "game_dates": 0
+  }
+}

@@ -7,6 +7,7 @@ import {
   type Category,
   LEAGUE_CATEGORIES,
   type PickupRecommendation,
+  type PlanForecast,
 } from "../../src/league-fantasy-model";
 import { DEFAULT_PICKUP_FILTERS, WaiverWorkspace } from "../../src/WaiverWorkspace";
 
@@ -14,6 +15,81 @@ function Preview() {
   const [targets, setTargets] = useState<Category[]>(["pts", "ast", "stl", "threes", "ft_pct"]);
   const [filters, setFilters] = useState(DEFAULT_PICKUP_FILTERS);
   const failure = new URLSearchParams(location.search).has("failure");
+  const baseline: PlanForecast = {
+    basis: "forecast",
+    totals: {
+      pts: 452,
+      reb: 180,
+      ast: 94,
+      stl: 24,
+      blk: 15,
+      threes: 56,
+      to: 42,
+      fgm: 160,
+      fga: 330,
+      ftm: 76,
+      fta: 94,
+    },
+    opponent_totals: {
+      pts: 434,
+      reb: 190,
+      ast: 94,
+      stl: 22,
+      blk: 18,
+      threes: 52,
+      to: 48,
+      fgm: 158,
+      fga: 340,
+      ftm: 76,
+      fta: 88,
+    },
+    actual_primitives: {
+      user: {
+        pts: 205,
+        reb: 82,
+        ast: 45,
+        stl: 10,
+        blk: 7,
+        threes: 22,
+        to: 20,
+        fgm: 75,
+        fga: 160,
+        ftm: 33,
+        fta: 40,
+      },
+      opponent: {
+        pts: 218,
+        reb: 92,
+        ast: 49,
+        stl: 11,
+        blk: 9,
+        threes: 26,
+        to: 24,
+        fgm: 80,
+        fga: 170,
+        ftm: 32,
+        fta: 38,
+      },
+    },
+    games: 12,
+    minutes: 345,
+    probability_five_wins: null,
+  };
+  const projected: PlanForecast = {
+    ...baseline,
+    totals: {
+      ...baseline.totals,
+      pts: 468,
+      reb: 168,
+      ast: 110,
+      stl: 28,
+      to: 44,
+      fgm: 166,
+      fga: 342,
+      ftm: 84,
+      fta: 102,
+    },
+  };
   const move = (add_id: string, drop_id: string, date: string): PickupRecommendation => ({
     add_id,
     drop_id,
@@ -27,6 +103,7 @@ function Preview() {
     target_categories: targets,
     rationale: "Fixture paired full-roster forecast, with displaced starts accounted for.",
     add_starts: 3,
+    drop_starts: 1,
     arithmetic: {
       primitives: {},
       categories: Object.fromEntries(
@@ -83,6 +160,11 @@ function Preview() {
           ]),
         )}
         moves={[move("a", "d", "2026-11-03"), move("b", "e", "2026-11-04")]}
+        forecast={{ baseline, projected }}
+        scheduleCounts={[
+          { addRemainingGames: 4, dropRemainingGames: 3 },
+          { addRemainingGames: 3, dropRemainingGames: 2 },
+        ]}
         players={{
           a: testPlayer("a", { name: "Jordan Guard" }),
           b: testPlayer("b", { name: "Morgan Wing" }),

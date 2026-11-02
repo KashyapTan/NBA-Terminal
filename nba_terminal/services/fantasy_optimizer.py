@@ -183,17 +183,73 @@ def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=N
     return list(occupied.values())
 
 
+def _schedule_explanation(context, forecast, pid, effective=None):
+    player = context["players"][pid]
+    observations = player.get("schedule_observations")
+    dates = (
+        sorted({g["date"] for g in observations if not g["started"]})
+        if observations is not None
+        else player["schedule"]
+    )
+    effective = effective or min(context["dates"], default="9999-12-31")
+    if player["owner"] == "free":
+        effective = max(effective, player.get("earliest_add_date") or effective)
+    effective = max(effective, player.get("available_from") or effective)
+    used = {s["date"] for s in forecast["starts"] if s["player_id"] == pid}
+    exclusions, eligible = [], 0
+    for day in dates:
+        if day not in context["dates"]:
+            exclusions.append({"date": day, "reason": "outside_projection_horizon"})
+            continue
+        if day < effective:
+            reason = "before_transaction_effective_date"
+        elif not player.get("active", True) or player.get("lineup_slot") in ("IR", "IR+"):
+            reason = "inactive_or_ir"
+        elif day in player["unavailable"] or player.get("injury_status") in ("out", "inactive"):
+            reason = "unavailable"
+        else:
+            eligible += 1
+            reason = None if day in used else "lineup_capacity_or_policy"
+            if reason and day not in forecast.get("roster_dates", {}).get(pid, []):
+                reason = "not_on_roster"
+        if reason:
+            exclusions.append({"date": day, "reason": reason})
+    for game in observations or []:
+        if game.get("started"):
+            exclusions.append({"date": game["date"], "reason": "already_started_or_banked"})
+    return {
+        "full_week_games": len(observations) if observations is not None else None,
+        "remaining_games": (
+            sum(not g["started"] for g in observations)
+            if observations is not None
+            else None
+            if "schedule_observations" in player
+            else len(dates)
+        ),
+        "eligible_games": eligible,
+        "usable_starts": sum(s["player_id"] == pid and s["date"] >= effective for s in forecast["starts"]),
+        "effective_date": effective,
+        "source": player.get("schedule_source"),
+        "coverage": player.get("schedule_coverage"),
+        "exclusions": exclusions,
+    }
+
+
 def _forecast(context, actions):
     ours, theirs = dict(context["ours"]), dict(context["theirs"])
     roster = set(context["roster"])
     games = {"user": 0, "opponent": 0}
     minutes = {"user": 0.0, "opponent": 0.0}
     starts = []
+    roster_dates = {pid: [] for pid in context["players"]}
     for day in context["dates"]:
         for action in actions:
             if action["date"] == day:
                 roster.remove(action["drop_id"])
                 roster.add(action["add_id"])
+        for pid, player in context["players"].items():
+            if pid in roster or player["owner"] == "opponent":
+                roster_dates[pid].append(day)
         available = [
             p
             for p in context["players"].values()
@@ -247,7 +303,7 @@ def _forecast(context, actions):
             if any(c["margin"] is None for c in categories.values())
             else float(sum(c["state"] == "winning" for c in categories.values()) >= 5)
         )
-    return {
+    result = {
         "actual_primitives": {"user": dict(context["ours"]), "opponent": dict(context["theirs"])},
         "remaining_primitives": {
             "user": {k: ours[k] - context["ours"][k] for k in TOTALS},
@@ -260,7 +316,10 @@ def _forecast(context, actions):
         "games": games,
         "minutes": minutes,
         "starts": starts,
+        "roster_dates": roster_dates,
     }
+    result["schedule_explanations"] = {pid: _schedule_explanation(context, result, pid) for pid in context["players"]}
+    return result
 
 
 def _context(payload):
@@ -655,6 +714,10 @@ def _describe_move(context, before, after, action, selected):
         drop_sample=drop.get("pickup_sample"),
         calculation=calculation,
         arithmetic={"primitives": primitives, "categories": _category_arithmetic(before, after, primitives)},
+        schedule_explanations={
+            "add": _schedule_explanation(context, after, add["id"], action["date"]),
+            "drop": _schedule_explanation(context, before, drop["id"], action["date"]),
+        },
         add_starts=added_starts,
         add_usable_dates=sorted(
             {

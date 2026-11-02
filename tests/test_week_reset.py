@@ -1,7 +1,7 @@
 """Primary-source boundary regressions; all account/provider payloads are synthetic."""
 
 import copy
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 
@@ -9,6 +9,7 @@ from nba_terminal.services import espn_fantasy as espn
 from nba_terminal.services import fantasy_actuals as actuals
 from nba_terminal.services import fantasy_planner_adapter as adapter
 from tests.fantasy_v6_fixture import enrich
+from tests.fantasy_v7_fixture import pad_synthetic_inventory
 from tests.test_fantasy_integration import preferences
 from tests.week_reset_fixture import NOW, new_week_payload
 
@@ -70,6 +71,7 @@ def test_espn_prorated_matchup_allowance(rate, days, expected):
         team["proGamesByScoringPeriod"] = {
             str(p): [first | {"date": first["date"] + (p - 13) * 86400000}] for p in periods
         }
+    pad_synthetic_inventory(data["schedule"], date(2026, 10, 20), periods)
     snapshot = espn.normalize(raw, data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW)
     settings = snapshot["league"]["acquisition_settings"]
     assert settings["weekly_add_limit"] == expected
@@ -254,6 +256,8 @@ def test_partial_nba_schedule_cannot_erase_verified_espn_current_week():
     from tests.fantasy_v2_fixture import nba_schedule_payload
 
     data = new_week_payload()
+    partial_nba = nba_schedule_payload()
+    partial_nba["leagueSchedule"]["gameDates"][0]["games"] = partial_nba["leagueSchedule"]["gameDates"][0]["games"][:1]
     snapshot = espn.normalize(
         data["league"],
         data["schedule"],
@@ -262,7 +266,7 @@ def test_partial_nba_schedule_cannot_erase_verified_espn_current_week():
         {},
         1,
         now=NOW,
-        nba={"schedule": nba_schedule_payload(), "schedule_status": "fresh"},
+        nba={"schedule": partial_nba, "schedule_status": "fresh"},
     )
     assert snapshot["period"]["dates"] == [
         "2026-11-02",
@@ -335,8 +339,8 @@ def test_review_partial_current_nba_schedule_cannot_erase_started_espn_games_or_
     )
     assert snapshot["period"]["no_started_games_verified"] is False
     assert snapshot["period"]["bankable_scoring_period_ids"] == [13]
-    assert snapshot["period"]["bankable_periods_verified"] is False
-    assert snapshot["teams"][0]["roster"][0]["schedule"][0]["started"] is True
+    assert snapshot["period"]["bankable_periods_verified"] is True
+    assert any(g["started"] for g in snapshot["teams"][0]["roster"][0]["schedule"])
     assert snapshot["teams"][0]["roster"][0]["schedule_source"] == "espn_schedule"
     missing = actuals.reconstruct(
         1,

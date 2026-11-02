@@ -1,0 +1,171 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:29424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:29471) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (1.2s)
+(node:29626) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (996ms)
+(node:31926) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (968ms)
+(node:32420) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (831ms)
+(node:32536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (903ms)
+(node:32675) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  6 [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (863ms)
+
+
+  1) [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "opponent": 4,
+    -   "user": 6,
+    +   "user": 7,
+      }
+
+      136 |   save(`${info.project.name}-multi-snapshot`, snapshot);
+      137 |   expect(plan.status, JSON.stringify(plan.reasons)).toBe("ready");
+    > 138 |   expect(plan.baseline!.games_by_team).toEqual({ user: 6, opponent: 4 });
+          |                                        ^
+      139 |   expect(plan.baseline!.totals.pts).toBe(48);
+      140 |   expect(plan.baseline!.opponent_totals!.pts).toBe(100);
+      141 |   expect(plan.baseline!.schedule_explanations!["1"].full_week_games).toBe(3);
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:138:40
+
+    Error Context: test-results/v7-integration-real-HTTP3--52453-d-cards-and-responsive-help-vite-proxy/error-context.md
+
+  2) [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "opponent": 4,
+    -   "user": 3,
+    +   "user": 4,
+      }
+
+      236 |     await rendered(page, plan);
+      237 |     if (league === 701 || league === 705 || league === 707 || league === 708)
+    > 238 |       expect(plan.baseline!.games_by_team).toEqual({ user: 3, opponent: 4 });
+          |                                            ^
+      239 |     if (league === 705 || league === 708) {
+      240 |       expect(plan.recommended_plan?.moves ?? []).toHaveLength(0);
+      241 |       await expect(page.locator(".ww-forecast-note")).toContainText("baseline forecast shown");
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:238:44
+
+    Error Context: test-results/v7-integration-real-HTTP-n-edbc7-d-partial-fallback-evidence-vite-proxy/error-context.md
+
+  3) [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByLabel('Min MPG')
+    Error: expected value must be a string or regular expression
+    Expected has type:  number
+    Expected has value: 15
+
+
+      289 |   const first = await open(page, 702);
+      290 |   await page.getByText("Pickup filters", { exact: true }).click();
+    > 291 |   await expect(page.getByLabel("Min MPG")).toHaveValue(15);
+          |                                            ^
+      292 |   await page.getByText("Full analysis & data", { exact: true }).click();
+      293 |   const calls = (await counters(page))[`${root}/plan`];
+      294 |   const snapshots = [];
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:291:44
+
+    Error Context: test-results/v7-integration-actual-unch-5f973-ilures-keep-saved-read-only-vite-proxy/error-context.md
+
+  4) [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "opponent": 4,
+    -   "user": 6,
+    +   "user": 7,
+      }
+
+      136 |   save(`${info.project.name}-multi-snapshot`, snapshot);
+      137 |   expect(plan.status, JSON.stringify(plan.reasons)).toBe("ready");
+    > 138 |   expect(plan.baseline!.games_by_team).toEqual({ user: 6, opponent: 4 });
+          |                                        ^
+      139 |   expect(plan.baseline!.totals.pts).toBe(48);
+      140 |   expect(plan.baseline!.opponent_totals!.pts).toBe(100);
+      141 |   expect(plan.baseline!.schedule_explanations!["1"].full_week_games).toBe(3);
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:138:40
+
+    Error Context: test-results/v7-integration-real-HTTP3--52453-d-cards-and-responsive-help-production-build/error-context.md
+
+  5) [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "opponent": 4,
+    -   "user": 3,
+    +   "user": 4,
+      }
+
+      236 |     await rendered(page, plan);
+      237 |     if (league === 701 || league === 705 || league === 707 || league === 708)
+    > 238 |       expect(plan.baseline!.games_by_team).toEqual({ user: 3, opponent: 4 });
+          |                                            ^
+      239 |     if (league === 705 || league === 708) {
+      240 |       expect(plan.recommended_plan?.moves ?? []).toHaveLength(0);
+      241 |       await expect(page.locator(".ww-forecast-note")).toContainText("baseline forecast shown");
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:238:44
+
+    Error Context: test-results/v7-integration-real-HTTP-n-edbc7-d-partial-fallback-evidence-production-build/error-context.md
+
+  6) [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByLabel('Min MPG')
+    Error: expected value must be a string or regular expression
+    Expected has type:  number
+    Expected has value: 15
+
+
+      289 |   const first = await open(page, 702);
+      290 |   await page.getByText("Pickup filters", { exact: true }).click();
+    > 291 |   await expect(page.getByLabel("Min MPG")).toHaveValue(15);
+          |                                            ^
+      292 |   await page.getByText("Full analysis & data", { exact: true }).click();
+      293 |   const calls = (await counters(page))[`${root}/plan`];
+      294 |   const snapshots = [];
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:291:44
+
+    Error Context: test-results/v7-integration-actual-unch-5f973-ilures-keep-saved-read-only-production-build/error-context.md
+
+  6 failed
+    [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+    [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+    [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+    [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+    [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+    [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only

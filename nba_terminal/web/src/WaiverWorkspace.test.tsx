@@ -82,6 +82,9 @@ it("shows ordered compact moves, actual sample, true net and non-target harms wi
   expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
   expect(container.querySelector(".ww-analysis")).toHaveTextContent("all nine categories");
   expect(container.querySelectorAll(".ww-target")).toHaveLength(5);
+  expect(container.querySelectorAll(".ww-forecast-table tbody tr")).toHaveLength(9);
+  expect(container.querySelector(".ww-plan")?.nextElementSibling).toHaveClass("ww-forecast");
+  expect(container.querySelector(".ww-forecast")?.nextElementSibling).toHaveClass("ww-analysis");
 });
 it("serializes participation as a fraction and preserves other filters", () => {
   const props = fixture();
@@ -144,6 +147,24 @@ it("edits targets with an explicit five-category cap", () => {
 it("never invents qualified sample values", () => {
   render(<WaiverWorkspace {...fixture()} samples={{}} />);
   expect(screen.getAllByText(/Current sample · \? MPG · \? GP \/ \? team games/)).toHaveLength(2);
+});
+it("distinguishes source scheduled games from constrained usable starts, including zero and unknown", () => {
+  const props = fixture();
+  const { container } = render(
+    <WaiverWorkspace
+      {...props}
+      moves={[{ ...props.moves[0], add_starts: 2, drop_starts: 0 }, props.moves[1]]}
+      scheduleCounts={[{ addRemainingGames: 4, dropRemainingGames: 3 }]}
+    />,
+  );
+  const rows = container.querySelectorAll(".ww-schedule");
+  expect(rows[0]).toHaveTextContent("ADD 4 games left · 2 usable starts");
+  expect(rows[0]).toHaveTextContent("DROP 3 games left · 0 usable starts");
+  expect(rows[1]).toHaveTextContent("ADD ? games left · 3 usable starts");
+  expect(rows[1]).toHaveTextContent("DROP ? games left · ? usable starts");
+  expect(
+    screen.getByRole("button", { name: "Games and usable starts for move 1" }),
+  ).toHaveAccessibleDescription(/slot limits/);
 });
 it("provides a concrete reconnect destination for definitive auth errors", () => {
   render(

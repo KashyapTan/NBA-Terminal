@@ -1,0 +1,9 @@
+$ vitest run src/MatchupForecast.test.tsx src/WaiverWorkspace.test.tsx
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web
+
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  18:47:11
+   Duration  821ms (environment 52%, tests 26%, setup 13%, transform 5%, import 3%)

@@ -217,6 +217,21 @@
 .ww-sample {
   margin: 10px 0;
 }
+.ww-schedule {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+  color: #aab7c8;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.ww-schedule .waiver-help {
+  margin-left: auto;
+}
+.ww-schedule > span:not(.waiver-help) {
+  line-height: 1.5;
+}
 .ww-benefits {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
@@ -249,6 +264,126 @@
   border-top: 1px solid #303b49;
   padding-top: 16px;
   margin-top: 24px;
+}
+.ww-forecast {
+  margin-top: 22px;
+  border-top: 1px solid #303b49;
+  padding-top: 16px;
+}
+.ww-forecast .ww-section-label {
+  margin-bottom: 6px;
+}
+.ww-forecast .ww-section-label > .waiver-help {
+  margin-left: auto;
+}
+.ww-forecast-score {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 0;
+  font-size: 13px;
+  color: #aab7c8;
+}
+.ww-forecast-score b {
+  color: #e5eaf0;
+  font-weight: 600;
+}
+.ww-forecast-legend,
+.ww-forecast-note {
+  font-size: 12px;
+  color: #aab7c8;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.ww-forecast-caution,
+.ww-focus,
+.ww-edge-tied {
+  color: #f2d58e;
+}
+.ww-forecast-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ww-forecast-table th,
+.ww-forecast-table td {
+  padding: 8px 10px;
+  text-align: right;
+  border-bottom: 1px solid #283341;
+  vertical-align: middle;
+}
+.ww-forecast-table thead th {
+  color: #b6c2d2;
+  background: #151e2c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ww-forecast-table th:first-child {
+  width: 18%;
+  text-align: left;
+}
+.ww-forecast-table tbody th {
+  font-size: 12px;
+}
+.ww-forecast-table [data-focus="true"] th {
+  box-shadow: inset 2px 0 #dfbb63;
+}
+.ww-forecast-table td > span {
+  font-weight: 600;
+}
+.ww-forecast-table small {
+  display: block;
+  color: #aab7c8;
+  font-size: 11px;
+  margin-top: 3px;
+}
+.ww-forecast-table .ww-gain,
+.ww-edge-winning {
+  color: #80d6ac;
+}
+.ww-forecast-table .ww-loss,
+.ww-edge-losing {
+  color: #ff999f;
+}
+.ww-edge {
+  font-size: 10px;
+  display: inline-block;
+  margin-top: 3px;
+  font-weight: 500;
+}
+.ww-edge-unknown {
+  color: #aab7c8;
+}
+.ww-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 650px) {
+  .ww-forecast-table th,
+  .ww-forecast-table td {
+    padding: 6px 4px;
+  }
+  .ww-forecast-table {
+    font-size: 12px;
+  }
+  .ww-forecast-table th:first-child {
+    width: 19%;
+  }
+  .ww-forecast-table thead th,
+  .ww-forecast-table tbody th {
+    font-size: 11px;
+  }
+  .ww-forecast-table small {
+    font-size: 10px;
+  }
+  .ww-focus {
+    display: block;
+    font-size: 10px;
+  }
 }
 .ww-analysis > summary {
   font-size: 13px;

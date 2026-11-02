@@ -51,7 +51,10 @@ test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", a
     page.getByText("Ordered plan withheld: daily acquisition ledger missing"),
   ).toHaveCount(0);
   await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
-  const evidence = resolve(process.cwd(), "../../docs/evidence/v6-integrated/week-reset");
+  const evidence = resolve(
+    process.cwd(),
+    process.env.EVIDENCE_DIR || "../../docs/evidence/v6-integrated/week-reset",
+  );
   mkdirSync(evidence, { recursive: true });
   writeFileSync(resolve(evidence, "synthetic-plan.json"), JSON.stringify(plan, null, 2));
   for (const [name, width, height] of [

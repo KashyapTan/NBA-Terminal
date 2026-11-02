@@ -1,0 +1,9 @@
+{
+  "/api/fantasy/espn/bridge/status": 2,
+  "/api/fantasy/espn/status": 5,
+  "/api/fantasy/espn/bridge/pair": 1,
+  "/api/fantasy/espn/bridge/challenge": 1,
+  "/api/fantasy/espn/bridge/refresh": 1,
+  "/api/fantasy/espn/snapshot": 3,
+  "/api/fantasy/espn/plan": 5
+}
