@@ -1,0 +1,348 @@
+.waiver-workspace {
+  color: #e5eaf0;
+  background: #0e131d;
+  border: 1px solid #303b49;
+  border-radius: 12px;
+  padding: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.waiver-workspace h2 {
+  font-size: 25px;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+.waiver-workspace h3 {
+  font-size: 15px;
+  margin: 0;
+}
+.ww-heading,
+.ww-section-label,
+.ww-status,
+.ww-move-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.ww-context,
+.ww-sample,
+.ww-stop {
+  color: #aab7c8;
+  font-size: 12px;
+  margin: 7px 0 0;
+  line-height: 1.5;
+}
+.ww-context span {
+  white-space: nowrap;
+}
+.ww-section-label {
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+.ww-section-label > span {
+  margin-left: auto;
+  font-size: 12px;
+  color: #aab7c8;
+}
+.ww-targets {
+  margin-top: 23px;
+}
+.ww-target-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ww-target {
+  background: #151e2c;
+  border: 1px solid #303b49;
+  border-top: 2px solid #dfbb63;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.ww-target span {
+  white-space: nowrap;
+}
+.ww-target small {
+  color: #aab7c8;
+  font-size: 11px;
+}
+.ww-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 13px 0 24px;
+  align-items: flex-start;
+}
+.ww-control {
+  position: relative;
+}
+.waiver-workspace button,
+.ww-control summary {
+  color: #e5eaf0;
+  border: 1px solid #435064;
+  background: #151e2c;
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.ww-control summary {
+  list-style: none;
+}
+.ww-control summary::after {
+  content: " ▾";
+  color: #dfbb63;
+}
+.ww-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: 270px;
+  z-index: 5;
+  padding: 14px;
+  background: #151e2c;
+  border: 1px solid #435064;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px #0008;
+}
+.ww-category-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.ww-category-picker label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.ww-filter-fields {
+  display: grid;
+  gap: 10px;
+}
+.ww-filter-fields label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.ww-filter-fields input {
+  width: 66px;
+  background: #0e131d;
+  color: #e5eaf0;
+  border: 1px solid #435064;
+  padding: 6px;
+  border-radius: 4px;
+}
+.ww-status {
+  margin-top: 15px;
+  background: #262318;
+  color: #f2d58e;
+  border: 1px solid #776135;
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.ww-moves {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.ww-move {
+  border: 1px solid #354252;
+  background: #121925;
+  border-radius: 9px;
+  padding: 14px;
+  min-width: 0;
+}
+.ww-move-top {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.ww-order {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #303b49;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ww-players {
+  display: grid;
+  gap: 7px;
+}
+.ww-players > div {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.ww-players strong {
+  font-size: 15px;
+}
+.ww-add-label,
+.ww-drop-label {
+  width: 35px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.ww-add-label,
+.ww-gain {
+  color: #80d6ac;
+}
+.ww-drop-label,
+.ww-loss {
+  color: #ff999f;
+}
+.ww-timing {
+  margin-left: auto;
+  display: grid;
+  text-align: right;
+  gap: 5px;
+  font-size: 12px;
+}
+.ww-timing span {
+  color: #aab7c8;
+}
+.ww-sample {
+  margin: 10px 0;
+}
+.ww-benefits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  border-top: 1px solid #303b49;
+  padding-top: 10px;
+}
+.ww-benefit {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+}
+.ww-benefit > b {
+  font-size: 12px;
+}
+.ww-benefit > span {
+  color: #aab7c8;
+}
+.ww-benefit strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+}
+.ww-benefit small {
+  font-size: 10px;
+  font-weight: 400;
+}
+.ww-analysis {
+  border-top: 1px solid #303b49;
+  padding-top: 16px;
+  margin-top: 24px;
+}
+.ww-analysis > summary {
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #b6c2d2;
+}
+.ww-analysis > section {
+  margin-top: 20px;
+}
+.waiver-help {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.waiver-workspace .waiver-help-trigger {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 0;
+  font-weight: 700;
+  font-family: Georgia, serif;
+  color: #bac7d9;
+}
+.waiver-help-content {
+  visibility: hidden;
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: 100%;
+  width: min(260px, 70vw);
+  padding: 12px;
+  background: #253143;
+  color: #e5eaf0;
+  border: 1px solid #53677e;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 8px 20px #0008;
+}
+.waiver-help:not([data-dismissed="true"]):hover .waiver-help-content,
+.waiver-help:not([data-dismissed="true"]):focus-within .waiver-help-content,
+.waiver-help[data-pinned="true"] .waiver-help-content {
+  visibility: visible;
+}
+.waiver-workspace :focus-visible {
+  outline: 2px solid #f2d58e;
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  .waiver-workspace {
+    padding: 14px;
+  }
+  .ww-target-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ww-target {
+    padding: 8px;
+  }
+  .ww-target span {
+    white-space: normal;
+    display: grid;
+    gap: 3px;
+  }
+  .ww-move {
+    padding: 12px;
+  }
+  .ww-players strong {
+    font-size: 13px;
+  }
+  .ww-move-top {
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+  .ww-timing {
+    margin-left: 33px;
+    text-align: left;
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+  .ww-benefits {
+    grid-template-columns: 1fr;
+  }
+  .ww-benefit {
+    grid-template-columns: 32px 0.8fr 0.8fr 1.5fr;
+    align-items: baseline;
+  }
+  .ww-benefit > span {
+    white-space: nowrap;
+  }
+  .ww-popover {
+    position: static;
+    width: min(270px, 70vw);
+    margin-top: 6px;
+  }
+}

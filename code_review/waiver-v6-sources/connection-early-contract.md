@@ -1,0 +1,9 @@
+# V6 connection lifecycle contract
+
+`useLeagueFantasy` retains `snapshot` during a same-context refresh/transient failure. Its optional additive `lifecycle` field is `{state: 'connected' | 'refreshing' | 'stale' | 'reconnect-needed', resultIdentity: string | null, action: string, readOnly: boolean}`. Unknown/disconnected or definitive 401/403 invalidates the snapshot. Transient network/429/5xx preserves it read-only. A team/league/season/session identity change invalidates old context immediately. `loading` describes a snapshot request, not disconnection; never use it as a key or conditional mount for strategy.
+
+`snapshotIdentity(snapshot)` excludes fetch timestamps only, retaining all actual facts, source completeness, dates, usage evidence and expiry. Plan effects use this identity plus serialized preferences, never snapshot/status object identity. `useWaiverPlan` returns `{plan,busy,error,lifecycle}`; last good plan remains visible read-only while updating or stale. A new incompatible context must remount the strategy. Changed preferences/data retain the previous result only as a read-only reference until the matching request completes. `resultIdentity` is the identity of the displayed result; consumers may present an Updating/Stale badge using `action`. Do not execute recommendations when `readOnly` is true.
+
+API failures are `FantasyApiError` with sanitized `status`, `code`, `retryable`, `reconnectNeeded`; never infer logout from a generic exception. Polls are single-flight, visibility/focus coalesced and cleaned up. Retries are bounded (2 automatic retries per request identity).
+
+ENGINE pickup filter contract: API accepts `pickup_filters`; integrator adds `PlannerPreferences.pickup_filters={min_minutes:number,min_games:number,min_participation:number}` once ENGINE validation is integrated. No engine validation is bypassed here. Existing usage declaration leases remain immutable; expired evidence is not renewed by refresh.
