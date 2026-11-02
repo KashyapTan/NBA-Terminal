@@ -1,0 +1,9 @@
+{
+  "/api/fantasy/espn/bridge/status": 31,
+  "/api/fantasy/espn/status": 64,
+  "/api/fantasy/espn/bridge/pair": 24,
+  "/api/fantasy/espn/bridge/challenge": 24,
+  "/api/fantasy/espn/bridge/refresh": 24,
+  "/api/fantasy/espn/snapshot": 75,
+  "/api/fantasy/espn/plan": 67
+}

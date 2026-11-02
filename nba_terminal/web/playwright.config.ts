@@ -8,6 +8,7 @@ export default defineConfig({
     "league-production.spec.ts",
     "connection-lifecycle.spec.ts",
     "v6-integration.spec.ts",
+    "v7-integration.spec.ts",
     "v5-integration.spec.ts",
     "analytics-tools.spec.ts",
     "week-reset.spec.ts",

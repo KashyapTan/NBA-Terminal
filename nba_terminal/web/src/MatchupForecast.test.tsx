@@ -1,9 +1,41 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { type Category, LEAGUE_CATEGORIES, type PlanForecast } from "./league-fantasy-model";
-import { forecastValue, MatchupForecast } from "./MatchupForecast";
+import { forecastValue, matchupForecastData, MatchupForecast } from "./MatchupForecast";
+import type { WaiverPlan } from "./league-fantasy-model";
 
 afterEach(cleanup);
+it("gates partial and newly-started diagnostic totals while keeping a complete unknown-budget baseline", () => {
+  const plan = {
+    status: "incomplete",
+    evaluation_state: "conditional_opportunities",
+    baseline: forecast(),
+    projection_metadata: {
+      schedule_coverage: { complete: true, source: "espn_schedule", fallback: true },
+      "actuals:user": { complete: true },
+    },
+  } as unknown as WaiverPlan;
+  expect(matchupForecastData(plan).complete).toBe(true);
+  expect(matchupForecastData(plan).sourceLabel).toBe("ESPN schedule · fallback");
+  plan.projection_metadata!["newly_started:user"] = { complete: false };
+  const { container, rerender } = render(
+    <MatchupForecast {...matchupForecastData(plan)} targets={targets} hasMoves={false} />,
+  );
+  expect(container.querySelector('[data-category="pts"] td:nth-of-type(2)')).toHaveTextContent(
+    "——Unknown",
+  );
+  expect(container.querySelector('[data-category="pts"] td:first-of-type')).toHaveTextContent(
+    "4050",
+  );
+  plan.projection_metadata!["actuals:user"].complete = false;
+  rerender(<MatchupForecast {...matchupForecastData(plan)} targets={targets} hasMoves={false} />);
+  expect(container.querySelector('[data-category="pts"] td:first-of-type')).toHaveTextContent(
+    "—50",
+  );
+  expect(matchupForecastData(undefined).complete).toBe(false);
+  plan.status = "unavailable";
+  expect(matchupForecastData(plan).complete).toBe(false);
+});
 const targets: Category[] = ["pts", "ast", "reb", "fg_pct", "to"];
 function forecast(): PlanForecast {
   return {
@@ -116,4 +148,38 @@ it("preserves complete category rows during partial inputs and saved refresh", (
   expect(screen.getByText("Saved · read-only")).toBeVisible();
   expect(container.querySelectorAll("tbody tr")).toHaveLength(LEAGUE_CATEGORIES.length);
   expect(container.querySelector('[data-category="pts"]')).toHaveTextContent("120—Unknown");
+});
+it("retains known counting zeros when only zero-attempt percentages are undefined", () => {
+  const baseline = forecast();
+  baseline.totals = {
+    pts: 0,
+    reb: 0,
+    ast: 0,
+    stl: 0,
+    blk: 0,
+    threes: 0,
+    to: 0,
+    fgm: 0,
+    fga: 0,
+    ftm: 0,
+    fta: 0,
+  };
+  const plan = {
+    status: "incomplete",
+    evaluation_state: "required_inputs_unknown",
+    data_gaps: [],
+    baseline,
+    projection_metadata: { schedule_coverage: { complete: true } },
+  } as unknown as WaiverPlan;
+  const { container } = render(
+    <MatchupForecast {...matchupForecastData(plan)} targets={targets} hasMoves={false} />,
+  );
+  expect(container.querySelector('[data-category="pts"] td:nth-of-type(2)')).toHaveTextContent(
+    "0110Loss",
+  );
+  expect(container.querySelector('[data-category="fg_pct"] td:nth-of-type(2)')).toHaveTextContent(
+    "—41.67%Unknown",
+  );
+  plan.data_gaps = ["Roster rates missing"];
+  expect(matchupForecastData(plan).complete).toBe(false);
 });

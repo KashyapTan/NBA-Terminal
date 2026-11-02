@@ -55,7 +55,7 @@ export interface WaiverWorkspaceProps {
   players: Record<string, LeaguePlayer>;
   samples: Record<string, QualifiedSample>;
   stop?: WorkspaceStop;
-  forecast?: Pick<MatchupForecastProps, "baseline" | "projected">;
+  forecast?: Omit<MatchupForecastProps, "targets" | "hasMoves" | "readOnly">;
   rosterControls?: ReactNode;
   analysis: ReactNode;
   technicalControls?: ReactNode;
@@ -133,7 +133,7 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
         <div className="ww-target-grid">
           {props.targets.map((key) => {
             const category = LEAGUE_CATEGORIES.find((item) => item.key === key)!;
-            const row = props.strategy?.[key];
+            const row = props.forecast?.complete === false ? undefined : props.strategy?.[key];
             return (
               <div className="ww-target" key={key}>
                 <b>{category.label}</b>

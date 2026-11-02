@@ -6,6 +6,7 @@ import {
   LEAGUE_CATEGORIES,
   type PlanForecast,
   type Stats,
+  type WaiverPlan,
 } from "./league-fantasy-model";
 import { signedChange } from "./WaiverArithmetic";
 
@@ -15,6 +16,33 @@ export interface MatchupForecastProps {
   hasMoves: boolean;
   targets: Category[];
   readOnly?: boolean;
+  complete?: boolean;
+  actualComplete?: { user: boolean; opponent: boolean };
+  sourceLabel?: string;
+}
+
+export function matchupForecastData(plan: WaiverPlan | null | undefined) {
+  const metadata = plan?.projection_metadata;
+  const coverage = metadata?.schedule_coverage;
+  return {
+    baseline: plan?.baseline,
+    projected: plan?.projected,
+    complete:
+      !!plan &&
+      plan.status !== "unavailable" &&
+      (plan.evaluation_state !== "required_inputs_unknown" || plan.data_gaps.length === 0) &&
+      Object.values(metadata ?? {}).every((part) => part.complete),
+    actualComplete: {
+      user: metadata?.["actuals:user"]?.complete !== false,
+      opponent: metadata?.["actuals:opponent"]?.complete !== false,
+    },
+    sourceLabel:
+      coverage?.source === "espn_schedule"
+        ? `ESPN schedule${coverage.fallback ? " · fallback" : ""}`
+        : coverage?.source === "nba_schedule"
+          ? "NBA schedule"
+          : "Schedule source unverified",
+  };
 }
 
 // A percentage without its team makes/attempts cannot establish a weighted forecast.
@@ -41,12 +69,19 @@ export function MatchupForecast({
   hasMoves,
   targets,
   readOnly,
+  complete = true,
+  actualComplete,
+  sourceLabel,
 }: MatchupForecastProps) {
-  const before = baseline?.basis === "forecast" ? baseline : null;
-  const after = hasMoves && projected?.basis === "forecast" ? projected : null;
+  const before = complete && baseline?.basis === "forecast" ? baseline : null;
+  const after = complete && hasMoves && projected?.basis === "forecast" ? projected : null;
   const rows = LEAGUE_CATEGORIES.map(({ key, label }) => {
-    const current = forecastValue(baseline?.actual_primitives?.user, key);
-    const currentOpponent = forecastValue(baseline?.actual_primitives?.opponent, key);
+    const current =
+      actualComplete?.user === false ? null : forecastValue(baseline?.actual_primitives?.user, key);
+    const currentOpponent =
+      actualComplete?.opponent === false
+        ? null
+        : forecastValue(baseline?.actual_primitives?.opponent, key);
     const user = forecastValue(before?.totals, key);
     const opponent = forecastValue(before?.opponent_totals, key);
     const planned = forecastValue(after?.totals, key);
@@ -78,9 +113,10 @@ export function MatchupForecast({
       <div className="ww-section-label">
         <h3>End of matchup</h3>
         <InfoTooltip label="About the matchup forecast">
-          Now is banked scoring in this matchup. End week adds remaining usable lineup production
-          for both teams. After plan uses the entire ordered plan. FG% and FT% use total makes /
-          attempts; fewer TO wins. Stars mark your five focus categories. Estimates can change.
+          Now: this matchup's banked stats. At end: banked plus remaining usable lineup production
+          for each team, before moves. After plan: your total after all ordered moves. FG/FT use
+          total makes / attempts; fewer TO wins. W–L–T counts categories won, lost and tied. Stars
+          mark your focus five. Estimates can change.
         </InfoTooltip>
       </div>
       <p className="ww-forecast-score">
@@ -95,6 +131,12 @@ export function MatchupForecast({
         {readOnly && <span className="ww-forecast-caution">Saved · read-only</span>}
       </p>
       <p className="ww-forecast-legend">You / Opp · ★ Focus · TO ↓ lower wins</p>
+      {sourceLabel && (
+        <p className="ww-forecast-legend">
+          {sourceLabel}
+          {!complete && " · incomplete inputs"}
+        </p>
+      )}
       <table className="ww-forecast-table">
         <caption className="ww-sr-only">
           All nine categories, current scoring and end-of-matchup forecasts
@@ -106,7 +148,7 @@ export function MatchupForecast({
               Now<small>You / Opp</small>
             </th>
             <th scope="col">
-              End week<small>You / Opp</small>
+              At end<small>You / Opp</small>
             </th>
             <th scope="col">
               After plan<small>You · change</small>

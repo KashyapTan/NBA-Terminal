@@ -1,0 +1,20 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:73304) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:73318) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v7-integration.spec.ts:140:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (2.5s)
+  ✓  2 [vite-proxy] › e2e/v7-integration.spec.ts:237:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (11.4s)
+  ✓  3 [vite-proxy] › e2e/v7-integration.spec.ts:324:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (2.6s)
+  ✓  4 [vite-proxy] › e2e/v7-integration.spec.ts:372:1 › actual ESPN fallback schedule edits and cached-snapshot tipoff locks invalidate the right facts (2.8s)
+(node:80700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [production-build] › e2e/v7-integration.spec.ts:140:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (1.9s)
+  ✓  6 [production-build] › e2e/v7-integration.spec.ts:237:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (10.4s)
+  ✓  7 [production-build] › e2e/v7-integration.spec.ts:324:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (2.2s)
+  ✓  8 [production-build] › e2e/v7-integration.spec.ts:372:1 › actual ESPN fallback schedule edits and cached-snapshot tipoff locks invalidate the right facts (2.4s)
+
+  8 passed (37.5s)

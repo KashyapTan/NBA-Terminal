@@ -26,6 +26,33 @@ export type Stats = Partial<
   Record<Category | "fgm" | "fga" | "ftm" | "fta" | "minutes" | "games", number | null>
 >;
 export type CategoryState = "winning" | "tied" | "losing" | "unknown";
+export interface ProjectionEvidence {
+  complete: boolean;
+  source?: string | null;
+  as_of?: string;
+  reason?: string | null;
+  fallback?: boolean;
+  nba_status?: string;
+}
+export interface ScheduleCoverage extends ProjectionEvidence {
+  status: "verified" | "partial";
+  team_game_counts: Record<string, number>;
+  verified_team_ids: number[];
+  fallback_reason: string | null;
+  source_request: string;
+  fetched_at: string | null;
+  nba_coverage: ProjectionEvidence | null;
+}
+export interface ScheduleExplanation {
+  full_week_games: number | null;
+  remaining_games: number | null;
+  eligible_games: number;
+  usable_starts: number;
+  effective_date: string;
+  source: string | null;
+  coverage: ScheduleCoverage | null;
+  exclusions: { date: string; reason: string }[];
+}
 export interface LeaguePlayer {
   pickup_sample?: PickupSample;
   id: string;
@@ -154,6 +181,7 @@ export interface LeagueSnapshot {
     };
   };
   period: {
+    schedule_coverage?: ScheduleCoverage;
     matchup_period_id: number;
     scoring_period_id: number;
     dates: string[];
@@ -187,10 +215,7 @@ export interface LeagueSnapshot {
     no_schedule_count?: number;
     fetched_at?: string;
   };
-  projection_metadata?: Record<
-    string,
-    { complete: boolean; source?: string; as_of?: string; reason?: string }
-  >;
+  projection_metadata?: Record<string, ProjectionEvidence>;
   data_gaps: string[];
   modeling_notes?: string[];
 }
@@ -306,6 +331,7 @@ export interface PlanArithmetic {
   categories: Record<Category, CategoryArithmetic>;
 }
 export interface PickupRecommendation {
+  schedule_explanations?: { add: ScheduleExplanation; drop: ScheduleExplanation };
   pickup_sample?: PickupSample;
   drop_sample?: PickupSample;
   arithmetic?: PlanArithmetic;
@@ -392,6 +418,7 @@ export interface RecommendedPlan {
   optimality: string;
 }
 export interface WaiverPlan {
+  projection_metadata?: Record<string, ProjectionEvidence>;
   pickup_filter_summary?: {
     thresholds: { min_minutes: number; min_games: number; min_participation: number };
     requested: number;
@@ -483,6 +510,10 @@ export interface WaiverPlan {
   provenance?: Record<string, unknown>;
 }
 export interface PlanForecast {
+  games_by_team?: { user: number; opponent: number };
+  minutes_by_team?: { user: number; opponent: number };
+  starts?: { date: string; owner: "user" | "opponent"; player_id: string }[];
+  schedule_explanations?: Record<string, ScheduleExplanation>;
   basis?: "recorded" | "forecast";
   totals: Stats;
   opponent_totals?: Stats;

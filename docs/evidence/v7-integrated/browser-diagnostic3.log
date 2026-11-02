@@ -1,0 +1,181 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:41688) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:41702) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (1.1s)
+(node:41851) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (7.8s)
+(node:42955) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (6.4s)
+(node:46192) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (903ms)
+(node:46322) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (7.5s)
+(node:47188) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  6 [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (6.1s)
+
+
+  1) [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+
+    Error: expect(received).toHaveLength(expected)
+
+    Expected length: 2
+    Received length: 1
+    Received array:  [{"add_id": "100", "add_rates": [Object], "add_starts": 3, "add_usable_dates": [Array], "arithmetic": [Object], "calculation": [Object], "category_impacts": [Object], "category_probability_gains": [Object], "date": "2026-11-03", "drop_id": "1", "drop_rates": [Object], "drop_sample": [Object], "drop_starts": 2, "estimated_win_gain": 0.26488136142076174, "focus_score_gain": 0.26488136142076174, "gains": [Object], "games_gain": 1, "lineup_changes": [Object], "long_term_tradeoff": [Object], "minutes_gain": 36, "net_score": 0.26488136142076174, "pickup_sample": [Object], "probability_gain": 0.09237897285899602, "rate_evidence": [Object], "rate_provenance": [Object], "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.", "schedule_explanations": [Object], "score_after": 0.47123588212330764, "score_before": 0.2063545207025459, "season_cost": 0, "season_value": [Object], "stream_roster_id": "1", "stream_slot": 1, "target_categories": [Array], "zero_drop_reason": null}]
+
+      140 |   expect(plan.baseline!.opponent_totals!.pts).toBe(100);
+      141 |   expect(plan.baseline!.schedule_explanations!["1"].full_week_games).toBe(3);
+    > 142 |   expect(plan.recommended_plan!.moves).toHaveLength(2);
+          |                                        ^
+      143 |   expect(plan.actions[0].add_id).not.toBe(plan.actions[1].add_id);
+      144 |   expect(plan.recommended_plan!.moves[0].score_after).toBe(
+      145 |     plan.recommended_plan!.moves[1].score_before,
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:142:40
+
+    Error Context: test-results/v7-integration-real-HTTP3--52453-d-cards-and-responsive-help-vite-proxy/error-context.md
+
+  2) [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span')
+    Expected: "0"
+    Received: "—"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span') with timeout 5000ms
+      - waiting for locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span')
+        14 × locator resolved to <span>—</span>
+           - unexpected value "—"
+
+
+      115 |       shown(forecastValue(plan.baseline?.actual_primitives?.opponent, key)),
+      116 |     );
+    > 117 |     await expect(row.locator("td").nth(1).locator("span")).toHaveText(
+          |                                                            ^
+      118 |       shown(forecastValue(plan.baseline?.totals, key)),
+      119 |     );
+      120 |     await expect(row.locator("td").nth(1).locator("small")).toHaveText(
+        at rendered (/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:117:60)
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:236:5
+
+    Error Context: test-results/v7-integration-real-HTTP-n-edbc7-d-partial-fallback-evidence-vite-proxy/error-context.md
+
+  3) [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.ww-move')
+    Expected: 2
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.ww-move') with timeout 5000ms
+      - waiting for locator('.ww-move')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      307 |     await expect(page.getByLabel("Min MPG")).toHaveValue("15");
+      308 |     await expect(page.locator(".ww-analysis")).toHaveAttribute("open");
+    > 309 |     await expect(page.locator(".ww-move")).toHaveCount(2);
+          |                                            ^
+      310 |   }
+      311 |   save(`${info.project.name}-refresh-snapshots`, snapshots);
+      312 |   await control(page, { changed: true, seconds: 720 });
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:309:44
+
+    Error Context: test-results/v7-integration-actual-unch-5f973-ilures-keep-saved-read-only-vite-proxy/error-context.md
+
+  4) [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+
+    Error: expect(received).toHaveLength(expected)
+
+    Expected length: 2
+    Received length: 1
+    Received array:  [{"add_id": "100", "add_rates": [Object], "add_starts": 3, "add_usable_dates": [Array], "arithmetic": [Object], "calculation": [Object], "category_impacts": [Object], "category_probability_gains": [Object], "date": "2026-11-03", "drop_id": "1", "drop_rates": [Object], "drop_sample": [Object], "drop_starts": 2, "estimated_win_gain": 0.26488136142076174, "focus_score_gain": 0.26488136142076174, "gains": [Object], "games_gain": 1, "lineup_changes": [Object], "long_term_tradeoff": [Object], "minutes_gain": 36, "net_score": 0.26488136142076174, "pickup_sample": [Object], "probability_gain": 0.09237897285899602, "rate_evidence": [Object], "rate_provenance": [Object], "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.", "schedule_explanations": [Object], "score_after": 0.47123588212330764, "score_before": 0.2063545207025459, "season_cost": 0, "season_value": [Object], "stream_roster_id": "1", "stream_slot": 1, "target_categories": [Array], "zero_drop_reason": null}]
+
+      140 |   expect(plan.baseline!.opponent_totals!.pts).toBe(100);
+      141 |   expect(plan.baseline!.schedule_explanations!["1"].full_week_games).toBe(3);
+    > 142 |   expect(plan.recommended_plan!.moves).toHaveLength(2);
+          |                                        ^
+      143 |   expect(plan.actions[0].add_id).not.toBe(plan.actions[1].add_id);
+      144 |   expect(plan.recommended_plan!.moves[0].score_after).toBe(
+      145 |     plan.recommended_plan!.moves[1].score_before,
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:142:40
+
+    Error Context: test-results/v7-integration-real-HTTP3--52453-d-cards-and-responsive-help-production-build/error-context.md
+
+  5) [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span')
+    Expected: "0"
+    Received: "—"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span') with timeout 5000ms
+      - waiting for locator('.ww-forecast-table').locator('[data-category="pts"]').locator('td').nth(1).locator('span')
+        14 × locator resolved to <span>—</span>
+           - unexpected value "—"
+
+
+      115 |     const row = table.locator(`[data-category="${key}"]`);
+      116 |     const shown = (n: number | null) =>
+    > 117 |       n == null
+          |                ^
+      118 |         ? "—"
+      119 |         : key.endsWith("pct")
+      120 |           ? `${(n * 100).toFixed(2)}%`
+        at rendered (/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:117:60)
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:236:5
+
+    Error Context: test-results/v7-integration-real-HTTP-n-edbc7-d-partial-fallback-evidence-production-build/error-context.md
+
+  6) [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.ww-move')
+    Expected: 2
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.ww-move') with timeout 5000ms
+      - waiting for locator('.ww-move')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      307 |     await control(page, { seconds });
+      308 |     const response = page.waitForResponse(
+    > 309 |       (r) => r.url().includes(`${root}/snapshot?refresh=true`) && r.ok(),
+          |                                            ^
+      310 |     );
+      311 |     await page.getByRole("button", { name: "Refresh league", exact: true }).click();
+      312 |     snapshots.push(await (await response).json());
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/nba_terminal/web/e2e/v7-integration.spec.ts:309:44
+
+    Error Context: test-results/v7-integration-actual-unch-5f973-ilures-keep-saved-read-only-production-build/error-context.md
+
+  6 failed
+    [vite-proxy] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+    [vite-proxy] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+    [vite-proxy] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only
+    [production-build] › e2e/v7-integration.spec.ts:129:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help
+    [production-build] › e2e/v7-integration.spec.ts:218:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence
+    [production-build] › e2e/v7-integration.spec.ts:286:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only

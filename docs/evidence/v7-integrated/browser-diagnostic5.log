@@ -1,0 +1,18 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/01e12bb22a9184717253066c465936fd5d52563fce086b06995c4c16a5fcbb2a/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:66518) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:66545) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v7-integration.spec.ts:140:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (2.4s)
+  ✓  2 [vite-proxy] › e2e/v7-integration.spec.ts:229:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (9.8s)
+  ✓  3 [vite-proxy] › e2e/v7-integration.spec.ts:297:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (2.5s)
+(node:70696) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [production-build] › e2e/v7-integration.spec.ts:140:1 › real HTTP3/4 schedules, both rosters, weighted all-nine whole-plan net, ordered cards and responsive help (2.0s)
+  ✓  5 [production-build] › e2e/v7-integration.spec.ts:229:1 › real HTTP no-deal baseline, midweek banking/2starts, zero starts, capacity and partial/fallback evidence (8.7s)
+  ✓  6 [production-build] › e2e/v7-integration.spec.ts:297:1 › actual unchanged observation/cache refresh stays stable; schedule changes recompute; failures keep saved read-only (2.2s)
+
+  6 passed (28.7s)
