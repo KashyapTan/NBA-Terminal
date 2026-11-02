@@ -110,3 +110,31 @@ it("matches the actual team label across apostrophe/whitespace typography withou
   snapshot.teams[0].name = "  Kashyap’s   Team ";
   expect(declaredUsage(snapshot)?.team_id).toBe(snapshot.selected_team_id);
 });
+
+it("consumes a known positive acquisition for the same bound team even while its display name changes", () => {
+  const snapshot = current();
+  const old = structuredClone(snapshot);
+  expect(declaredUsage(snapshot)?.used).toBe(0);
+  snapshot.teams[0].name = "Renamed team";
+  snapshot.teams[0].weekly_used_adds = 2;
+  snapshot.teams[0].weekly_usage_complete = true;
+  expect(declaredUsage(snapshot)).toBeUndefined();
+  expect(declaredUsage(old)).toBeUndefined();
+});
+it("consumes the bound declaration on context switch before bootstrap guards return, including return to old context", () => {
+  for (const change of ["league", "season", "team", "matchup", "start", "missing-team"] as const) {
+    localStorage.clear();
+    const snapshot = current();
+    const old = structuredClone(snapshot);
+    expect(declaredUsage(snapshot)?.used).toBe(0);
+    if (change === "league") snapshot.league.id++;
+    if (change === "season") snapshot.league.season_id++;
+    if (change === "team") snapshot.selected_team_id = 2;
+    if (change === "matchup") snapshot.period.matchup_period_id++;
+    if (change === "start") snapshot.period.start_date = "2026-11-09";
+    if (change === "missing-team")
+      snapshot.teams = snapshot.teams.filter((team) => team.id !== snapshot.selected_team_id);
+    expect(declaredUsage(snapshot)).toBeUndefined();
+    expect(declaredUsage(old)).toBeUndefined();
+  }
+});

@@ -28,36 +28,48 @@ export function declaredUsage(snapshot: LeagueSnapshot): PlannerPreferences["usa
   const now = Date.now();
   const teamName = (name: string) =>
     name.trim().replace(/[’‘]/g, "'").replace(/\s+/g, " ").toLowerCase();
-  if (
-    !team ||
-    snapshot.league.id !== config.league_id ||
-    snapshot.league.season_id !== config.season_id ||
-    teamName(team.name) !== teamName(config.team_name) ||
-    snapshot.teams.filter((t) => teamName(t.name) === teamName(config.team_name)).length !== 1 ||
-    snapshot.period.start_date !== config.matchup_start_date ||
-    snapshot.period.calendar_verified !== true ||
-    snapshot.period.context_verified === false ||
-    now < Date.parse(config.confirmed_at) ||
-    now >= Date.parse(config.expires_at)
-  )
-    return undefined;
   const key = `nba-terminal:usage-declaration:${config.id}`;
   try {
     const saved = localStorage.getItem(key);
     const binding = saved === null ? null : JSON.parse(saved);
     if (binding?.invalidated) return undefined;
-    const roster = team.roster.map((p) => p.id).sort();
+    const roster = team?.roster.map((p) => p.id).sort() ?? [];
     const authoritativePositive =
+      team &&
       team.weekly_usage_complete !== false &&
       Number.isInteger(team.weekly_used_adds) &&
       team.weekly_used_adds! > config.used;
     const changed =
       binding &&
-      (binding.team_id !== snapshot.selected_team_id ||
+      (!team ||
+        binding.league_id !== snapshot.league.id ||
+        binding.season_id !== snapshot.league.season_id ||
+        binding.team_id !== snapshot.selected_team_id ||
         binding.matchup_period_id !== snapshot.period.matchup_period_id ||
+        snapshot.period.start_date !== config.matchup_start_date ||
         JSON.stringify(binding.roster_ids) !== JSON.stringify(roster) ||
         binding.season_acquisitions !== (team.season_acquisitions ?? null));
-    if (authoritativePositive || changed) {
+    // Reconcile the already-bound stable identity before display/bootstrap
+    // eligibility can return. A rename cannot hide a known add, nor can a
+    // context switch restore a consumed declaration when old metadata returns.
+    if (binding && (authoritativePositive || changed)) {
+      localStorage.setItem(key, JSON.stringify({ invalidated: true }));
+      return undefined;
+    }
+    if (
+      !team ||
+      snapshot.league.id !== config.league_id ||
+      snapshot.league.season_id !== config.season_id ||
+      teamName(team.name) !== teamName(config.team_name) ||
+      snapshot.teams.filter((t) => teamName(t.name) === teamName(config.team_name)).length !== 1 ||
+      snapshot.period.start_date !== config.matchup_start_date ||
+      snapshot.period.calendar_verified !== true ||
+      snapshot.period.context_verified === false ||
+      now < Date.parse(config.confirmed_at) ||
+      now >= Date.parse(config.expires_at)
+    )
+      return undefined;
+    if (authoritativePositive) {
       localStorage.setItem(key, JSON.stringify({ invalidated: true }));
       return undefined;
     }
