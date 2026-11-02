@@ -1,0 +1,28 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:78757) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:78771) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [vite-proxy] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.4s)
+  ✓   2 [vite-proxy] › e2e/v6-integration.spec.ts:169:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (5.9s)
+  ✓   3 [vite-proxy] › e2e/v6-integration.spec.ts:209:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.8s)
+  ✓   4 [vite-proxy] › e2e/v6-integration.spec.ts:270:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (3.0m)
+  ✓   5 [vite-proxy] › e2e/v6-integration.spec.ts:377:1 › qualification boundaries and unknown budget pass through authenticated actual routes (5.0s)
+  ✓   6 [vite-proxy] › e2e/v6-integration.spec.ts:409:1 › actual mobile touch help and concise failure state (1.5s)
+  ✓   7 [vite-proxy] › e2e/v6-integration.spec.ts:446:1 › bounded continuation and real active-drop tradeoffs remain honest and visible (7.0s)
+  ✓   8 [vite-proxy] › e2e/v6-integration.spec.ts:483:1 › definitive source auth loss exposes a direct reconnect destination (1.0m)
+(node:40593) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 [production-build] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.3s)
+  ✓  10 [production-build] › e2e/v6-integration.spec.ts:169:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (5.5s)
+  ✓  11 [production-build] › e2e/v6-integration.spec.ts:209:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.6s)
+  ✓  12 [production-build] › e2e/v6-integration.spec.ts:270:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (3.0m)
+  ✓  13 [production-build] › e2e/v6-integration.spec.ts:377:1 › qualification boundaries and unknown budget pass through authenticated actual routes (4.6s)
+  ✓  14 [production-build] › e2e/v6-integration.spec.ts:409:1 › actual mobile touch help and concise failure state (1.3s)
+  ✓  15 [production-build] › e2e/v6-integration.spec.ts:446:1 › bounded continuation and real active-drop tradeoffs remain honest and visible (4.8s)
+  ✓  16 [production-build] › e2e/v6-integration.spec.ts:483:1 › definitive source auth loss exposes a direct reconnect destination (1.0m)
+
+  16 passed (8.8m)

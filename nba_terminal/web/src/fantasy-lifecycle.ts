@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import currentUsageDeclaration from "./current-usage-declaration.json";
 import { FantasyApiError } from "./league-fantasy-api";
 import type { LeagueSnapshot, PlannerPreferences, WaiverPlan } from "./league-fantasy-model";
-import currentUsageDeclaration from "./current-usage-declaration.json";
 import { declaredUsage } from "./usage-declaration";
 
 export interface FantasyLifecycle {
@@ -19,20 +19,32 @@ export function stableIdentity(value: unknown): string {
       .join(",")}}`;
   return JSON.stringify(value) ?? "null";
 }
+const qualificationDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" });
+function observationDay(value: unknown) {
+  const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(parsed) ? qualificationDay.format(parsed) : value;
+}
 export function snapshotIdentity(snapshot: LeagueSnapshot): string {
   // Observation times do not change facts. Actual dates, starts, source
   // completeness/freshness flags and immutable evidence expiry still do.
-  return stableIdentity(
+  return stableIdentity([
+    observationDay(snapshot.fetched_at), // current qualification day can expire cached samples
     JSON.parse(
-      JSON.stringify(snapshot, (key, value) => {
-        if (["fetched_at", "evaluated_at", "as_of"].includes(key)) return undefined;
+      JSON.stringify(snapshot, function (key, value) {
+        // ENGINE sample timestamps decide same-day qualification, not intraday
+        // plan identity. Preserve the NY date (and invalid/missing evidence).
+        if (key === "sample_as_of" || (key === "as_of" && Object.hasOwn(this, "team_games"))) {
+          return observationDay(value);
+        }
+        if (["fetched_at", "evaluated_at", "as_of"].includes(key) || key.endsWith("_fetched_at"))
+          return undefined;
         // Both states mean current usable source facts within the provider TTL.
         // Stale/failed/missing/unknown are deliberately never collapsed.
         if (key.endsWith("status") && (value === "fresh" || value === "cached")) return "current";
         return value;
       }),
     ),
-  );
+  ]);
 }
 export function retryable(error: unknown): boolean {
   return !(error instanceof FantasyApiError) || error.retryable;

@@ -12,7 +12,7 @@ Running 2 tests using 1 worker
   ✘  2 e2e/connection-lifecycle.spec.ts:31:3 › production: real-route sustained renewal, failure recovery and authoritative revocation (409ms)
 
 
-  1) e2e/connection-lifecycle.spec.ts:31:3 › proxy: real-route sustained renewal, failure recovery and authoritative revocation 
+  1) e2e/connection-lifecycle.spec.ts:31:3 › proxy: real-route sustained renewal, failure recovery and authoritative revocation
 
     SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
 
@@ -29,7 +29,7 @@ Running 2 tests using 1 worker
 
     Error Context: test-results/connection-lifecycle-proxy-b3553-nd-authoritative-revocation/error-context.md
 
-  2) e2e/connection-lifecycle.spec.ts:31:3 › production: real-route sustained renewal, failure recovery and authoritative revocation 
+  2) e2e/connection-lifecycle.spec.ts:31:3 › production: real-route sustained renewal, failure recovery and authoritative revocation
 
     SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
 
@@ -47,5 +47,5 @@ Running 2 tests using 1 worker
     Error Context: test-results/connection-lifecycle-produ-d25a7-nd-authoritative-revocation/error-context.md
 
   2 failed
-    e2e/connection-lifecycle.spec.ts:31:3 › proxy: real-route sustained renewal, failure recovery and authoritative revocation 
-    e2e/connection-lifecycle.spec.ts:31:3 › production: real-route sustained renewal, failure recovery and authoritative revocation 
+    e2e/connection-lifecycle.spec.ts:31:3 › proxy: real-route sustained renewal, failure recovery and authoritative revocation
+    e2e/connection-lifecycle.spec.ts:31:3 › production: real-route sustained renewal, failure recovery and authoritative revocation

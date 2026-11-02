@@ -12,7 +12,7 @@ Running 2 tests using 1 worker
   ✘  2 e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation (7.3s)
 
 
-  1) e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation 
+  1) e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation
 
     Error: expect(received).toBe(expected) // Object.is equality
 
@@ -30,7 +30,7 @@ Running 2 tests using 1 worker
 
     Error Context: test-results/connection-lifecycle-proxy-b879a-nd-authoritative-revocation/error-context.md
 
-  2) e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation 
+  2) e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation
 
     Error: expect(locator).toBeVisible() failed
 
@@ -56,5 +56,5 @@ Running 2 tests using 1 worker
     Error Context: test-results/connection-lifecycle-produ-437ad-nd-authoritative-revocation/error-context.md
 
   2 failed
-    e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation 
-    e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation 
+    e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation
+    e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation

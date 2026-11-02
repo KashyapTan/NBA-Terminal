@@ -135,9 +135,31 @@ it("edits targets with an explicit five-category cap", () => {
   render(<WaiverWorkspace {...props} />);
   expect(screen.getByRole("checkbox", { name: "PTS" })).toBeDisabled();
   fireEvent.click(screen.getByRole("checkbox", { name: "AST" }));
-  expect(props.onTargetsChange).toHaveBeenCalledWith(["stl", "blk", "threes", "ft_pct"]);
+  expect(props.onTargetsChange).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Apply five" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox", { name: "PTS" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply five" }));
+  expect(props.onTargetsChange).toHaveBeenCalledWith(["stl", "blk", "threes", "ft_pct", "pts"]);
 });
 it("never invents qualified sample values", () => {
   render(<WaiverWorkspace {...fixture()} samples={{}} />);
   expect(screen.getAllByText(/Current sample · \? MPG · \? GP \/ \? team games/)).toHaveLength(2);
+});
+it("provides a concrete reconnect destination for definitive auth errors", () => {
+  render(
+    <WaiverWorkspace
+      {...fixture()}
+      moves={[]}
+      status={{
+        text: "Reconnect ESPN",
+        actionLabel: "Reconnect",
+        actionHref: "/fantasy?fantasyTab=dashboard",
+        onAction: vi.fn(),
+      }}
+    />,
+  );
+  expect(screen.getByRole("link", { name: "Reconnect" })).toHaveAttribute(
+    "href",
+    "/fantasy?fantasyTab=dashboard",
+  );
 });

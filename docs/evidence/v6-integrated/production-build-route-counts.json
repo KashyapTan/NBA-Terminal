@@ -1,0 +1,12 @@
+{
+  "/api/fantasy/espn/bridge/status": 53,
+  "/api/fantasy/espn/status": 75,
+  "/api/fantasy/espn/bridge/pair": 26,
+  "/api/fantasy/espn/bridge/challenge": 26,
+  "/api/fantasy/espn/bridge/refresh": 26,
+  "/api/fantasy/espn/snapshot": 38,
+  "/api/fantasy/espn/plan": 78,
+  "/api/fantasy/espn/connection": 20,
+  "/api/fantasy/espn/connect": 2,
+  "/api/fantasy/espn/team": 2
+}

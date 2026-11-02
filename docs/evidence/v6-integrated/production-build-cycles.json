@@ -1,0 +1,27 @@
+{
+  "before": {
+    "/api/fantasy/espn/bridge/status": 55,
+    "/api/fantasy/espn/status": 81,
+    "/api/fantasy/espn/bridge/pair": 27,
+    "/api/fantasy/espn/bridge/challenge": 27,
+    "/api/fantasy/espn/bridge/refresh": 27,
+    "/api/fantasy/espn/snapshot": 47,
+    "/api/fantasy/espn/plan": 86,
+    "/api/fantasy/espn/connection": 20,
+    "/api/fantasy/espn/connect": 2,
+    "/api/fantasy/espn/team": 2
+  },
+  "after": {
+    "/api/fantasy/espn/bridge/status": 55,
+    "/api/fantasy/espn/status": 87,
+    "/api/fantasy/espn/bridge/pair": 27,
+    "/api/fantasy/espn/bridge/challenge": 27,
+    "/api/fantasy/espn/bridge/refresh": 27,
+    "/api/fantasy/espn/snapshot": 50,
+    "/api/fantasy/espn/plan": 86,
+    "/api/fantasy/espn/connection": 20,
+    "/api/fantasy/espn/connect": 2,
+    "/api/fantasy/espn/team": 2
+  },
+  "lostStrategy": false
+}

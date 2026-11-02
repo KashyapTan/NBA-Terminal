@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { InfoTooltip } from "./InfoTooltip";
 import {
   type Category,
@@ -27,6 +27,8 @@ export interface QualifiedSample {
   teamGames: number | null;
 }
 export type WorkspaceStop =
+  | "unknown_budget"
+  | "no_remaining_dates"
   | "budget_exhausted"
   | "no_positive_continuation"
   | "search_limit"
@@ -37,7 +39,10 @@ export interface WaiverWorkspaceProps {
   remainingAddsLabel: string;
   refreshedLabel: string;
   updating: boolean;
-  status?: { text: string; actionLabel: string; onAction: () => void };
+  readOnly?: boolean;
+  resultState?: string;
+  onRefresh?: () => void;
+  status?: { text: string; actionLabel: string; onAction: () => void; actionHref?: string };
   targets: Category[];
   strategy?: Partial<Record<Category, CategoryStrategy>>;
   onTargetsChange: (categories: Category[]) => void;
@@ -52,6 +57,8 @@ export interface WaiverWorkspaceProps {
   technicalControls?: ReactNode;
 }
 const STOP_LABELS: Record<WorkspaceStop, string> = {
+  unknown_budget: "Available adds need verification",
+  no_remaining_dates: "No remaining matchup dates",
   budget_exhausted: "No adds left in this plan",
   no_positive_continuation: "No further beneficial move found in this search",
   search_limit: "Search limit reached · more moves may help",
@@ -64,8 +71,14 @@ const number = (value: number | null | undefined) =>
     : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 export function WaiverWorkspace(props: WaiverWorkspaceProps) {
+  const [draft, setDraft] = useState<Category[] | null>(null);
+  const editingTargets = draft ?? props.targets;
   return (
-    <section className="waiver-workspace" aria-label="Waiver workspace">
+    <section
+      className="waiver-workspace"
+      aria-label="Waiver workspace"
+      data-result-state={props.resultState}
+    >
       <header className="ww-heading">
         <div>
           <h2>Waiver plan</h2>
@@ -79,19 +92,38 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
           roster starts. Suggestions never submit roster changes.
         </InfoTooltip>
       </header>
+      {props.onRefresh && (
+        <button
+          className="ww-refresh"
+          type="button"
+          onClick={props.onRefresh}
+          disabled={props.updating}
+        >
+          Refresh league
+        </button>
+      )}
+      {props.readOnly && props.moves.length > 0 && (
+        <span className="ww-saved">Saved plan · read-only</span>
+      )}
       {props.status && (
         <div className="ww-status" role="status">
           <span>{props.status.text}</span>
-          <button type="button" onClick={props.status.onAction}>
-            {props.status.actionLabel}
-          </button>
+          {props.status.actionHref ? (
+            <a href={props.status.actionHref}>{props.status.actionLabel}</a>
+          ) : (
+            <button type="button" onClick={props.status.onAction}>
+              {props.status.actionLabel}
+            </button>
+          )}
         </div>
       )}
       <section className="ww-targets" aria-label="Target categories">
         <div className="ww-section-label">
           <h3>Your targets</h3>
+          <span>Before moves</span>
           <InfoTooltip label="About target categories">
-            Choose five categories. The plan also accounts for losses across all nine categories.
+            Choose five categories. Tiles show the projected matchup before moves. The plan also
+            accounts for losses across all nine categories.
           </InfoTooltip>
         </div>
         <div className="ww-target-grid">
@@ -118,19 +150,29 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
               <label key={key}>
                 <input
                   type="checkbox"
-                  checked={props.targets.includes(key)}
-                  disabled={!props.targets.includes(key) && props.targets.length >= 5}
+                  checked={editingTargets.includes(key)}
+                  disabled={!editingTargets.includes(key) && editingTargets.length >= 5}
                   onChange={(event) =>
-                    props.onTargetsChange(
+                    setDraft(
                       event.target.checked
-                        ? [...props.targets, key]
-                        : props.targets.filter((item) => item !== key),
+                        ? [...editingTargets, key]
+                        : editingTargets.filter((item) => item !== key),
                     )
                   }
                 />
                 {label}
               </label>
             ))}
+            <button
+              type="button"
+              disabled={editingTargets.length !== 5}
+              onClick={() => {
+                props.onTargetsChange(editingTargets);
+                setDraft(null);
+              }}
+            >
+              Apply five
+            </button>
           </div>
         </details>
         <details className="ww-control">
@@ -196,7 +238,13 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
               ? `${props.moves.length} ${props.moves.length === 1 ? "move" : "moves"} to consider`
               : "No moves yet"}
           </h3>
-          <span>Remaining matchup</span>
+          <span>
+            Remaining matchup{" "}
+            <InfoTooltip label="About full-team net">
+              Net includes pickup minus drop plus displaced or recovered starts elsewhere in your
+              lineup. Shooting Add/Drop show makes/attempts; Net shows team percentage points.
+            </InfoTooltip>
+          </span>
         </div>
         <ol className="ww-moves">
           {props.moves.map((move, index) => (

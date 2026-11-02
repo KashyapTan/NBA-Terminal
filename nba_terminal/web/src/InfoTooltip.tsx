@@ -11,7 +11,6 @@ export function InfoTooltip({ label, children }: { label: string; children: Reac
       data-pinned={pinned}
       data-dismissed={dismissed}
       onMouseEnter={() => setDismissed(false)}
-      onMouseLeave={() => setDismissed(false)}
     >
       <button
         type="button"

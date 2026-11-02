@@ -26,3 +26,7 @@ Component tests are preparation only. Parent-validated exact ENGINE and CONNECTI
 - UV: Ruff passes; 447 tests pass; coverage report passes (97% combined measured backend coverage). No backend files changed at this stage.
 - Inspected preparation captures: waiver-v6-desktop-preparation.png (1280×900), waiver-v6-mobile-preparation.png and waiver-v6-mobile-help-preparation.png (390px). Two moves fit concise cards, mobile comparisons use aligned rows, bottom details closed, no horizontal overflow. Keyboard focus/Escape and touch tap toggle pass in Chromium. Harness fixtures are explicitly synthetic; no API or live-data proof is implied.
 - Own port4213 preview stopped after inspection. No primary server, user browser, credentials or transactions touched. Initial touch probe lacked hasTouch; corrected test context and repeat passed.
+
+## Final integration
+
+The original independent-stage pending notes above are historical. Final route wiring, genuine provider/HTTP fixtures, active-drop losses, bounded continuation, current sample defaults/boundaries, stable saved cards, actual minute polling and final screenshots/checks are documented in docs/evidence/v6-integrated/README.md. The waiver-only page header was shortened; other Fantasy headers/navigation remain intact. Selected category tiles explicitly describe the pre-move forecast. Tooltip placement is checked on390px touch viewports, including the pickup-filter help.

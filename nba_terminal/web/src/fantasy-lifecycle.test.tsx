@@ -1,10 +1,11 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { snapshotIdentity, useWaiverPlan } from "./fantasy-lifecycle";
+import { testSnapshot } from "./league-fantasy.test-fixtures";
 import { FantasyApiError } from "./league-fantasy-api";
 import type { PlannerPreferences, WaiverPlan } from "./league-fantasy-model";
-import { testSnapshot } from "./league-fantasy.test-fixtures";
 import { useLeagueFantasy } from "./use-league-session";
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -22,6 +23,7 @@ const flush = async () => {
 };
 it("ignores nested observation timestamps but reacts to facts, source status, dates and starts", () => {
   const original = testSnapshot();
+  original.fetched_at = "2026-11-02T12:00:00Z";
   original.projection_metadata = { rates: { complete: true, as_of: "2026-11-02T12:00:00Z" } };
   Object.assign(original.projection_metadata.rates, {
     evaluated_at: "2026-11-02T12:00:00Z",
@@ -237,4 +239,78 @@ it("a healthy status read cannot make a failed unknown snapshot current", async 
   expect(result.current.snapshot).not.toBeNull();
   expect(result.current.lifecycle.state).toBe("stale");
   expect(result.current.lifecycle.readOnly).toBe(true);
+});
+it("folds new engine sample observations by qualification day, preserving day boundaries and invalid data", () => {
+  const original = testSnapshot();
+  original.free_agents[0].pickup_sample = {
+    minutes: 15,
+    games: 2,
+    team_games: 4,
+    as_of: "2026-11-02T23:00:00Z",
+    sample_as_of: "2026-11-02T23:00:00Z",
+  };
+  const next = structuredClone(original);
+  next.free_agents[0].pickup_sample!.as_of = "2026-11-03T01:00:00Z";
+  next.free_agents[0].pickup_sample!.sample_as_of = "2026-11-03T01:00:00Z";
+  expect(snapshotIdentity(next)).toBe(snapshotIdentity(original)); // same NY day across UTC midnight
+  next.free_agents[0].pickup_sample!.as_of = "2026-11-03T05:00:00Z";
+  expect(snapshotIdentity(next)).not.toBe(snapshotIdentity(original));
+  next.free_agents[0].pickup_sample!.as_of = "2026-11-03T01:00:00Z";
+  next.free_agents[0].pickup_sample!.sample_as_of = "2026-11-03T05:00:00Z";
+  expect(snapshotIdentity(next)).not.toBe(snapshotIdentity(original));
+  next.free_agents[0].pickup_sample!.sample_as_of = "not-a-date";
+  expect(snapshotIdentity(next)).not.toBe(snapshotIdentity(original));
+});
+it("does not reanalyze unchanged engine samples at a new observation time", async () => {
+  const snapshot = testSnapshot();
+  snapshot.fetched_at = "2026-11-02T12:00:00Z";
+  snapshot.free_agents[0].pickup_sample = {
+    minutes: 15,
+    games: 2,
+    team_games: 4,
+    as_of: "2026-11-02T12:00:00Z",
+    sample_as_of: "2026-11-02T12:00:00Z",
+  };
+  const onPlan = vi.fn().mockResolvedValue(plan);
+  const { result, rerender } = renderHook(
+    ({ data }) => useWaiverPlan(data, {}, onPlan, 0, false, false),
+    { initialProps: { data: snapshot } },
+  );
+  await flush();
+  const next = structuredClone(snapshot);
+  next.fetched_at = "2026-11-02T12:01:00Z";
+  next.free_agents[0].pickup_sample!.sample_as_of = next.fetched_at;
+  rerender({ data: next });
+  await flush();
+  expect(onPlan).toHaveBeenCalledOnce();
+  expect(result.current.lifecycle.readOnly).toBe(false);
+  next.free_agents[0].pickup_sample!.games = 3;
+  rerender({ data: structuredClone(next) });
+  await flush();
+  expect(onPlan).toHaveBeenCalledTimes(2);
+});
+
+it("ignores provider cache fetch observations while reacting to the current qualification day", () => {
+  const original = testSnapshot();
+  original.fetched_at = "2026-11-02T12:00:00Z";
+  Object.assign(original, {
+    enrichment: {
+      rates_fetched_at: "2026-11-02T12:00:00Z",
+      team_games_fetched_at: "2026-11-02T12:00:00Z",
+      rates_status: "fresh",
+    },
+  });
+  const next = structuredClone(original);
+  next.fetched_at = "2026-11-02T12:05:00Z";
+  Object.assign(next, {
+    enrichment: {
+      rates_fetched_at: next.fetched_at,
+      team_games_fetched_at: next.fetched_at,
+      rates_status: "fresh",
+    },
+  });
+  expect(snapshotIdentity(next)).toBe(snapshotIdentity(original));
+  // Even unchanged stale sample timestamps must be reevaluated after NY midnight.
+  next.fetched_at = "2026-11-03T05:00:00Z";
+  expect(snapshotIdentity(next)).not.toBe(snapshotIdentity(original));
 });

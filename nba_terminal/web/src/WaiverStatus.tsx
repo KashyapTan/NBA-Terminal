@@ -12,6 +12,14 @@ export function waiverStatus(plan: WaiverPlan | null) {
           ? "confirmed_ordered_plan"
           : "evaluated_no_material_benefit");
   const summaries = {
+    no_qualified_pickups: [
+      "No qualified pickups",
+      "Adjust pickup filters or refresh current samples.",
+    ],
+    search_incomplete: [
+      "Search limit reached",
+      "No beneficial plan found within the search bounds.",
+    ],
     required_inputs_unknown: [
       "Plan unavailable: required inputs incomplete",
       "Today’s useful available players are not yet determinable. Missing evidence prevents a supported comparison; it does not establish that no free agent helps.",
@@ -89,6 +97,8 @@ export function EmptyOrderedPlan({
   const diagnostics = [...new Set([...(plan?.data_gaps ?? []), ...(plan?.reasons ?? [])])];
   const conditional = status.state === "conditional_opportunities";
   const actions = {
+    no_qualified_pickups: "No qualified pickups.",
+    search_incomplete: "No beneficial plan found within the search bounds.",
     required_inputs_unknown:
       "Refresh league data, then review the missing inputs below. Unknown inputs are not a no-benefit result.",
     conditional_opportunities:

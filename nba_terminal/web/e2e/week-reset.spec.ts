@@ -6,6 +6,10 @@ import type { WaiverPlan } from "../src/league-fantasy-model";
 // Test-only provider boundary with public field shapes. Browser executes production
 // bundle against real HTTP routes, normalization, adapter and bounded optimizer.
 test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", async ({ page }) => {
+  let planCalls = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/fantasy/espn/plan")) planCalls++;
+  });
   await page.clock.install({ time: new Date("2026-11-02T17:42:30Z") });
   await page.goto("/fantasy");
   await page.getByText("Manual or public league fallback", { exact: true }).click();
@@ -30,11 +34,14 @@ test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", a
   expect(plan.acquisition_budget?.usage_source).toBe("scoped user-declared current matchup usage");
   expect(plan.recommended_plan!.budget_before).toBe(7);
   expect(plan.plan!.length).toBeGreaterThan(0);
-  const region = page.getByRole("region", { name: "Recommended ordered plan" });
-  await expect(region.locator(".pickup-list > li")).not.toHaveCount(0);
+  const region = page.getByRole("region", { name: "Ordered pickup plan" });
+  await expect(region.locator(".ww-moves > li")).not.toHaveCount(0);
+  await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
+  await page.getByText("Full analysis & data", { exact: true }).click();
   await expect(
-    region.getByRole("region", { name: "All nine move calculations" }).first().locator("tbody tr"),
+    page.getByRole("region", { name: "All nine move calculations" }).first().locator("tbody tr"),
   ).toHaveCount(9);
+  await page.getByText("Full analysis & data", { exact: true }).click();
   for (const move of plan.plan!) {
     for (const row of Object.values(move.arithmetic!.primitives)) {
       expect(row.net).toBeCloseTo(row.add - row.drop + row.spillover, 8);
@@ -43,8 +50,8 @@ test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", a
   await expect(
     page.getByText("Ordered plan withheld: daily acquisition ledger missing"),
   ).toHaveCount(0);
-  await expect(page.locator(".source-coverage-details")).not.toHaveAttribute("open");
-  const evidence = resolve(process.cwd(), "../../docs/evidence/week_reset/revision2");
+  await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
+  const evidence = resolve(process.cwd(), "../../docs/evidence/v6-integrated/week-reset");
   mkdirSync(evidence, { recursive: true });
   writeFileSync(resolve(evidence, "synthetic-plan.json"), JSON.stringify(plan, null, 2));
   for (const [name, width, height] of [
@@ -57,16 +64,21 @@ test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", a
     );
     await page.screenshot({ path: resolve(evidence, `${name}.png`), fullPage: true });
   }
-  // Background refresh reruns the real HTTP planner without renewing declaration.
-  const refreshed = page.waitForResponse(
-    (r) => r.url().endsWith("/api/fantasy/espn/plan") && r.ok(),
-  );
+  // Same facts at a later observation time retain the plan and original lease.
+  const beforeRefresh = planCalls;
   await page.request.post("/__test__/week-clock?seconds=60");
-  await page.clock.fastForward(61000);
-  const refreshPlan = await (await refreshed).json();
-  expect(refreshPlan.acquisition_budget.used).toBe(0);
-  expect(refreshPlan.provenance.context.fetched_at).not.toBe(currentSnapshot.fetched_at);
-  expect(refreshPlan.provenance.usage_declaration.confirmed_at).toBe("2026-11-02T17:02:22.264988Z");
+  const refreshed = page.waitForResponse(
+    (r) => r.url().includes("/api/fantasy/espn/snapshot?refresh=true") && r.ok(),
+  );
+  await page.getByRole("button", { name: "Refresh league", exact: true }).click();
+  const refreshedSnapshot = await (await refreshed).json();
+  await expect(page.locator(".waiver-workspace")).toHaveAttribute("data-result-state", "connected");
+  expect(refreshedSnapshot.fetched_at).not.toBe(currentSnapshot.fetched_at);
+  expect(planCalls).toBe(beforeRefresh);
+  expect(
+    (plan as WaiverPlan & { provenance: { usage_declaration: { confirmed_at: string } } })
+      .provenance.usage_declaration.confirmed_at,
+  ).toBe("2026-11-02T17:02:22.264988Z");
   // A known acquisition consumes the bootstrap, even if a later source loses its map.
   await page.request.post("/__test__/week-counter?used=1");
   const positive = page.waitForResponse(

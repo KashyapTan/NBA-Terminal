@@ -346,3 +346,78 @@
     margin-top: 6px;
   }
 }
+.ww-roster-settings {
+  width: min(650px, 78vw);
+  max-height: 380px;
+  overflow: auto;
+  background: #151e2c;
+  padding: 12px;
+  border: 1px solid #435064;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.ww-roster-settings > label {
+  font-size: 12px;
+}
+.ww-diagnostics {
+  max-width: 100%;
+  overflow: auto;
+  max-height: 400px;
+  font-size: 12px;
+}
+.ww-saved {
+  color: #f2d58e;
+  font-size: 12px;
+  margin-left: 10px;
+}
+.ww-refresh {
+  margin-top: 10px;
+}
+.ww-section-label > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ww-filter-fields .waiver-help {
+  justify-self: end;
+}
+.fantasy-heading.ww-page-heading {
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+.ww-page-heading .fantasy-kicker {
+  display: none;
+}
+.ww-page-heading h1 {
+  font-size: 26px;
+  margin: 0;
+}
+.ww-page-heading .fantasy-season-select {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 650px) {
+  .fantasy-heading.ww-page-heading {
+    flex-direction: row;
+  }
+  .ww-page-heading .fantasy-season-select {
+    width: auto;
+  }
+  .ww-page-heading .fantasy-season-select > span {
+    display: none;
+  }
+  .ww-page-heading .fantasy-season-select select {
+    width: 170px;
+  }
+}
+.ww-status a {
+  color: #e5eaf0;
+  border: 1px solid #435064;
+  background: #151e2c;
+  border-radius: 6px;
+  padding: 7px 10px;
+  text-decoration: none;
+  font-size: 12px;
+}

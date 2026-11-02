@@ -11,4 +11,3 @@ $ vitest run
 Environment  jsdom was created 21 times · 13.70s total, 48% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
-

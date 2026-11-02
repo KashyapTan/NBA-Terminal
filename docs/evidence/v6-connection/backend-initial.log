@@ -30,11 +30,11 @@ __________ test_existing_login_renewal_selection_rotation_and_replay ___________
                 await b.delete(P + "/connection", headers=H)
                 assert (await b.get(P + "/bridge/status")).json() == {"enabled": False}
                 assert (await b.post(P + "/bridge/refresh", json={**PRIVATE, "nonce": nonce}, headers=H)).status_code == 401
-    
+
 >       asyncio.run(run())
 
-tests/test_espn_bridge.py:84: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_espn_bridge.py:84:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 ../../../.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/asyncio/runners.py:195: in run
     return runner.run(main)
            ^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 ../../../.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
     return future.result()
            ^^^^^^^^^^^^^^^
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
     async def run():
         async with browser() as b, browser() as other:

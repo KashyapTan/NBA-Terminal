@@ -1,6 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
-  type Category,
   type ConnectLeague,
   categoryValue,
   compareCategory,
@@ -11,19 +10,20 @@ import {
   LEAGUE_CATEGORIES,
   type LeagueSnapshot,
   type LeagueTeam,
-  type PlanForecast,
   type PlannerPreferences,
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
-import { bindUsage } from "./usage-declaration";
-import { useWaiverPlan } from "./fantasy-lifecycle";
 import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
+import { useWaiverPlan } from "./fantasy-lifecycle";
+import { InfoTooltip } from "./InfoTooltip";
+import { bindUsage } from "./usage-declaration";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
-import { EmptyOrderedPlan, WaiverStatus } from "./WaiverStatus";
+import { DEFAULT_PICKUP_FILTERS, WaiverWorkspace, type WorkspaceStop } from "./WaiverWorkspace";
 
 export { useLeagueFantasy } from "./use-league-session";
+
 import { useLeagueFantasy } from "./use-league-session";
 export type LeagueFantasyState = Omit<
   ReturnType<typeof useLeagueFantasy>,
@@ -445,6 +445,7 @@ export function WaiverWire({
               ? "Loading your league…"
               : "Connect ESPN and select your team to find matchup opportunities.")}
         </p>
+        {!loading && <a href="/fantasy?fantasyTab=dashboard">Connect ESPN</a>}
       </section>
     );
   const contextKey = `${snapshot.league.id}:${snapshot.league.season_id}:${snapshot.selected_team_id}:${snapshot.period.matchup_period_id}`;
@@ -492,14 +493,9 @@ function WaiverStrategy({
       return declaredCap == null ? {} : { matchup_add_limit_fallback: declaredCap };
     }
   });
-  const [categoryDraft, setCategoryDraft] = useState<Category[] | null>(null);
-  const availabilityPanel = useRef<HTMLDetailsElement>(null);
   const advancedPanel = useRef<HTMLDetailsElement>(null);
   const [attempt, setAttempt] = useState(0);
-  const [dropFilter, setDropFilter] = useState("");
-  const [visibleCount, setVisibleCount] = useState(12);
   useEffect(() => {
-    // Legacy timestamp-only declarations cannot acquire a new lease on refresh.
     if (
       preferences.user_confirmed_counts &&
       !preferences.usage_declaration &&
@@ -534,121 +530,72 @@ function WaiverStrategy({
   const user = snapshot.teams.find((team) => team.id === snapshot.selected_team_id);
   const opponent = snapshot.teams.find((team) => team.id === snapshot.opponent_team_id);
   const candidates = eligibleCandidates(snapshot);
-  const players = new Map(
-    [...snapshot.teams.flatMap((team) => team.roster), ...candidates].map((player) => [
+  const relevant = [...(user?.roster ?? []), ...candidates];
+  const players = Object.fromEntries(
+    [...snapshot.teams.flatMap((team) => team.roster), ...snapshot.free_agents].map((player) => [
       player.id,
       player,
     ]),
   );
-  const recommendations = plan?.recommendations ?? [];
-  const evaluationDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(
-    new Date(snapshot.fetched_at),
-  );
-  const todayPairs = recommendations.filter((item) =>
-    item.add_usable_dates?.includes(evaluationDate),
-  );
-  const filteredRecommendations = recommendations.filter(
-    (item) => !dropFilter || item.drop_id === dropFilter,
-  );
-  const visibleRecommendations = filteredRecommendations.slice(0, visibleCount);
-  const dropIds = [...new Set(recommendations.map((item) => item.drop_id))];
-  const actions = plan?.plan ?? plan?.actions ?? [];
-  const recommendedTargets = [
-    ...new Set(recommendations.flatMap((item) => item.target_categories)),
-  ];
-  const strategyTargets = LEAGUE_CATEGORIES.filter(({ key }) =>
-    ["favored", "swing", "reachable", "trailing"].includes(
-      plan?.strategy?.[key]?.classification ?? "",
-    ),
-  )
-    .sort(
-      (a, b) =>
-        (plan?.strategy?.[b.key]?.target_priority ?? 0) -
-        (plan?.strategy?.[a.key]?.target_priority ?? 0),
-    )
-    .map(({ key }) => key);
-  const targetCategories = plan?.improvement_categories ?? [
-    ...new Set([...recommendedTargets, ...strategyTargets]),
-  ];
   const selectedCategories = preferences.selected_categories ?? plan?.selected_categories ?? [];
-  const requiredMetadata = snapshot.projection_metadata;
-  const confidenceComplete =
-    plan?.status === "ready" &&
-    [user, opponent].every(
-      (team) =>
-        !team?.actuals ||
-        (team.actuals.forecast_complete &&
-          !Object.values(team.actuals.discrepancy ?? {}).some(
-            (value) => value != null && Math.abs(value) > 1e-9,
-          )),
-    ) &&
-    (requiredMetadata
-      ? Object.values(requiredMetadata).length > 0 &&
-        Object.values(requiredMetadata).every((part) => part.complete)
-      : plan.data_gaps.length === 0);
-  const evaluationPlan: WaiverPlan | null =
-    plan &&
-    (Object.values(snapshot.projection_metadata ?? {}).some((part) => !part.complete) ||
-      [user, opponent].some((team) => team?.actuals?.forecast_complete === false))
-      ? {
-          ...plan,
-          evaluation_state: "required_inputs_unknown",
-          data_gaps: [
-            ...plan.data_gaps,
-            ...Object.entries(snapshot.projection_metadata ?? {})
-              .filter(([, part]) => !part.complete)
-              .map(([key, part]) => `${key}: ${part.reason ?? "Evidence incomplete"}`),
-          ],
-        }
-      : plan;
-  function reviewInputs() {
-    if (advancedPanel.current) {
-      advancedPanel.current.open = true;
-      advancedPanel.current.scrollIntoView?.({ block: "start" });
-    }
-  }
-  const safeCategories = confidenceComplete
-    ? (plan?.safe_categories ?? []).filter((key) => selectedCategories.includes(key))
-    : [];
-  const categoryLabels = (keys: Category[]) =>
-    keys
-      .map((key) => LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key)
-      .join(" · ");
-  const targetKeys = targetCategories.map(
-    (key) => LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key,
+  const filters = { ...DEFAULT_PICKUP_FILTERS, ...preferences.pickup_filters };
+  const moves = plan?.recommended_plan?.moves ?? [];
+  const samples = Object.fromEntries(
+    moves.map((move) => [
+      move.add_id,
+      {
+        minutes:
+          move.pickup_sample?.minutes ?? players[move.add_id]?.pickup_sample?.minutes ?? null,
+        games: move.pickup_sample?.games ?? players[move.add_id]?.pickup_sample?.games ?? null,
+        teamGames:
+          move.pickup_sample?.team_games ?? players[move.add_id]?.pickup_sample?.team_games ?? null,
+      },
+    ]),
   );
-  const relevantIds = new Set(recommendations.map((item) => item.add_id));
-  const relevant = [
-    ...(user?.roster ?? []),
-    ...candidates.filter((player) => relevantIds.has(player.id)),
-  ];
-  const settings = snapshot.league.acquisition_settings;
-  const espnLimit = settings.matchup_add_limit ?? settings.weekly_add_limit;
-  const knownLimit = espnLimit ?? preferences.matchup_add_limit_fallback;
-  const capSource =
-    settings.cap_source === "league_fallback_7"
-      ? "Your confirmed matchup cap (7); ESPN matchup scope unverified"
-      : espnLimit != null
-        ? "ESPN matchup cap"
-        : preferences.matchup_add_limit_fallback != null
-          ? "Your saved league cap fallback"
-          : "Cap unavailable";
-  const signed = (
-    value: number | null | undefined,
-    key?: (typeof LEAGUE_CATEGORIES)[number]["key"],
-  ) =>
-    value == null
-      ? "Unavailable"
-      : `${value > 0 ? "+" : ""}${key?.endsWith("pct") ? `${(value * 100).toFixed(2)} pp` : value.toLocaleString(undefined, { maximumFractionDigits: 1 })}`;
-  function netCategoryGain(
-    item: (typeof recommendations)[number],
-    key: (typeof LEAGUE_CATEGORIES)[number]["key"],
-  ) {
-    const impact = item.category_impacts?.[key];
-    return key.endsWith("pct") && impact?.before != null && impact.after != null
-      ? impact.after - impact.before
-      : item.gains[key];
-  }
+  const espnLimit =
+    snapshot.league.acquisition_settings.matchup_add_limit ??
+    snapshot.league.acquisition_settings.weekly_add_limit;
+  const budget = plan?.acquisition_budget
+    ? plan.acquisition_budget.remaining
+    : plan?.recommended_plan
+      ? plan.recommended_plan.budget_before
+      : user?.remaining_adds;
+  const remainingAddsLabel =
+    budget != null
+      ? `${budget} adds left`
+      : snapshot.league.acquisition_settings.unlimited
+        ? "Matchup uncapped · adds unverified"
+        : "Adds unverified";
+  const search = plan?.search;
+  const stop: WorkspaceStop | undefined =
+    plan?.evaluation_state === "no_qualified_pickups"
+      ? "empty_qualified_pool"
+      : plan?.evaluation_state === "required_inputs_unknown" || plan?.status === "unavailable"
+        ? "required_data_missing"
+        : search?.selected_plan_stop_reason === "acquisition_budget_used" ||
+            plan?.evaluation_state === "known_zero_acquisitions"
+          ? "budget_exhausted"
+          : search?.stop_reason === "unknown_budget" ||
+              plan?.evaluation_state === "conditional_opportunities"
+            ? "unknown_budget"
+            : search?.stop_reason === "no_remaining_dates"
+              ? "no_remaining_dates"
+              : search?.evaluation_limit_reached ||
+                  search?.layer_pruned ||
+                  search?.beam_pruned ||
+                  search?.candidate_truncated ||
+                  plan?.evaluation_state === "search_incomplete"
+                ? "search_limit"
+                : plan
+                  ? "no_positive_continuation"
+                  : undefined;
+  const problem =
+    !onPlan ||
+    leagueError ||
+    error ||
+    !snapshot.league.supported ||
+    plan?.status === "unavailable" ||
+    plan?.evaluation_state === "required_inputs_unknown";
   function controls(rows: typeof relevant) {
     return rows.map((player) => {
       const out =
@@ -706,790 +653,285 @@ function WaiverStrategy({
     });
   }
   return (
-    <section className="league-panel league-waiver">
-      {lifecycle.readOnly && (
-        <p role="status" data-result-state={lifecycle.state}>
-          {lifecycle.action}
-          {plan ? " · Previous analysis · read-only" : ""}
-        </p>
-      )}
-      <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
-      <div className="waiver-verdict">
-        <div>
-          <span className="league-kicker">YOUR PATH TO FIVE CATEGORIES</span>
-          <h2>
-            {busy && !plan
-              ? "Finding your matchup edge…"
-              : targetKeys.length
-                ? `Focus on ${targetKeys.join(" · ")}`
-                : "Your matchup strategy"}
-          </h2>
+    <WaiverWorkspace
+      matchup={`${user?.name ?? "Your team"} vs ${opponent?.name ?? "Opponent unverified"}`}
+      remainingAddsLabel={remainingAddsLabel}
+      refreshedLabel={`Updated ${new Date(snapshot.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+      updating={loading || busy}
+      readOnly={lifecycle.readOnly}
+      resultState={lifecycle.state}
+      onRefresh={onRefresh}
+      status={
+        problem
+          ? {
+              actionHref:
+                lifecycle.state === "reconnect-needed"
+                  ? "/fantasy?fantasyTab=dashboard"
+                  : undefined,
+              text:
+                lifecycle.state === "reconnect-needed"
+                  ? "Reconnect ESPN to build a plan"
+                  : lifecycle.state === "stale"
+                    ? "Showing saved plan · refresh needed"
+                    : "Plan needs updated data",
+              actionLabel: lifecycle.state === "reconnect-needed" ? "Reconnect" : "Retry",
+              onAction: () => {
+                onRefresh?.();
+                setAttempt((value) => value + 1);
+              },
+            }
+          : undefined
+      }
+      targets={selectedCategories}
+      strategy={plan?.strategy}
+      onTargetsChange={(categories) => edit({ selected_categories: categories })}
+      filters={filters}
+      onFiltersChange={(pickup_filters) => edit({ pickup_filters })}
+      moves={moves}
+      players={players}
+      samples={samples}
+      stop={stop}
+      rosterControls={
+        <details className="ww-control">
+          <summary>Roster settings</summary>
+          <div className="ww-roster-settings">
+            <label>
+              <input
+                type="checkbox"
+                checked={preferences.allow_core_drops ?? false}
+                onChange={(event) => edit({ allow_core_drops: event.target.checked })}
+              />{" "}
+              Allow core-player drops
+            </label>
+            <InfoTooltip label="About roster protection">
+              Official locks and your Protect choices remain enforced. Availability defaults to
+              available unless reported out.
+            </InfoTooltip>
+            {controls(relevant)}
+          </div>
+        </details>
+      }
+      analysis={
+        <>
           <p>
-            Against {opponent?.name ?? "opponent unavailable"}. Compare the net benefit of a pickup
-            after the player you drop. Only future playable starts count; recorded stats stay
-            banked.
+            {leagueError ??
+              error ??
+              snapshot.league.unsupported_reason ??
+              (!onPlan ? "Optimizer integration is unavailable." : null)}
           </p>
-          <p className="matchup-horizon">
-            {snapshot.period.remaining_dates.length} remaining matchup dates · through{" "}
-            {snapshot.period.end_date ?? snapshot.period.dates.at(-1) ?? "unknown end date"}
-          </p>
-        </div>
-        <div className="waiver-budget">
-          <b>
-            {plan?.acquisition_budget
-              ? (plan.acquisition_budget.remaining ?? "?")
-              : plan?.remaining_adds != null
-                ? plan.remaining_adds + actions.length
-                : (user?.remaining_adds ?? "?")}
-          </b>
-          <span>matchup acquisitions left</span>
-          <small>
-            {plan?.acquisition_budget
-              ? (plan.acquisition_budget.matchup_cap ?? "Unknown")
-              : (knownLimit ?? "Unknown")}{" "}
-            cap ·{" "}
-            {plan?.acquisition_budget
-              ? (plan.acquisition_budget.used ?? "Unknown")
-              : (user?.weekly_used_adds ?? "Unknown")}{" "}
-            used
-          </small>
-          <small>
-            {plan?.acquisition_budget?.cap_source.includes("user")
-              ? "Your confirmed matchup cap"
-              : capSource}
-          </small>
-          <small>
-            {plan?.acquisition_budget && plan.acquisition_budget.used == null
-              ? "Current usage unverified"
-              : plan?.acquisition_budget?.usage_source?.includes("user")
-                ? "Your confirmed matchup usage"
-                : plan?.acquisition_budget?.usage_source?.includes("sparse")
-                  ? "ESPN sparse-map zero"
-                  : user?.weekly_usage_source
-                    ? "ESPN matchup usage"
-                    : "Usage source unavailable"}
-          </small>
-          {plan?.acquisition_budget?.daily_applicability === "unreported" && (
-            <small>Daily-limit applicability not supplied; analysis models the matchup cap.</small>
+          <ActualSources teams={[user, opponent]} />
+          <h3>Category outlook · all nine</h3>
+          <div className="league-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>You</th>
+                  <th>Opponent</th>
+                  <th>Outlook</th>
+                </tr>
+              </thead>
+              <tbody>
+                {LEAGUE_CATEGORIES.map(({ key, label }) => (
+                  <tr key={key}>
+                    <th>{label}</th>
+                    <td>{formatCategory(plan?.strategy?.[key]?.projected_user ?? null, key)}</td>
+                    <td>
+                      {formatCategory(plan?.strategy?.[key]?.projected_opponent ?? null, key)}
+                    </td>
+                    <td>{plan?.strategy?.[key]?.explanation ?? "Unknown"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {plan?.recommended_plan?.arithmetic && (
+            <OverallPlanImpact arithmetic={plan.recommended_plan.arithmetic} />
           )}
-        </div>
-      </div>
-      {(!busy || plan) && <WaiverStatus plan={evaluationPlan} onRecover={reviewInputs} />}
-      {leagueError && <p role="alert">{leagueError}</p>}
-      {!snapshot.league.supported && (
-        <p role="alert">
-          {snapshot.league.unsupported_reason ?? "This league format is unsupported."}
-        </p>
-      )}
-      {busy && <p role="status">Analyzing current rates, remaining games and your opponent…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-            Retry analysis
-          </button>
-        </div>
-      )}
-      {!onPlan && (
-        <p role="status">
-          Optimizer integration is unavailable. Current category totals remain visible.
-        </p>
-      )}
-      {plan?.strategy && (
-        <p className="five-category-path">
-          <b>{confidenceComplete ? safeCategories.length : "Unverified"} modeled cushions</b>.{" "}
-          {targetKeys.length
-            ? `Improve ${targetKeys.join(" / ")}; modeled cushions count toward five.`
-            : "Review the outlook before using an add."}
-        </p>
-      )}
-      <ActualSources teams={[user, opponent]} compact />
-      <section className="five-selection" aria-label="Five-category strategy">
-        <p>
-          <b>Selected five:</b>{" "}
-          {selectedCategories.length
-            ? categoryLabels(selectedCategories)
-            : "Awaiting strategy analysis"}
-        </p>
-        <p>
-          <span className="league-winning">
-            Modeled cushions: {categoryLabels(safeCategories) || "None established"}
-          </span>{" "}
-          · Improvement priorities: {categoryLabels(targetCategories) || "None supported"}
-        </p>
-        <small>
-          Modeled cushions count toward five; they are not guaranteed wins. Focus scores are
-          heuristics on a 0–100 scale, never matchup win probabilities. Weights affect strategy
-          only; raw category totals decide wins.
-        </small>
-        <details>
-          <summary>Edit selected five categories</summary>
-          <fieldset className="category-picker">
-            <legend>Choose exactly five categories</legend>
-            {LEAGUE_CATEGORIES.map(({ key, label }) => (
-              <label key={key}>
-                <input
-                  type="checkbox"
-                  checked={(categoryDraft ?? selectedCategories).includes(key)}
-                  onChange={(event) => {
-                    const current = categoryDraft ?? selectedCategories;
-                    setCategoryDraft(
-                      event.target.checked
-                        ? [...current, key]
-                        : current.filter((item) => item !== key),
-                    );
-                  }}
+          <h3>Pickup qualification</h3>
+          {plan?.pickup_filter_summary && (
+            <>
+              <p>
+                {plan.pickup_filter_summary.qualified} of {plan.pickup_filter_summary.requested}{" "}
+                current samples qualify
+              </p>
+              <ul>
+                {plan.pickup_filter_summary.exclusions.map((row) => (
+                  <li key={row.player_id}>
+                    {row.name}: {row.reasons.join(", ")}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <h3>Search & source diagnostics</h3>
+          <pre className="ww-diagnostics">
+            {JSON.stringify(
+              {
+                search: plan?.search,
+                filters: plan?.pickup_filter_summary,
+                market: snapshot.market_coverage,
+                acquisition_budget: plan?.acquisition_budget,
+                projection: snapshot.projection_metadata,
+              },
+              null,
+              2,
+            )}
+          </pre>
+          <details>
+            <summary>
+              Competing single-move alternatives ({plan?.recommendations?.length ?? 0})
+            </summary>
+            {plan?.recommendations?.map((move, index) => (
+              <section key={index}>
+                <h4>
+                  {players[move.add_id]?.name} / {players[move.drop_id]?.name}
+                </h4>
+                <WaiverArithmetic
+                  move={move}
+                  addPlayer={players[move.add_id]}
+                  dropPlayer={players[move.drop_id]}
                 />
+              </section>
+            ))}
+          </details>
+        </>
+      }
+      technicalControls={
+        <details className="waiver-advanced" ref={advancedPanel}>
+          <summary>Advanced inputs & data notes</summary>
+          <p>
+            Only override acquisition counts with verified matchup values. Unknown usage is never
+            treated as zero.
+          </p>
+          {espnLimit == null && preferences.matchup_add_limit_fallback == null && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem(capStorageKey, "7");
+                } catch {
+                  /* Memory preference remains usable. */
+                }
+                edit({ matchup_add_limit_fallback: 7 });
+              }}
+            >
+              Save my confirmed cap of 7 for this league
+            </button>
+          )}
+          <label>
+            My league’s matchup cap fallback (used only if ESPN cap is unavailable)
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={preferences.matchup_add_limit_fallback ?? ""}
+              placeholder="7 — your confirmed league cap"
+              onChange={(event) => {
+                const cap = event.target.value === "" ? null : Number(event.target.value);
+                if (cap != null && (!Number.isInteger(cap) || cap < 0)) return;
+                try {
+                  if (cap == null) localStorage.removeItem(capStorageKey);
+                  else localStorage.setItem(capStorageKey, String(cap));
+                } catch {
+                  /* Preferences remain usable without storage. */
+                }
+                edit({ matchup_add_limit_fallback: cap });
+              }}
+            />
+          </label>
+          <p>
+            This setting is saved only for {snapshot.league.name}, season{" "}
+            {snapshot.league.season_id}. It never replaces unknown acquisition usage.
+          </p>
+          <div className="league-fields">
+            {(
+              [
+                ["weekly_add_limit", "Matchup acquisition cap"],
+                ["used_adds", "Matchup acquisitions used"],
+                ["available_adds", "Adds remaining"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key}>
                 {label}
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={preferences[key] ?? ""}
+                  onChange={(event) =>
+                    edit({ [key]: event.target.value === "" ? null : Number(event.target.value) })
+                  }
+                />
               </label>
             ))}
-          </fieldset>
-          <button
-            type="button"
-            disabled={(categoryDraft ?? selectedCategories).length !== 5}
-            onClick={() => {
-              edit({ selected_categories: categoryDraft ?? selectedCategories });
-            }}
-          >
-            Recalculate selected five
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCategoryDraft(null);
-              edit({ selected_categories: undefined });
-            }}
-          >
-            Use recommended five
-          </button>
-        </details>
-      </section>
-      <p className="availability-assumption">
-        Availability: assume Available unless explicitly reported Out.{" "}
-        <button
-          type="button"
-          onClick={() => {
-            if (availabilityPanel.current) {
-              availabilityPanel.current.open = true;
-              availabilityPanel.current.scrollIntoView?.({ block: "start" });
-            }
-          }}
-        >
-          Edit player availability
-        </button>
-      </p>
-      <div className="strategy-legend">
-        <span className="league-winning">● Modeled cushion: retain</span>
-        <span className="league-tied">◆ Close / vulnerable: improve</span>
-        <span className="league-losing">↓ Trailing: lower priority</span>
-        <span>— Unknown: missing evidence</span>
-      </div>
-      {todayPairs.length > 0 && (
-        <div className="today-pairs" aria-label="Today’s supported pickup pairs">
-          <h3>
-            {plan?.evaluation_state === "conditional_opportunities" ? "Conditional" : "Modeled"}{" "}
-            opportunities playing today
-          </h3>
-          <p>
-            These pairs have a usable start on {evaluationDate} and improve the remaining-matchup
-            comparison after drop losses. They do not isolate today’s statistical gain.
-            {plan?.evaluation_state === "conditional_opportunities"
-              ? " At least one available acquisition must be verified before acting."
-              : ""}
-          </p>
-          <ul>
-            {todayPairs.slice(0, 3).map((pair) => (
-              <li key={`${pair.add_id}:${pair.drop_id}`}>
-                Add <b>{players.get(pair.add_id)?.name ?? pair.add_id}</b> → drop{" "}
-                <b>{players.get(pair.drop_id)?.name ?? pair.drop_id}</b> · {pair.add_starts} usable
-                pickup starts / {pair.drop_starts} lost drop starts · review all nine net changes
-                below.
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className="category-strategy-grid" aria-label="Category opportunities">
-        {LEAGUE_CATEGORIES.map(({ key, label }) => {
-          const strategy = plan?.strategy?.[key];
-          const own = strategy?.projected_user ?? null;
-          const other = strategy?.projected_opponent ?? null;
-          const state = compareCategory(own, other, key);
-          const share =
-            own != null && other != null && own + other > 0
-              ? Math.max(0, Math.min(100, (own / (own + other)) * 100))
-              : null;
-          return (
-            <article
-              className={`strategy-category strategy-${confidenceComplete ? (strategy?.classification ?? "unknown") : "unknown"}`}
-              key={key}
-            >
-              <header>
-                <b>{label}</b>
-                <span>
-                  {!confidenceComplete
-                    ? "Unverified"
-                    : strategy?.safe_win
-                      ? "Modeled cushion"
-                      : strategy?.classification === "favored"
-                        ? "Favored · strengthen"
-                        : strategy?.classification === "punt"
-                          ? "Trailing"
-                          : (strategy?.classification ?? "Awaiting analysis")}
-                </span>
-              </header>
-              <small>
-                {selectedCategories.includes(key) ? "Selected five" : "Reserve"} · Current →
-                projected final
-              </small>
-              <div className="forecast-equation">
-                <ForecastEquation
-                  forecast={plan?.baseline}
-                  side="user"
-                  category={key}
-                  current={strategy?.current_user}
-                  final={own}
-                />
-                <ForecastEquation
-                  forecast={plan?.baseline}
-                  side="opponent"
-                  category={key}
-                  current={strategy?.current_opponent}
-                  final={other}
-                />
-              </div>
-              <div className="strategy-actuals">
-                <strong className={`league-${state}`}>{formatCategory(own, key)}</strong>
-                <span>vs {formatCategory(other, key)}</span>
-              </div>
-              <div className="category-gap-bar" aria-hidden="true">
-                {share != null && <span style={{ width: `${share}%` }} />}
-              </div>
-              <small>Projected final · {key === "to" ? "fewer wins" : "higher wins"}</small>
-              <p>
-                {confidenceComplete
-                  ? (strategy?.explanation.split(". ")[0] ?? "Forecast evidence is unavailable.")
-                  : "Confidence withheld until required inputs and scoring-source agreement are verified."}
-              </p>
-              {strategy && (
-                <small>
-                  Projected gap {signed(strategy.projected_margin, key)}
-                  <br />
-                  Prior-week gap {signed(strategy.historical_margin, key)}
-                  <br />
-                  Last week {formatCategory(strategy.previous_user ?? null, key)} vs{" "}
-                  {formatCategory(strategy.previous_opponent ?? null, key)}
-                  {strategy.best_pickup_margin != null && (
-                    <>
-                      <br />
-                      Best pickup gap {signed(strategy.best_pickup_margin, key)}
-                      {strategy.can_flip_with_one_move ? " · flips lead" : ""}
-                    </>
-                  )}
-                </small>
-              )}
-            </article>
-          );
-        })}
-      </div>
-      <details className="category-overview">
-        <summary>
-          All nine categories ·{" "}
-          {LEAGUE_CATEGORIES.filter(
-            ({ key }) =>
-              confidenceComplete &&
-              selectedCategories.includes(key) &&
-              plan?.strategy?.[key]?.safe_win,
-          )
-            .map(({ label }) => label)
-            .join(" · ") || "No projected cushions"}
-        </summary>
-        <div className="league-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Outlook</th>
-                <th>This week: you / opponent</th>
-                <th>Last week: you / opponent</th>
-                <th>Projected / prior gap</th>
-                <th>Why</th>
-              </tr>
-            </thead>
-            <tbody>
-              {LEAGUE_CATEGORIES.map(({ key, label }) => (
-                <tr key={key}>
-                  <th>{label}</th>
-                  <td>
-                    {confidenceComplete
-                      ? (plan?.strategy?.[key]?.classification ?? "Unknown")
-                      : "Unverified"}
-                  </td>
-                  <td>
-                    {formatCategory(categoryValue(user?.totals ?? null, key), key)} /{" "}
-                    {formatCategory(categoryValue(opponent?.totals ?? null, key), key)}
-                  </td>
-                  <td>
-                    {formatCategory(plan?.strategy?.[key]?.previous_user ?? null, key)} /{" "}
-                    {formatCategory(plan?.strategy?.[key]?.previous_opponent ?? null, key)}
-                  </td>
-                  <td>
-                    {signed(plan?.strategy?.[key]?.projected_margin, key)} /{" "}
-                    {signed(plan?.strategy?.[key]?.historical_margin, key)}
-                  </td>
-                  <td>
-                    {confidenceComplete
-                      ? (plan?.strategy?.[key]?.explanation ?? "Evidence unavailable")
-                      : "Confidence withheld: required inputs or scoring agreement unverified"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-      <section className="recommended-sequence" aria-label="Recommended ordered plan">
-        <span className="league-kicker">ONE COHERENT MATCHUP PLAN</span>
-        <h3>Best explored add/drop sequence</h3>
-        <p>
-          Each step reprojects the whole roster after prior moves. Transactions remain manual in
-          ESPN. Bounded search does not prove a globally optimal plan.
-        </p>
-        {plan?.recommended_plan?.moves.length ? (
-          <>
-            <p className="focus-score">
-              Focus score: {(plan.recommended_plan.score_before * 100).toFixed(1)} →{" "}
-              {(plan.recommended_plan.focus_score_after * 100).toFixed(1)} / 100 · heuristic, not
-              win probability
-            </p>
-            <p>
-              Soft season-value cost: {(plan.recommended_plan.season_cost * 100).toFixed(2)} score
-              points · net strategic score gain:{" "}
-              {(plan.recommended_plan.net_score_gain * 100).toFixed(2)}.{" "}
-              {plan.recommended_plan.viable_five
-                ? "All five selected categories remain modeled viable."
-                : "The selected five remain a difficult route; no five-win guarantee."}
-            </p>
-            <OverallPlanImpact arithmetic={plan.recommended_plan.arithmetic} />
-            <ol className="pickup-list">
-              {plan.recommended_plan.moves.map((move, index) => (
-                <li key={`${index}:${move.add_id}:${move.drop_id}`}>
-                  <div className="pickup-rank">{index + 1}</div>
-                  <div className="pickup-body">
-                    <h4>
-                      <span className="league-winning">
-                        Add {players.get(move.add_id)?.name ?? move.add_id}
-                      </span>{" "}
-                      →{" "}
-                      <span className="league-losing">
-                        drop {players.get(move.drop_id)?.name ?? move.drop_id}
-                      </span>
-                    </h4>
-                    <p>
-                      Effective {move.date} ·{" "}
-                      {plan.recommended_plan?.budget_before == null
-                        ? "Unknown"
-                        : plan.recommended_plan.budget_before - index - 1}{" "}
-                      acquisitions left · cumulative focus score{" "}
-                      {move.score_after == null ? "Unknown" : (move.score_after * 100).toFixed(1)} /
-                      100
-                    </p>
-                    <WaiverArithmetic
-                      move={move}
-                      addPlayer={players.get(move.add_id)}
-                      dropPlayer={players.get(move.drop_id)}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </>
-        ) : (
-          !busy && (
-            <EmptyOrderedPlan
-              plan={evaluationPlan}
-              onRefresh={onRefresh}
-              unavailableReason={
-                error ??
-                leagueError ??
-                (!onPlan
-                  ? "Optimizer integration is unavailable; no comparison ran."
-                  : !snapshot.league.supported
-                    ? (snapshot.league.unsupported_reason ??
-                      "League scoring format is unsupported.")
-                    : null)
-              }
-              onRecover={reviewInputs}
-            />
-          )
-        )}
-      </section>
-      <details
-        className="secondary-alternatives"
-        open={plan?.evaluation_state === "conditional_opportunities" && recommendations.length > 0}
-      >
-        <summary>Optional competing single-move alternatives ({recommendations.length})</summary>
-        <section className="pickup-section" aria-label="Ranked pickup alternatives">
-          <div className="strategy-section-heading">
-            <div>
-              <span className="league-kicker">SECONDARY OPTIONS</span>
-              <h3>Best pickup + drop alternatives</h3>
-            </div>
-            <span>{recommendations.length} beneficial alternatives</span>
           </div>
-          <p>
-            Each option is compared with keeping your roster over the remaining matchup. Ranked
-            alternatives may share a pickup or drop and cannot be combined into a sequence.
-            Transactions remain manual in ESPN.
-          </p>
-          {plan && plan.remaining_adds == null && (
-            <p className="league-tied">
-              Conditional alternatives: acquisition limits or usage are not fully verified. Check
-              your remaining budget in ESPN before choosing a move.
-            </p>
-          )}
-          {plan?.search && (
-            <p
-              className={
-                plan.search.alternatives_complete === false ? "league-tied" : "search-summary"
+          <label className="league-check">
+            <input
+              type="checkbox"
+              checked={preferences.user_confirmed_counts ?? false}
+              onChange={(event) =>
+                edit({
+                  user_confirmed_counts: event.target.checked,
+                  counts_snapshot_at: event.target.checked ? snapshot.fetched_at : undefined,
+                  usage_declaration:
+                    event.target.checked && preferences.used_adds != null
+                      ? bindUsage(snapshot, preferences.used_adds, new Date().toISOString())
+                      : undefined,
+                })
               }
-            >
-              {plan.search.alternatives_complete === false
-                ? "Search incomplete: some beneficial alternatives may be omitted. "
-                : "Explored one-move pairs and timing; lineup forecasts are approximate. "}
-              {plan.search.evaluated_drop_ids?.length ?? "?"} of{" "}
-              {plan.search.legal_drop_ids?.length ?? "?"} legal roster drops evaluated ·{" "}
-              {plan.search.evaluations} evaluations · {plan.search.candidate_pool ?? "?"}{" "}
-              candidates.
-              {plan.search.alternatives_complete === false && (
-                <>
-                  {" "}
-                  Bounds: {plan.search.candidate_limit ?? "unknown"} candidates /{" "}
-                  {plan.search.evaluation_limit ?? "unknown"} evaluations.
-                </>
-              )}
-            </p>
-          )}
+            />
+            Use my verified matchup counts
+          </label>
+          <p>
+            Current-season per-game rates and remaining lineup opportunity drive estimates. Prior
+            season is fallback when the current sample is too small. Extra turnovers can hurt;
+            shooting percentages use makes and attempts.
+          </p>
           {snapshot.market_coverage && (
             <p className={snapshot.market_complete ? "search-summary" : "league-tied"}>
               Market coverage: {snapshot.market_coverage.observed} observed of{" "}
               {snapshot.market_coverage.provider_total ?? "unknown total"} ·{" "}
               {snapshot.market_complete ? "provider exhaustion observed" : "partial / unverified"} ·
-              application bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
+              bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
               {snapshot.market_coverage.fetched_at ?? "time unavailable"}. Market coverage qualifies
               search, independently of matchup scoring completeness.
-              {snapshot.market_coverage.stopped_reason === "application_bound" &&
-                " Enumeration reached the application request bound; this is not an ESPN provider limit."}
             </p>
           )}
           {snapshot.free_agents_truncated && (
-            <p className="league-tied">
-              {snapshot.market_coverage?.stopped_reason === "application_bound"
-                ? "The app stopped free-agent enumeration at its request bound. Results cover the observed pool only."
-                : "Free-agent enumeration is partial or unverified. Results cover the observed pool only."}
+            <p>
+              The returned free-agent pool is limited; these are the best supported alternatives
+              within that pool.
             </p>
           )}
-          {snapshot.market_coverage?.page_count != null && (
+          {plan && (
+            <>
+              <p>
+                Uncertainty source: {plan.uncertainty?.source ?? "Unavailable"} · uncalibrated
+                estimates, not guarantees.
+              </p>
+              <ul>
+                {[...plan.assumptions, ...plan.limitations, ...plan.reasons].map((item, index) => (
+                  <li key={`${index}:${item}`}>{item}</li>
+                ))}
+              </ul>
+              <DataGaps gaps={plan.data_gaps} />
+            </>
+          )}
+          <DataGaps gaps={snapshot.data_gaps} />
+          {!!snapshot.modeling_notes?.length && (
             <details>
-              <summary>Market retrieval & candidate filtering</summary>
-              <p>
-                {snapshot.market_coverage.page_count} league pages ·{" "}
-                {snapshot.market_coverage.observed} unique observed players ·{" "}
-                {snapshot.market_coverage.eligible_freeagent_count ?? "unknown"} eligible free
-                agents · {snapshot.market_coverage.waiver_count ?? "unknown"} on waivers ·{" "}
-                {snapshot.market_coverage.roster_conflict_count ?? "unknown"} ownership conflicts.
-              </p>
-              <p>
-                Across the observed pool: {snapshot.market_coverage.no_sample_count ?? "unknown"}{" "}
-                without a usable rate sample;{" "}
-                {snapshot.market_coverage.no_schedule_count ?? "unknown"} without a verified
-                schedule. These counts can overlap and do not imply every excluded player would
-                help.
-              </p>
-              {plan?.candidate_coverage && (
-                <p>
-                  {plan.candidate_coverage.selected} of {plan.candidate_coverage.qualified}{" "}
-                  qualified candidates selected from {plan.candidate_coverage.requested} requested ·
-                  optimizer capacity {plan.candidate_coverage.limit}. Retrieval completeness and
-                  search bounds are separate.
-                </p>
-              )}
+              <summary>Model scope & provider notes</summary>
+              <ul>
+                {snapshot.modeling_notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
             </details>
           )}
-          {recommendations.length > 0 && (
-            <label className="pickup-filter">
-              Review by roster drop
-              <select
-                value={dropFilter}
-                onChange={(event) => {
-                  setDropFilter(event.target.value);
-                  setVisibleCount(12);
-                }}
-              >
-                <option value="">All drop options ({dropIds.length})</option>
-                {dropIds.map((id) => (
-                  <option key={id} value={id}>
-                    {players.get(id)?.name ?? id}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {recommendations.length > 0 ? (
-            <ol className="pickup-list">
-              {visibleRecommendations.map((item, index) => (
-                <li key={`${item.add_id}:${item.drop_id}`}>
-                  <div className="pickup-rank">{index + 1}</div>
-                  <div className="pickup-body">
-                    <div className="pickup-pair">
-                      <div>
-                        <span className="league-winning">ADD</span>
-                        <h4>{players.get(item.add_id)?.name ?? "Player unavailable"}</h4>
-                      </div>
-                      <span className="pickup-arrow">→</span>
-                      <div>
-                        <span className="league-losing">DROP</span>
-                        <h4>{players.get(item.drop_id)?.name ?? "Player unavailable"}</h4>
-                      </div>
-                    </div>
-                    <div className="pickup-tags">
-                      <b>
-                        Target{" "}
-                        {item.target_categories
-                          .map(
-                            (key) =>
-                              LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ??
-                              key,
-                          )
-                          .join(" · ") || "overall balance"}
-                      </b>
-                      <span>{signed(item.games_gain)} net playable starts</span>
-                      <span>{signed(item.minutes_gain)} net minutes</span>
-                      <span>1 add · {item.date}</span>
-                    </div>
-                    <div className="pickup-net pickup-target-gains">
-                      {item.target_categories.map((key) => (
-                        <span key={key}>
-                          {LEAGUE_CATEGORIES.find((category) => category.key === key)?.label ?? key}{" "}
-                          <b>{signed(netCategoryGain(item, key), key)} net total</b>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="pickup-details">
-                      <h5>Remaining matchup arithmetic & tradeoffs</h5>
-                      <WaiverArithmetic
-                        move={item}
-                        addPlayer={players.get(item.add_id)}
-                        dropPlayer={players.get(item.drop_id)}
-                      />
-                      <p>
-                        {item.season_cost == null
-                          ? "Long-term roster value is considered before this drop."
-                          : item.season_cost > 0
-                            ? "The remaining-matchup gain offsets an estimated long-term roster downgrade. Review this tradeoff before dropping."
-                            : "No long-term downgrade is estimated by the season-value model."}{" "}
-                        Any legally droppable player can be evaluated. Use Protect to keep a player
-                        out of recommendations.
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            !busy && (
-              <div className="strategy-empty">
-                <h4>
-                  {plan?.evaluation_state === "required_inputs_unknown" || !plan
-                    ? "Pickup comparison awaiting required inputs"
-                    : plan.evaluation_state === "known_zero_acquisitions"
-                      ? "Pickup comparison withheld: zero acquisition allowance"
-                      : "No supported pickup improvement in explored pairs"}
-                </h4>
-                <p>
-                  {plan?.reasons.join(" ") ||
-                    "The analysis needs usable current rates, remaining schedules and an eligible add/drop pair. No pickups have been invented."}
-                </p>
-              </div>
-            )
-          )}
-          {filteredRecommendations.length > visibleRecommendations.length && (
-            <button type="button" onClick={() => setVisibleCount((count) => count + 12)}>
-              Show more alternatives ({visibleRecommendations.length} of{" "}
-              {filteredRecommendations.length})
-            </button>
-          )}
-        </section>
-      </details>
-      <section className="core-protection" aria-label="Core player protection">
-        <h3>Core-player protection</h3>
-        <p>
-          Default protection keeps core players out of short-horizon drops. This heuristic uses
-          available player value metadata; it is separate from immutable ESPN locks and your Protect
-          choices.
-        </p>
-        <label>
-          <input
-            type="checkbox"
-            checked={preferences.allow_core_drops ?? false}
-            onChange={(event) => edit({ allow_core_drops: event.target.checked })}
-          />{" "}
-          Allow core-player drops for this analysis
-        </label>
-        <small>
-          Override recalculates recommendations. ESPN locks, undroppable restrictions and explicit
-          Protect choices remain enforced.
-        </small>
-      </section>
-      <details ref={availabilityPanel} className="availability-controls">
-        <summary>Edit availability & roster protection</summary>
-        <p>
-          Assume Available unless explicitly reported Out. Change a player below to recalculate
-          immediately. Known locks, undroppable players and your explicit Protect choices are
-          respected.
-        </p>
-        {controls(relevant)}
-        <details>
-          <summary>
-            Other eligible free agents (
-            {candidates.filter((player) => !relevantIds.has(player.id)).length})
-          </summary>
-          {controls(candidates.filter((player) => !relevantIds.has(player.id)))}
         </details>
-      </details>
-      <details className="waiver-advanced" ref={advancedPanel}>
-        <summary>Advanced inputs & data notes</summary>
-        <p>
-          Only override acquisition counts with verified matchup values. Unknown usage is never
-          treated as zero.
-        </p>
-        {espnLimit == null && preferences.matchup_add_limit_fallback == null && (
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                localStorage.setItem(capStorageKey, "7");
-              } catch {
-                /* Memory preference remains usable. */
-              }
-              edit({ matchup_add_limit_fallback: 7 });
-            }}
-          >
-            Save my confirmed cap of 7 for this league
-          </button>
-        )}
-        <label>
-          My league’s matchup cap fallback (used only if ESPN cap is unavailable)
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={preferences.matchup_add_limit_fallback ?? ""}
-            placeholder="7 — your confirmed league cap"
-            onChange={(event) => {
-              const cap = event.target.value === "" ? null : Number(event.target.value);
-              if (cap != null && (!Number.isInteger(cap) || cap < 0)) return;
-              try {
-                if (cap == null) localStorage.removeItem(capStorageKey);
-                else localStorage.setItem(capStorageKey, String(cap));
-              } catch {
-                /* Preferences remain usable without storage. */
-              }
-              edit({ matchup_add_limit_fallback: cap });
-            }}
-          />
-        </label>
-        <p>
-          This setting is saved only for {snapshot.league.name}, season {snapshot.league.season_id}.
-          It never replaces unknown acquisition usage.
-        </p>
-        <div className="league-fields">
-          {(
-            [
-              ["weekly_add_limit", "Matchup acquisition cap"],
-              ["used_adds", "Matchup acquisitions used"],
-              ["available_adds", "Adds remaining"],
-            ] as const
-          ).map(([key, label]) => (
-            <label key={key}>
-              {label}
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={preferences[key] ?? ""}
-                onChange={(event) =>
-                  edit({ [key]: event.target.value === "" ? null : Number(event.target.value) })
-                }
-              />
-            </label>
-          ))}
-        </div>
-        <label className="league-check">
-          <input
-            type="checkbox"
-            checked={preferences.user_confirmed_counts ?? false}
-            onChange={(event) =>
-              edit({
-                user_confirmed_counts: event.target.checked,
-                counts_snapshot_at: event.target.checked ? snapshot.fetched_at : undefined,
-                usage_declaration:
-                  event.target.checked && preferences.used_adds != null
-                    ? bindUsage(snapshot, preferences.used_adds, new Date().toISOString())
-                    : undefined,
-              })
-            }
-          />
-          Use my verified matchup counts
-        </label>
-        <p>
-          Current-season per-game rates and remaining lineup opportunity drive estimates. Prior
-          season is fallback when the current sample is too small. Extra turnovers can hurt;
-          shooting percentages use makes and attempts.
-        </p>
-        {snapshot.market_coverage && (
-          <p className={snapshot.market_complete ? "search-summary" : "league-tied"}>
-            Market coverage: {snapshot.market_coverage.observed} observed of{" "}
-            {snapshot.market_coverage.provider_total ?? "unknown total"} ·{" "}
-            {snapshot.market_complete ? "provider exhaustion observed" : "partial / unverified"} ·
-            bound {snapshot.market_coverage.limit ?? "unknown"} players · fetched{" "}
-            {snapshot.market_coverage.fetched_at ?? "time unavailable"}. Market coverage qualifies
-            search, independently of matchup scoring completeness.
-          </p>
-        )}
-        {snapshot.free_agents_truncated && (
-          <p>
-            The returned free-agent pool is limited; these are the best supported alternatives
-            within that pool.
-          </p>
-        )}
-        {plan && (
-          <>
-            <p>
-              Uncertainty source: {plan.uncertainty?.source ?? "Unavailable"} · uncalibrated
-              estimates, not guarantees.
-            </p>
-            <ul>
-              {[...plan.assumptions, ...plan.limitations, ...plan.reasons].map((item, index) => (
-                <li key={`${index}:${item}`}>{item}</li>
-              ))}
-            </ul>
-            <DataGaps gaps={plan.data_gaps} />
-          </>
-        )}
-        <DataGaps gaps={snapshot.data_gaps} />
-        {!!snapshot.modeling_notes?.length && (
-          <details>
-            <summary>Model scope & provider notes</summary>
-            <ul>
-              {snapshot.modeling_notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </details>
-    </section>
+      }
+    />
   );
 }
 
@@ -1522,48 +964,5 @@ export function LeagueDashboardSummary({ state }: { state: LeagueFantasyState })
         </section>
       )}
     </div>
-  );
-}
-
-function ForecastEquation({
-  forecast,
-  side,
-  category,
-  current,
-  final,
-}: {
-  forecast?: PlanForecast | null;
-  side: "user" | "opponent";
-  category: Category;
-  current?: number | null;
-  final: number | null;
-}) {
-  const actual = forecast?.actual_primitives?.[side];
-  const remaining = forecast?.remaining_primitives?.[side];
-  const finish = side === "user" ? forecast?.totals : forecast?.opponent_totals;
-  const volume = (stats: typeof actual) =>
-    category === "fg_pct"
-      ? `${stats?.fgm ?? "?"}/${stats?.fga ?? "?"}`
-      : `${stats?.ftm ?? "?"}/${stats?.fta ?? "?"}`;
-  return (
-    <span>
-      {side === "user" ? "You" : "Opponent"}:{" "}
-      {category.endsWith("pct") ? (
-        <>
-          {volume(actual)} + {volume(remaining)} remaining = {volume(finish)} ·{" "}
-          <b>{formatCategory(final, category)}</b>
-        </>
-      ) : (
-        <>
-          {formatCategory(current ?? null, category)} +{" "}
-          {formatCategory(
-            categoryValue(remaining ?? null, category) ??
-              (final != null && current != null ? final - current : null),
-            category,
-          )}{" "}
-          remaining = <b>{formatCategory(final, category)}</b>
-        </>
-      )}
-    </span>
   );
 }

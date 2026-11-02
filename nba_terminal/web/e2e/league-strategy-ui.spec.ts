@@ -112,22 +112,21 @@ test("strategy hierarchy, score and five-category remaining-total alternatives r
                   : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../code_review/v5_app/generated/league-strategy-ui");
+  const evidence = resolve(process.cwd(), "../../docs/evidence/v6-integrated/regression-strategy");
   mkdirSync(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/fantasy?fantasyTab=matchups");
   await expect(page.getByLabel("4 wins, 5 losses, 0 ties")).toBeVisible();
   await page.screenshot({ path: resolve(evidence, "ui-matchups-desktop.png"), fullPage: true });
   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
-  await page.getByText(/Optional competing single-move alternatives/).click();
-  await expect(page.locator(".pickup-list > li")).toHaveCount(12);
-  await expect(page.getByText(/Conditional alternatives:/)).toBeVisible();
-  await expect(page.getByText("15 beneficial alternatives")).toBeVisible();
-  await page.getByRole("button", { name: /Show more alternatives/ }).click();
-  await expect(page.locator(".pickup-list > li")).toHaveCount(15);
+  await expect(page.locator(".ww-target")).toHaveCount(5);
+  await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
+  await page.getByText("Full analysis & data", { exact: true }).click();
+  await page.getByText("Competing single-move alternatives (15)", { exact: true }).click();
   await expect(
     page.getByRole("row", { name: /AST.*12 × 4 starts.*10 × 4 lost starts.*\+8/ }).first(),
   ).toBeVisible();
+  await page.getByText("Full analysis & data", { exact: true }).click();
   await page.screenshot({ path: resolve(evidence, "ui-waiver-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
@@ -163,7 +162,7 @@ test("browser setup and consented pairing states work without exposing cookie in
             : {};
     return route.fulfill({ json });
   });
-  const evidence = resolve(process.cwd(), "../../code_review/v5_app/generated/league-strategy-ui");
+  const evidence = resolve(process.cwd(), "../../docs/evidence/v6-integrated/regression-strategy");
   mkdirSync(evidence, { recursive: true });
   await page.goto("/fantasy");
   await page.getByText("One-time browser setup", { exact: true }).click();

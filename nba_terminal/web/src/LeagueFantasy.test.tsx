@@ -131,7 +131,7 @@ it("automatically analyzes and preserves availability across harmless refresh", 
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
   expect(onPlan.mock.calls[0][0]).not.toHaveProperty("candidate_ids");
-  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  await userEvent.click(screen.getByText("Roster settings"));
   await userEvent.click(
     screen.getByRole("button", { name: "Test player rostered availability: Available" }),
   );
@@ -148,11 +148,7 @@ it("automatically analyzes and preserves availability across harmless refresh", 
 });
 it("explains unavailable optimizer instead of inventing probabilities", () => {
   render(<WaiverWire snapshot={testSnapshot()} />);
-  expect(
-    within(screen.getByRole("region", { name: "Recommended ordered plan" })).getByText(
-      /Optimizer integration is unavailable/,
-    ),
-  ).toBeInTheDocument();
+  expect(screen.getByText(/Optimizer integration is unavailable/)).toBeInTheDocument();
   expect(screen.queryByText(/30.0%/)).not.toBeInTheDocument();
 });
 
@@ -207,7 +203,7 @@ it("ignores late analysis after a protection edit", async () => {
     .fn()
     .mockImplementation(() => new Promise<WaiverPlan>((resolve) => resolvers.push(resolve)));
   render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
-  await userEvent.click(screen.getByText("Edit availability & roster protection"));
+  await userEvent.click(screen.getByText("Roster settings"));
   await userEvent.click(screen.getByRole("button", { name: "Protect Test player rostered" }));
   await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
   resolvers[1]({ ...readyPlan, reasons: ["Newest analysis"] });
@@ -216,293 +212,14 @@ it("ignores late analysis after a protection edit", async () => {
   await waitFor(() => expect(screen.queryByText("Stale analysis")).not.toBeInTheDocument());
   expect(onPlan.mock.calls[1][0].player_overrides).toEqual({ rostered: { protected: true } });
 });
-it("renders every beneficial alternative separately from sequential plan and respects legal protection", async () => {
-  const snapshot = testSnapshot();
-  snapshot.teams[0].roster[0].undroppable = true;
-  const recommendation = {
-    add_id: "free",
-    drop_id: "rostered",
-    date: "2026-11-01",
-    probability_gain: 0.05,
-    gains: { pts: 15 },
-    games_gain: 1,
-    minutes_gain: 25,
-    season_cost: 0,
-    net_score: 1,
-    target_categories: ["pts"],
-    rationale: "A net scoring upgrade.",
-  };
-  const onPlan = vi.fn().mockResolvedValue({
-    ...readyPlan,
-    recommendations: Array.from({ length: 9 }, (_, i) => ({
-      ...recommendation,
-      add_id: `free${i}`,
-    })),
-    strategy: {
-      pts: {
-        classification: "swing",
-        explanation: "Scoring is close.",
-        projected_margin: -3,
-        historical_margin: 2,
-        target_priority: 1,
-      },
-    },
-  });
-  render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await screen.findByText("Focus on PTS");
-  expect(
-    within(screen.getByRole("region", { name: "Ranked pickup alternatives" })).getAllByRole(
-      "listitem",
-    ),
-  ).toHaveLength(9);
-  expect(
-    screen.getByRole("heading", { name: "Best explored add/drop sequence" }),
-  ).toBeInTheDocument();
-  await userEvent.click(screen.getByText("Edit availability & roster protection"));
-  expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeDisabled();
-  expect(screen.getByText(/Prior-week gap/)).toBeInTheDocument();
-});
-
-it("uses normalized health, displays actual pre-plan budget and computes net shooting impact", async () => {
-  const snapshot = testSnapshot();
-  snapshot.teams[0].remaining_adds = 2;
-  snapshot.teams[0].roster[0].injured = true;
-  snapshot.teams[0].roster[0].health_status = "available";
-  const onPlan = vi.fn().mockResolvedValue({
-    ...readyPlan,
-    remaining_adds: 1,
-    recommendations: [
-      {
-        add_id: "free",
-        drop_id: "rostered",
-        date: "2026-11-01",
-        probability_gain: 0.02,
-        gains: { fgm: 2 },
-        games_gain: 0,
-        minutes_gain: 5,
-        season_cost: 0,
-        net_score: 1,
-        target_categories: ["fg_pct"],
-        category_impacts: {
-          fg_pct: {
-            before: 0.48,
-            after: 0.49,
-            margin_before: -0.005,
-            margin_after: 0.005,
-            estimate_gain: 0.1,
-            flips_projection: true,
-          },
-        },
-        rationale: "Improves shooting after the dropped player.",
-      },
-    ],
-  });
-  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await screen.findByText("+1.00 pp net total");
-  expect(view.container.querySelector(".waiver-budget b")).toHaveTextContent("2");
-  await userEvent.click(screen.getByText("Edit availability & roster protection"));
-  expect(
-    screen.getByRole("button", { name: "Test player rostered availability: Available" }),
-  ).toBeInTheDocument();
-});
-
-it("shows total arithmetic, selected five and paginates genuine alternatives without a seven cap", async () => {
-  const snapshot = testSnapshot();
-  snapshot.teams[0].roster[0].draft_round = 1;
-  const recommendation = {
-    add_id: "free",
-    drop_id: "rostered",
-    date: "2026-11-01",
-    probability_gain: null,
-    gains: { pts: 8 },
-    games_gain: 0,
-    minutes_gain: 0,
-    season_cost: 2,
-    net_score: 1,
-    target_categories: ["pts"],
-    rationale: "A reachable scoring deficit.",
-    calculation: {
-      pts: {
-        add_rate: 12,
-        add_starts: 4,
-        drop_rate: 10,
-        drop_starts: 4,
-        added_total: 48,
-        lost_total: 40,
-        lineup_other_net: 0,
-        net_total: 8,
-      },
-    },
-  };
-  const onPlan = vi.fn().mockResolvedValue({
-    ...readyPlan,
-    selected_categories: ["pts", "reb", "ast", "stl", "to"],
-    safe_categories: ["reb"],
-    improvement_categories: ["pts", "ast", "stl", "to"],
-    recommendations: Array.from({ length: 25 }, (_, i) => ({
-      ...recommendation,
-      add_id: `free${i}`,
-      drop_id: i === 24 ? "other" : "rostered",
-    })),
-  });
-  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await screen.findByText("25 beneficial alternatives");
-  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(12);
-  expect(screen.getByText(/Modeled cushions: REB/)).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: /Show more alternatives/ }));
-  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(24);
-  await userEvent.selectOptions(screen.getByLabelText("Review by roster drop"), "other");
-  expect(view.container.querySelectorAll(".pickup-list > li")).toHaveLength(1);
-  await userEvent.selectOptions(screen.getByLabelText("Review by roster drop"), "rostered");
-  const detail = view.container.querySelector(".pickup-details")!;
-  await userEvent.click(
-    within(detail as HTMLElement).getByText("Remaining matchup arithmetic & tradeoffs"),
-  );
-  expect(
-    within(detail as HTMLElement).getByRole("row", {
-      name: /PTS.*12 × 4 starts.*10 × 4 lost starts.*\+8/,
-    }),
-  ).toBeInTheDocument();
-  await userEvent.click(screen.getByText("Edit availability & roster protection"));
-  expect(screen.getByRole("button", { name: "Protect Test player rostered" })).toBeEnabled();
-  await userEvent.click(screen.getByText("Edit selected five categories"));
-  await userEvent.click(screen.getByLabelText("REB", { selector: "input" }));
-  expect(screen.getByRole("button", { name: "Recalculate selected five" })).toBeDisabled();
-  await userEvent.click(screen.getByLabelText("BLK", { selector: "input" }));
-  await userEvent.click(screen.getByRole("button", { name: "Recalculate selected five" }));
-  await waitFor(() =>
-    expect(onPlan.mock.lastCall?.[0].selected_categories).toEqual([
-      "pts",
-      "ast",
-      "stl",
-      "to",
-      "blk",
-    ]),
-  );
-  view.rerender(<WaiverWire snapshot={snapshot} onPlan={onPlan} loading />);
-  expect(screen.getByLabelText("BLK", { selector: "input" })).toBeChecked();
-  expect(screen.getByLabelText("REB", { selector: "input" })).not.toBeChecked();
-  view.rerender(
-    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-10-31T12:01:00Z" }} onPlan={onPlan} />,
-  );
-  expect(onPlan).toHaveBeenCalledTimes(2);
-  expect(screen.getByLabelText("BLK", { selector: "input" })).toBeChecked();
-});
-
-it("discloses incomplete bounds and reads final weighted percentage calculation fields", async () => {
-  const onPlan = vi.fn().mockResolvedValue({
-    ...readyPlan,
-    search: {
-      evaluations: 5000,
-      evaluation_limit_reached: true,
-      alternatives_complete: false,
-      legal_drop_ids: ["rostered", "other"],
-      evaluated_drop_ids: ["rostered"],
-      candidate_pool: 80,
-      candidate_limit: 80,
-      evaluation_limit: 5000,
-    },
-    recommendations: [
-      {
-        add_id: "free",
-        drop_id: "rostered",
-        date: "2026-11-01",
-        probability_gain: null,
-        gains: {},
-        games_gain: 0,
-        minutes_gain: 0,
-        season_cost: 0,
-        net_score: 1,
-        target_categories: ["fg_pct"],
-        rationale: "Weighted gain.",
-        calculation: {
-          fg_pct: {
-            add_rate: 0.6,
-            drop_rate: 0.4,
-            add_starts: 2,
-            drop_starts: 2,
-            added_total: null,
-            lost_total: null,
-            lineup_other_net: null,
-            net_total: 0.01,
-            weighted: {
-              before_makes: 40,
-              before_attempts: 100,
-              after_makes: 41,
-              after_attempts: 100,
-            },
-          },
-        },
-      },
-    ],
-  });
-  render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
-  await screen.findByText(/Search incomplete: some beneficial alternatives may be omitted/);
-  expect(screen.getByText(/1 of 2 legal roster drops evaluated/)).toHaveTextContent(
-    "80 candidates",
-  );
-  await userEvent.click(screen.getByText("Remaining matchup arithmetic & tradeoffs"));
-  expect(
-    screen.getByRole("row", { name: /FG%.*40 \/ 100.*41 \/ 100.*\+1.00 pp/ }),
-  ).toBeInTheDocument();
-});
-
-it.each([1, 2])(
-  "shows one ordered plan of %i moves while alternatives stay secondary",
-  async (count) => {
-    const move = {
-      add_id: "free",
-      drop_id: "rostered",
-      date: "2026-11-01",
-      probability_gain: null,
-      gains: { pts: 8 },
-      games_gain: 0,
-      minutes_gain: 0,
-      season_cost: 0,
-      net_score: 0.02,
-      target_categories: ["pts"],
-      rationale: "Full-roster improvement.",
-      remaining_adds: 1,
-      cumulative_focus_score: 64,
-    };
-    const onPlan = vi.fn().mockResolvedValue({
-      ...readyPlan,
-      recommended_plan: {
-        moves: Array.from({ length: count }, (_, i) => ({
-          ...move,
-          add_id: i ? "second" : "free",
-          drop_id: i ? "free" : "rostered",
-          remaining_adds: count - i - 1,
-        })),
-        score_before: 0.6,
-        score_after: 0.64,
-        focus_score_after: 0.64,
-        season_cost: 0,
-        net_score_gain: 0.04,
-        arithmetic: { categories: {}, primitives: {} },
-      },
-      recommendations: Array.from({ length: 7 }, () => move),
-    });
-    render(<WaiverWire snapshot={testSnapshot()} onPlan={onPlan} />);
-    const primary = screen.getByRole("region", { name: "Recommended ordered plan" });
-    await waitFor(() => expect(within(primary).getAllByRole("listitem")).toHaveLength(count));
-    expect(within(primary).getByText(/60.0 → 64.0/)).toHaveTextContent(
-      "heuristic, not win probability",
-    );
-    expect(within(primary).getAllByRole("table")).toHaveLength(count + 1);
-    expect(
-      screen.getByText(/Optional competing single-move alternatives/).closest("details"),
-    ).not.toHaveAttribute("open");
-  },
-);
-
 it("reruns core override independently of immutable locks", async () => {
   const snapshot = testSnapshot();
   snapshot.teams[0].roster[0].undroppable = true;
   const onPlan = vi.fn().mockResolvedValue(readyPlan);
   render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
-  await userEvent.click(screen.getByLabelText("Allow core-player drops for this analysis"));
+  await userEvent.click(screen.getByText("Roster settings"));
+  await userEvent.click(screen.getByLabelText("Allow core-player drops"));
   await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
   expect(onPlan.mock.lastCall?.[0].allow_core_drops).toBe(true);
   expect(
@@ -510,47 +227,12 @@ it("reruns core override independently of immutable locks", async () => {
   ).toBeDisabled();
 });
 
-it("shows current lead becoming a projected loss and clears incomplete cushion labels", async () => {
-  const snapshot = testSnapshot();
-  snapshot.projection_metadata = {
-    actuals: { complete: false, reason: "Historical active lineup missing" },
-  };
-  const onPlan = vi.fn().mockResolvedValue({
-    ...readyPlan,
-    selected_categories: ["pts", "reb", "ast", "stl", "to"],
-    safe_categories: ["reb"],
-    strategy: {
-      reb: {
-        classification: "favored",
-        safe_win: true,
-        explanation: "Stale confidence",
-        current_user: 132,
-        current_opponent: 117,
-        projected_user: 140,
-        projected_opponent: 157,
-        projected_margin: -17,
-      },
-    },
-  });
-  const { container } = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
-  await screen.findByText("You: 132 + 8 remaining =", { exact: false });
-  expect(screen.getByText("Opponent: 117 + 40 remaining =", { exact: false })).toHaveTextContent(
-    "157",
-  );
-  expect(screen.getByText(/Modeled cushions: None established/)).toBeInTheDocument();
-  expect(container.querySelector(".strategy-favored")).toBeNull();
-  expect(
-    within(screen.getByRole("region", { name: "Waiver evaluation status" })).getByText(
-      /Today’s useful available players are not yet determinable/,
-    ),
-  ).toBeInTheDocument();
-});
-
 it("revokes an old manual budget confirmation when new league data arrives", async () => {
   const snapshot = testSnapshot();
   const onPlan = vi.fn().mockResolvedValue(readyPlan);
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  await userEvent.click(screen.getByText("Full analysis & data"));
   await userEvent.click(screen.getByText("Advanced inputs & data notes", { exact: true }));
   await userEvent.click(screen.getByRole("checkbox", { name: "Use my verified matchup counts" }));
   await waitFor(() => expect(onPlan.mock.calls.at(-1)?.[0].user_confirmed_counts).toBe(true));
@@ -570,11 +252,14 @@ it("withholds stale recommendations after refresh failure and recovers on fresh 
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
   view.rerender(<WaiverWire snapshot={snapshot} onPlan={onPlan} error="ESPN refresh failed" />);
-  await screen.findByRole("alert");
+  await screen.findByText("Showing saved plan · refresh needed");
   expect(onPlan).toHaveBeenCalledOnce();
   expect(screen.queryByText("Newest analysis")).not.toBeInTheDocument();
   view.rerender(
-    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:10:00Z" }} onPlan={onPlan} />,
+    <WaiverWire
+      snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:10:00Z", data_gaps: ["Changed fact"] }}
+      onPlan={onPlan}
+    />,
   );
   await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
 });
@@ -584,6 +269,7 @@ it("keeps a scoped explicit zero confirmation across a same-matchup refresh with
   const onPlan = vi.fn().mockResolvedValue(readyPlan);
   const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
   await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  await userEvent.click(screen.getByText("Full analysis & data"));
   await userEvent.click(screen.getByText("Advanced inputs & data notes", { exact: true }));
   await userEvent.type(screen.getByLabelText("Matchup acquisitions used", { exact: true }), "0");
   await userEvent.click(screen.getByRole("checkbox", { name: "Use my verified matchup counts" }));

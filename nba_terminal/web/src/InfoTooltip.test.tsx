@@ -19,6 +19,8 @@ it("links keyboard help and supports tap toggle and Escape dismissal", () => {
   expect(button).toHaveAttribute("aria-expanded", "false");
   expect(button).toHaveFocus();
   expect(button.parentElement).toHaveAttribute("data-dismissed", "true");
+  fireEvent.mouseLeave(button.parentElement!);
+  expect(button.parentElement).toHaveAttribute("data-dismissed", "true");
   fireEvent.click(button);
   fireEvent.blur(button);
   expect(button).toHaveAttribute("aria-expanded", "false");
