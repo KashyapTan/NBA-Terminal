@@ -1,0 +1,10 @@
+{
+  "scenario": "synthetic public-shaped new-week provider boundary; real HTTP normalizer/adapter/optimizer/UI",
+  "evaluation_state": "confirmed_ordered_plan",
+  "budget_before": 7,
+  "budget_after": 6,
+  "moves": 1,
+  "categories": 9,
+  "usage_source": "scoped user-declared current matchup usage",
+  "private_payload_observed": false
+}

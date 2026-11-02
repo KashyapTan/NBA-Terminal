@@ -90,8 +90,8 @@ def test_missing_data_never_becomes_zero_and_cap_fallback_is_context_bound(data)
     assert result["league"]["acquisition_settings"]["cap_source"] is None
     data["league"]["id"] = 604550749
     scoped = normalized(data)
-    assert scoped["league"]["acquisition_settings"]["weekly_add_limit"] == 7
-    assert scoped["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
+    assert scoped["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert scoped["league"]["acquisition_settings"]["cap_source"] is None
     assert result["teams"][0]["totals"] is None
     assert all(row["state"] == "unknown" for row in result["comparison"]["categories"])
     assert result["teams"][0]["roster"][0]["schedule"] is None
@@ -318,7 +318,7 @@ def test_float_caps_verified_weekly_counters_and_unknown_are_distinct(data):
     assert result["teams"][1]["weekly_used_adds"] is None
     data["league"]["settings"]["acquisitionSettings"]["matchupLimitPerScoringPeriod"] = True
     daily = normalized(data)
-    assert daily["league"]["acquisition_settings"]["daily_add_limit"] == 7
+    assert daily["league"]["acquisition_settings"]["daily_add_limit"] is None
     assert daily["league"]["acquisition_settings"]["weekly_add_limit"] is None
     assert daily["teams"][0]["remaining_adds"] is None
     team["transactionCounter"]["matchupAcquisitionTotals"]["2"] = 0

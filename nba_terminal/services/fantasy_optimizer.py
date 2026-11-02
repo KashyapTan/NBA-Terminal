@@ -360,6 +360,7 @@ def _context(payload):
         "roster": {pid for pid, p in players.items() if p["owner"] == "user"},
         "sd": sd,
         "budget": budget,
+        "daily_add_limit": _integer(payload, "daily_add_limit") if payload.get("daily_add_limit") is not None else None,
         "history": history,
         "previous_comparison": payload.get("previous_comparison", {}),
         "uncertainty": {"source": uncertainty, "calibrated": False, "margin_sd": sd, "history_samples": len(history)},
@@ -886,6 +887,11 @@ def plan_waivers(payload):
         for forecast, actions, ownership, acquired, roots in beam:
             for day in context["dates"]:
                 if actions and day < actions[-1]["date"]:
+                    continue
+                if (
+                    context["daily_add_limit"] is not None
+                    and sum(a["date"] == day for a in actions) >= context["daily_add_limit"]
+                ):
                     continue
                 candidates = _eligible_pickups(context, day, ownership, acquired)
                 candidate_truncated |= len(candidates) > context["candidate_limit"]

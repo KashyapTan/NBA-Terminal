@@ -18,6 +18,7 @@ import {
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
+import { bindUsage, declaredUsage } from "./usage-declaration";
 import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
@@ -30,26 +31,45 @@ export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const revision = useRef(0);
+  const statusRevision = useRef(0);
   const run = useCallback(
-    async (action: () => Promise<LeagueStatus | LeagueSnapshot>, connection = false) => {
-      const current = ++revision.current;
-      setLoading(true);
-      setError(null);
+    async (
+      action: () => Promise<LeagueStatus | LeagueSnapshot>,
+      connection = false,
+      statusOnly = false,
+    ) => {
+      const counter = statusOnly ? statusRevision : revision;
+      const current = ++counter.current;
+      if (connection) statusRevision.current++;
+      if (!statusOnly) {
+        setLoading(true);
+        setError(null);
+      }
       if (connection) setSnapshot(null);
       try {
         const result = await action();
-        if (current !== revision.current) return;
+        if (current !== counter.current) return;
         if ("connected" in result) {
-          setStatus(result);
-          if (!result.connected) setSnapshot(null);
+          setStatus((previous) =>
+            JSON.stringify(previous) === JSON.stringify(result) ? previous : result,
+          );
+          if (result.refresh_failed)
+            setError(
+              "ESPN session refresh failed; displayed data is retained until a fresh read succeeds.",
+            );
+          if (!result.connected && connection) setSnapshot(null);
+          else if (!result.connected)
+            setError(
+              "ESPN connection could not be refreshed; displayed matchup context is retained. Refresh successfully before using recommendations.",
+            );
         } else setSnapshot(result);
       } catch {
-        if (current === revision.current)
+        if (current === counter.current)
           setError(
             "League data could not be loaded. Check your connection and retry; displayed totals may be older.",
           );
       } finally {
-        if (current === revision.current) setLoading(false);
+        if (!statusOnly && current === counter.current) setLoading(false);
       }
     },
     [],
@@ -58,12 +78,20 @@ export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
     void run(() => api.status(), true);
     return () => {
       revision.current++;
+      statusRevision.current++;
     };
   }, [api, run]);
   useEffect(() => {
     if (status.connected && status.team_id) void run(() => api.snapshot());
   }, [api, status, run]);
-  const refreshStatus = useCallback(() => run(() => api.status()), [api, run]);
+  useEffect(() => {
+    if (!status.connected || !status.team_id) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void run(() => api.snapshot({ refresh: true }));
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, [api, run, status.connected, status.team_id]);
+  const refreshStatus = useCallback(() => run(() => api.status(), false, true), [api, run]);
   useEffect(() => {
     const changed = () => void refreshStatus();
     window.addEventListener("nba-espn-bridge", changed);
@@ -566,12 +594,13 @@ function WaiverStrategy({
     const current = ++generation.current;
     setPlan(null);
     setError(null);
-    if (!onPlan || !snapshot.league.supported) {
+    if (!onPlan || !snapshot.league.supported || leagueError || loading) {
       setBusy(false);
       return;
     }
     if (
       preferences.user_confirmed_counts &&
+      !preferences.usage_declaration &&
       preferences.counts_snapshot_at !== snapshot.fetched_at
     ) {
       setPreferences((current) => ({ ...current, user_confirmed_counts: false }));
@@ -580,8 +609,10 @@ function WaiverStrategy({
     setBusy(true);
     void onPlan({
       ...preferences,
+      usage_declaration: preferences.usage_declaration ?? declaredUsage(snapshot),
       context: {
         league_id: snapshot.league.id,
+        season_id: snapshot.league.season_id,
         team_id: snapshot.selected_team_id,
         matchup_period_id: snapshot.period.matchup_period_id,
         fetched_at: snapshot.fetched_at,
@@ -600,7 +631,7 @@ function WaiverStrategy({
     return () => {
       generation.current++;
     };
-  }, [snapshot, preferences, onPlan, attempt]);
+  }, [snapshot, preferences, onPlan, attempt, leagueError, loading]);
   function edit(patch: Partial<PlannerPreferences>) {
     generation.current++;
     setPlan(null);
@@ -706,9 +737,7 @@ function WaiverStrategy({
     ...candidates.filter((player) => relevantIds.has(player.id)),
   ];
   const settings = snapshot.league.acquisition_settings;
-  const espnLimit =
-    settings.matchup_add_limit ??
-    (settings.limit_per_scoring_period === false ? settings.weekly_add_limit : null);
+  const espnLimit = settings.matchup_add_limit ?? settings.weekly_add_limit;
   const knownLimit = espnLimit ?? preferences.matchup_add_limit_fallback;
   const capSource =
     settings.cap_source === "league_fallback_7"
@@ -840,11 +869,13 @@ function WaiverStrategy({
           <small>
             {plan?.acquisition_budget && plan.acquisition_budget.used == null
               ? "Current usage unverified"
-              : plan?.acquisition_budget?.usage_source === "user_confirmed"
+              : plan?.acquisition_budget?.usage_source?.includes("user")
                 ? "Your confirmed matchup usage"
-                : user?.weekly_usage_source
-                  ? "ESPN matchup usage"
-                  : "Usage source unavailable"}
+                : plan?.acquisition_budget?.usage_source?.includes("sparse")
+                  ? "ESPN sparse-map zero"
+                  : user?.weekly_usage_source
+                    ? "ESPN matchup usage"
+                    : "Usage source unavailable"}
           </small>
           {plan?.acquisition_budget?.daily_applicability === "unreported" && (
             <small>Daily-limit applicability not supplied; analysis models the matchup cap.</small>
@@ -880,7 +911,7 @@ function WaiverStrategy({
             : "Review the outlook before using an add."}
         </p>
       )}
-      <ActualSources teams={[user, opponent]} />
+      <ActualSources teams={[user, opponent]} compact />
       <section className="five-selection" aria-label="Five-category strategy">
         <p>
           <b>Selected five:</b>{" "}
@@ -1510,6 +1541,10 @@ function WaiverStrategy({
               edit({
                 user_confirmed_counts: event.target.checked,
                 counts_snapshot_at: event.target.checked ? snapshot.fetched_at : undefined,
+                usage_declaration:
+                  event.target.checked && preferences.used_adds != null
+                    ? bindUsage(snapshot, preferences.used_adds, new Date().toISOString())
+                    : undefined,
               })
             }
           />

@@ -140,8 +140,10 @@ def test_authorized_context_keeps_declared_matchup_cap_independent_of_optional_d
     settings = result["league"]["acquisition_settings"]
     assert settings["limit_per_scoring_period"] is None
     assert settings["reported_add_limit"] == 7 and settings["reported_limit_scope"] == "unknown"
-    assert settings["matchup_add_limit"] == 7 and settings["cap_source"] == "league_fallback_7"
-    assert result["teams"][0]["remaining_adds"] == 1
+    assert settings["matchup_add_limit"] is None
+    prefs = preferences(result) | {"user_confirmed_counts": False, "matchup_add_limit_fallback": 7}
+    plan = adapter.plan_snapshot_waivers(result, prefs, NOW)
+    assert plan["acquisition_budget"]["remaining"] == 1
 
 
 def test_optimizer_limit_is_separate_from_market_retrieval(monkeypatch, data):

@@ -1,0 +1,25 @@
+{
+  "url": "https://cdn1.espn.net/kona/49f1381346a2-1.522/_next/1904a5b5-6da5-4c47-86b8-1c4b4638d358/page/basketball/team.js",
+  "matches": [
+    {
+      "field": "matchupAcquisitionTotals",
+      "offset": 50826,
+      "text": "e):n.allowsAcquisitions&&0===p?m=a.formatMessage($e.acquisitionCounterTitle):0!==p&&(m=a.formatMessage($e.tradesCounterTitle));if(n.allowsMatchupAcquisitions&&(-1===u||u>0)){const e=Object(Je[\"y\"])(l,t,n);let s=a.formatMessage($e.noLimit);-1!==u&&(s=o.a.createElement(Xe[\"b\"],{config:t,current:y()(c.matchupAcquisitionTotals,e)||0,intl:a,league:n,matchupPeriodId:e}));g.push({label:a.formatMessage($e.matchupAcquisitionsCounter),limit:s})}n.allowsAcquisitions&&g.push({label:a.formatMessage($e.seasonAcquisitionsCounter),limit:-1===d?a.formatMessage($e.noLimit):\"\".concat(c.acquisitions,\"/\").concat(d)});(-1===p||p>0)&&g.push({label:a.formatMessage($e.tradesCounterTitle),limit:-1===p?a.formatMessage($e.noLimit):\"\".concat(c.trades,\"/\").concat(p)});return g.length>0&&o.a.createElement(\"div\",{className:\"jsx-403899296 team-acquisitions-counter dib v-mid\"},o.a.createElement(s.a,{styleId:\"403899296\",c"
+    },
+    {
+      "field": "matchupLimitPerScoringPeriod",
+      "offset": 482701,
+      "text": "tings_tooltip_header\",defaultMessage:\"Matchup Acquisition Limit\"},matchupPeriodAcquisitionLimits:{id:\"matchupPeriodAcquisitionLimit\",defaultMessage:\"{current} / {max}\"}});const E=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,-1];const P=\"acquisitionSettings.matchupAcquisitionLimit\";const I=\"acquisitionSettings.matchupLimitPerScoringPeriod\";const k=7;const C=({acquisitionLimit:e,daysInWeek:t=k,perScoringPeriod:a,saving:n=false,settings:{scheduleSettings:{matchupPeriodLength:s}}})=>{if(a&&e>0){const a=s*t;n?e/=a:e=Math.round(e*a)}return e};const O=function(){var e=T(function*({config:e,league:t,matchupPeriodId:a}){let n=m()(t,\"settings.acquisitionSettings.matchupAcquisitionLimit\");const s=m()(t,\"settings.acquisitionSettings.matchupLimitPerScoringPeriod\");if(s&&n>0){const s=yield Object(w[\"a\"])({config:e,league:t,matchupPeriodId:a});n=Math.round(s*n)}return n});return function t(a){return e.apply(this,"
+    },
+    {
+      "field": "matchupLimitPerScoringPeriod",
+      "offset": 483121,
+      "text": "ttings:{scheduleSettings:{matchupPeriodLength:s}}})=>{if(a&&e>0){const a=s*t;n?e/=a:e=Math.round(e*a)}return e};const O=function(){var e=T(function*({config:e,league:t,matchupPeriodId:a}){let n=m()(t,\"settings.acquisitionSettings.matchupAcquisitionLimit\");const s=m()(t,\"settings.acquisitionSettings.matchupLimitPerScoringPeriod\");if(s&&n>0){const s=yield Object(w[\"a\"])({config:e,league:t,matchupPeriodId:a});n=Math.round(s*n)}return n});return function t(a){return e.apply(this,arguments)}}();const M=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMessage:\"Matchup Acquisition Limit\"});t[\"a\"]=M;const A=({acquisitionLimit:e,intl:t,perScoringPeriod:a,settings:n})=>t.formatMessage(j.titles,{acquisitionLimit:C({acquisitionLimit:e,perScoringPeriod:a,settings:n})});t[\"c\"]=Object(u[\"observer\"])(class e extends o.a.Component{constructor(e){super(e);this.onChange=this.props"
+    },
+    {
+      "field": "310:function",
+      "offset": 383029,
+      "text": "ction(){return g.a});var f=a(556);var h=a.n(f);var b=a(327);var v=a.n(b);a.d(t,\"e\",function(){return v.a});var y=a(543);var _=a.n(y);a.d(t,\"f\",function(){return _.a});var x=a(634);var S=a.n(x);a.d(t,\"g\",function(){return S.a});const w=\"boolean\";const T=\"number\";const j=\"object\";const E=\"undefined\"},310:function(e,t,a){\"use strict\";var n=a(63);var s=a.n(n);var r=a(19);var o=a.n(r);var i=a(14);var l=a(53);function c(e){return function(){var t=this,a=arguments;return new Promise(function(n,s){var r=e.apply(t,a);function o(e,t){try{var a=r[e](t);var o=a.value}catch(e){s(e);return}a.done?n(o):Promise.resolve(o).then(i,l)}function i(e){o(\"next\",e)}function l(e){o(\"throw\",e)}i()})}}t[\"a\"]=function(){var e=c(function*({config:e,league:t,matchupPeriodId:a}){const n=yield Object(i[\"L\"])({config:e,seasonId:e.constants.seasonConfig});const r=Object(l[\"a\"])(t,a);const c=r.length;const d=s()(r,(e,{id:"
+    }
+  ]
+}

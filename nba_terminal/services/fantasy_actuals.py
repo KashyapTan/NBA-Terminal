@@ -226,13 +226,28 @@ def valid_daily_ownership(lineups):
 
 
 def reconstruct(
-    team_id, days, lineups, schedules, rows, official, fetched_at, *, history_complete=True, identities=None
+    team_id,
+    days,
+    lineups,
+    schedules,
+    rows,
+    official,
+    fetched_at,
+    *,
+    history_complete=True,
+    identities=None,
+    no_started_games=False,
 ):
     totals = dict.fromkeys(PRIMITIVES, 0.0)
     gaps, credited = [], set()
     expected, covered = 0, 0
     fresh, finalized = True, True
-    expected_known = bool(days) and history_complete
+    verified_zero = no_started_games is True and (
+        official is None or (complete(official) and all(official[k] == 0 for k in PRIMITIVES))
+    )
+    if verified_zero:
+        days = {}  # No eligible bankable event exists; no historical ownership is needed yet.
+    expected_known = verified_zero or bool(days) and history_complete
     for period, day in sorted(days.items()):
         if not valid_daily_ownership(lineups.get(period, {})):
             expected_known = False
@@ -294,8 +309,8 @@ def reconstruct(
                 finalized &= row.get("final") is True
                 for key in PRIMITIVES:
                     totals[key] += row["totals"][key]
-    is_complete = bool(days) and history_complete and not gaps and covered == expected and fresh
-    derived = percentages(totals) if days and (covered or not gaps) else None
+    is_complete = verified_zero or bool(days) and history_complete and not gaps and covered == expected and fresh
+    derived = percentages(totals) if verified_zero or days and (covered or not gaps) else None
     # Prefer the independently reconstructed NBA basis only when every required fact is present/fresh.
     source = "nba_derived" if is_complete else "espn_official" if complete(official) else None
     return {
@@ -336,11 +351,17 @@ def enrich_snapshot(client, raw, snapshot, schedules):
         for g in p.get("schedule") or []
     }
     periods = snapshot["period"]["scoring_period_ids"]
-    days = {
-        p: (next(iter(anchors)) + timedelta(days=p)).isoformat()
+    required_periods = [
+        p
         for p in periods
-        if len(anchors) == 1 and isinstance(current, int) and p <= current
-    }
+        if isinstance(current, int)
+        and p <= current
+        and (
+            snapshot["period"].get("bankable_periods_verified") is not True
+            or p in snapshot["period"].get("bankable_scoring_period_ids", [])
+        )
+    ]
+    days = {p: (next(iter(anchors)) + timedelta(days=p)).isoformat() for p in required_periods if len(anchors) == 1}
     team_ids = {snapshot["selected_team_id"], snapshot["opponent_team_id"]}
     lineups, failures = {}, []
     identities = {
@@ -348,6 +369,8 @@ def enrich_snapshot(client, raw, snapshot, schedules):
         for p in [p for team in snapshot["teams"] for p in team["roster"]] + snapshot.get("free_agents", [])
         if p.get("identity", {}).get("nba_player_id") is not None
     }
+    if snapshot["period"].get("no_started_games_verified") is True:
+        days = {}
     for period in sorted(days)[:14]:
         try:
             daily = client.get(
@@ -379,9 +402,10 @@ def enrich_snapshot(client, raw, snapshot, schedules):
                 team["totals"],
                 snapshot["fetched_at"],
                 identities=identities,
+                no_started_games=snapshot["period"].get("no_started_games_verified") is True,
                 history_complete=snapshot.get("enrichment", {}).get("schedule_status") != "stale"
                 and len(days) <= 14
-                and len(days) == len([p for p in periods if isinstance(current, int) and p <= current])
+                and len(days) == len(required_periods)
                 and snapshot["period"].get("calendar_verified", False)
                 and not snapshot["period"]["source"].endswith("partial"),
             )

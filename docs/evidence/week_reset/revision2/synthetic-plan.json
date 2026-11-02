@@ -1,0 +1,3648 @@
+{
+  "status": "ready",
+  "evaluation_state": "confirmed_ordered_plan",
+  "reasons": [],
+  "actions": [
+    {
+      "date": "2026-11-07",
+      "add_id": "100",
+      "drop_id": "1",
+      "stream_slot": 1,
+      "season_cost": 0,
+      "calculation": {
+        "pts": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 20,
+          "drop_rate": 1,
+          "added_total": 40,
+          "lost_total": 2,
+          "net_total": 38,
+          "lineup_other_net": 0
+        },
+        "reb": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 8,
+          "drop_rate": 0.4,
+          "added_total": 16,
+          "lost_total": 0.8,
+          "net_total": 15.2,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "ast": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 60,
+          "drop_rate": 0.30000000000000004,
+          "added_total": 120,
+          "lost_total": 0.6000000000000001,
+          "net_total": 119.4,
+          "lineup_other_net": 5.773159728050814e-15
+        },
+        "stl": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 15,
+          "drop_rate": 0.1,
+          "added_total": 30,
+          "lost_total": 0.2,
+          "net_total": 29.8,
+          "lineup_other_net": 7.216449660063518e-16
+        },
+        "blk": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 1,
+          "drop_rate": 0.05,
+          "added_total": 2,
+          "lost_total": 0.1,
+          "net_total": 1.9,
+          "lineup_other_net": -8.326672684688674e-17
+        },
+        "threes": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 2,
+          "drop_rate": 0.1,
+          "added_total": 4,
+          "lost_total": 0.2,
+          "net_total": 3.8,
+          "lineup_other_net": -1.6653345369377348e-16
+        },
+        "to": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": true,
+          "add_rate": 3,
+          "drop_rate": 0.15000000000000002,
+          "added_total": 6,
+          "lost_total": 0.30000000000000004,
+          "net_total": 5.699999999999999,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "fg_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.5,
+          "drop_rate": 0.5,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": 0,
+          "weighted": {
+            "before_makes": 2.1000000000000005,
+            "before_attempts": 4.200000000000001,
+            "after_makes": 13.5,
+            "after_attempts": 27,
+            "add_makes_rate": 6,
+            "add_attempts_rate": 12,
+            "drop_makes_rate": 0.30000000000000004,
+            "drop_attempts_rate": 0.6000000000000001
+          }
+        },
+        "ft_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.75,
+          "drop_rate": 0.7500000000000001,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": -2.220446049250313e-16,
+          "weighted": {
+            "before_makes": 1.0500000000000003,
+            "before_attempts": 1.4,
+            "after_makes": 6.75,
+            "after_attempts": 9,
+            "add_makes_rate": 3,
+            "add_attempts_rate": 4,
+            "drop_makes_rate": 0.15000000000000002,
+            "drop_attempts_rate": 0.2
+          }
+        }
+      },
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 7,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0,
+            "after": 45,
+            "net": 38
+          },
+          "reb": {
+            "before": 2.8,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16,
+            "after": 18,
+            "net": 15.2
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15,
+            "after": 121.5,
+            "net": 119.4
+          },
+          "stl": {
+            "before": 0.7,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16,
+            "after": 30.5,
+            "net": 29.8
+          },
+          "blk": {
+            "before": 0.35,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17,
+            "after": 2.25,
+            "net": 1.9
+          },
+          "threes": {
+            "before": 0.7,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16,
+            "after": 4.5,
+            "net": 3.8
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fgm": {
+            "before": 2.1000000000000005,
+            "add": 12,
+            "drop": 0.6000000000000001,
+            "spillover": -1.3322676295501878e-15,
+            "after": 13.5,
+            "net": 11.399999999999999
+          },
+          "fga": {
+            "before": 4.200000000000001,
+            "add": 24,
+            "drop": 1.2000000000000002,
+            "spillover": -2.6645352591003757e-15,
+            "after": 27,
+            "net": 22.799999999999997
+          },
+          "ftm": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fta": {
+            "before": 1.4,
+            "add": 8,
+            "drop": 0.4,
+            "spillover": -3.3306690738754696e-16,
+            "after": 9,
+            "net": 7.6
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 7,
+            "after": 45,
+            "net": 38,
+            "opponent_before": 140,
+            "opponent_after": 140,
+            "lower_is_better": false,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0
+          },
+          "reb": {
+            "before": 2.8,
+            "after": 18,
+            "net": 15.2,
+            "opponent_before": 56,
+            "opponent_after": 56,
+            "lower_is_better": false,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "after": 121.5,
+            "net": 119.4,
+            "opponent_before": 42,
+            "opponent_after": 42,
+            "lower_is_better": false,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15
+          },
+          "stl": {
+            "before": 0.7,
+            "after": 30.5,
+            "net": 29.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16
+          },
+          "blk": {
+            "before": 0.35,
+            "after": 2.25,
+            "net": 1.9,
+            "opponent_before": 7,
+            "opponent_after": 7,
+            "lower_is_better": false,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17
+          },
+          "threes": {
+            "before": 0.7,
+            "after": 4.5,
+            "net": 3.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "after": 6.75,
+            "net": 5.699999999999999,
+            "opponent_before": 21,
+            "opponent_after": 21,
+            "lower_is_better": true,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 2.1000000000000005,
+              "add": 12,
+              "drop": 0.6000000000000001,
+              "spillover": -1.3322676295501878e-15,
+              "after": 13.5,
+              "net": 11.399999999999999
+            },
+            "attempts": {
+              "before": 4.200000000000001,
+              "add": 24,
+              "drop": 1.2000000000000002,
+              "spillover": -2.6645352591003757e-15,
+              "after": 27,
+              "net": 22.799999999999997
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7500000000000002,
+            "after": 0.75,
+            "net": -2.220446049250313e-16,
+            "opponent_before": 0.75,
+            "opponent_after": 0.75,
+            "lower_is_better": false,
+            "makes": {
+              "before": 1.0500000000000003,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16,
+              "after": 6.75,
+              "net": 5.699999999999999
+            },
+            "attempts": {
+              "before": 1.4,
+              "add": 8,
+              "drop": 0.4,
+              "spillover": -3.3306690738754696e-16,
+              "after": 9,
+              "net": 7.6
+            },
+            "percentage_points": -2.220446049250313e-14,
+            "additive": false
+          }
+        }
+      },
+      "add_starts": 2,
+      "add_usable_dates": [
+        "2026-11-07",
+        "2026-11-08"
+      ],
+      "drop_starts": 2,
+      "zero_drop_reason": null,
+      "lineup_changes": {
+        "displaced": [],
+        "recovered": [],
+        "net_starts": 0
+      },
+      "rate_provenance": {
+        "add": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+        "drop": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}"
+      },
+      "rate_evidence": {
+        "add": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        },
+        "drop": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        }
+      },
+      "add_rates": {
+        "pts": 20,
+        "reb": 8,
+        "ast": 60,
+        "stl": 15,
+        "blk": 1,
+        "threes": 2,
+        "to": 3,
+        "fgm": 6,
+        "fga": 12,
+        "ftm": 3,
+        "fta": 4,
+        "minutes": 32
+      },
+      "drop_rates": {
+        "pts": 1,
+        "reb": 0.4,
+        "ast": 0.30000000000000004,
+        "stl": 0.1,
+        "blk": 0.05,
+        "threes": 0.1,
+        "to": 0.15000000000000002,
+        "fgm": 0.30000000000000004,
+        "fga": 0.6000000000000001,
+        "ftm": 0.15000000000000002,
+        "fta": 0.2,
+        "minutes": 32
+      },
+      "score_before": 0.40000020000000075,
+      "score_after": 0.7999994,
+      "focus_score_gain": 0.3999991999999993,
+      "estimated_win_gain": 0.3999991999999993,
+      "net_score": 0.3999991999999993,
+      "probability_gain": 0.25438698288807204,
+      "gains": {
+        "pts": 38,
+        "reb": 15.2,
+        "ast": 119.4,
+        "stl": 29.8,
+        "blk": 1.9,
+        "threes": 3.8,
+        "to": 5.699999999999999,
+        "fgm": 11.399999999999999,
+        "fga": 22.799999999999997,
+        "ftm": 5.699999999999999,
+        "fta": 7.6
+      },
+      "category_impacts": {
+        "pts": {
+          "before": 7,
+          "after": 45,
+          "margin_before": -133,
+          "margin_after": -95,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "reb": {
+          "before": 2.8,
+          "after": 18,
+          "margin_before": -53.2,
+          "margin_after": -38,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ast": {
+          "before": 2.1000000000000005,
+          "after": 121.5,
+          "margin_before": -39.9,
+          "margin_after": 79.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "stl": {
+          "before": 0.7,
+          "after": 30.5,
+          "margin_before": -13.3,
+          "margin_after": 16.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "blk": {
+          "before": 0.35,
+          "after": 2.25,
+          "margin_before": -6.65,
+          "margin_after": -4.75,
+          "estimate_gain": 0.008332382420583317,
+          "flips_projection": false
+        },
+        "threes": {
+          "before": 0.7,
+          "after": 4.5,
+          "margin_before": -13.3,
+          "margin_after": -9.5,
+          "estimate_gain": 1.7083242571548186e-8,
+          "flips_projection": false
+        },
+        "to": {
+          "before": 1.0500000000000003,
+          "after": 6.75,
+          "margin_before": 19.95,
+          "margin_after": 14.25,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "fg_pct": {
+          "before": 0.5,
+          "after": 0.5,
+          "margin_before": 0,
+          "margin_after": 0,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ft_pct": {
+          "before": 0.7500000000000002,
+          "after": 0.75,
+          "margin_before": 2.220446049250313e-16,
+          "margin_after": 0,
+          "estimate_gain": -3.552713678800501e-15,
+          "flips_projection": false
+        }
+      },
+      "category_probability_gains": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0.9999979999999999,
+        "stl": 0.9999979999999999,
+        "blk": 0.008332382420583317,
+        "threes": 1.7083242571548186e-8,
+        "to": 0,
+        "fg_pct": 0,
+        "ft_pct": -3.552713678800501e-15
+      },
+      "target_categories": [
+        "ast",
+        "stl"
+      ],
+      "games_gain": 0,
+      "minutes_gain": 0,
+      "season_value": {
+        "drop": 0.21633333333333335,
+        "add": 19.74333333333334,
+        "basis": "per-game heuristic proxy"
+      },
+      "long_term_tradeoff": {
+        "cost": 0,
+        "explanation": "Soft per-game opportunity cost, not future-week modeling."
+      },
+      "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.",
+      "stream_roster_id": "1"
+    }
+  ],
+  "plan": [
+    {
+      "date": "2026-11-07",
+      "add_id": "100",
+      "drop_id": "1",
+      "stream_slot": 1,
+      "season_cost": 0,
+      "calculation": {
+        "pts": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 20,
+          "drop_rate": 1,
+          "added_total": 40,
+          "lost_total": 2,
+          "net_total": 38,
+          "lineup_other_net": 0
+        },
+        "reb": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 8,
+          "drop_rate": 0.4,
+          "added_total": 16,
+          "lost_total": 0.8,
+          "net_total": 15.2,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "ast": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 60,
+          "drop_rate": 0.30000000000000004,
+          "added_total": 120,
+          "lost_total": 0.6000000000000001,
+          "net_total": 119.4,
+          "lineup_other_net": 5.773159728050814e-15
+        },
+        "stl": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 15,
+          "drop_rate": 0.1,
+          "added_total": 30,
+          "lost_total": 0.2,
+          "net_total": 29.8,
+          "lineup_other_net": 7.216449660063518e-16
+        },
+        "blk": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 1,
+          "drop_rate": 0.05,
+          "added_total": 2,
+          "lost_total": 0.1,
+          "net_total": 1.9,
+          "lineup_other_net": -8.326672684688674e-17
+        },
+        "threes": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 2,
+          "drop_rate": 0.1,
+          "added_total": 4,
+          "lost_total": 0.2,
+          "net_total": 3.8,
+          "lineup_other_net": -1.6653345369377348e-16
+        },
+        "to": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": true,
+          "add_rate": 3,
+          "drop_rate": 0.15000000000000002,
+          "added_total": 6,
+          "lost_total": 0.30000000000000004,
+          "net_total": 5.699999999999999,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "fg_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.5,
+          "drop_rate": 0.5,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": 0,
+          "weighted": {
+            "before_makes": 2.1000000000000005,
+            "before_attempts": 4.200000000000001,
+            "after_makes": 13.5,
+            "after_attempts": 27,
+            "add_makes_rate": 6,
+            "add_attempts_rate": 12,
+            "drop_makes_rate": 0.30000000000000004,
+            "drop_attempts_rate": 0.6000000000000001
+          }
+        },
+        "ft_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.75,
+          "drop_rate": 0.7500000000000001,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": -2.220446049250313e-16,
+          "weighted": {
+            "before_makes": 1.0500000000000003,
+            "before_attempts": 1.4,
+            "after_makes": 6.75,
+            "after_attempts": 9,
+            "add_makes_rate": 3,
+            "add_attempts_rate": 4,
+            "drop_makes_rate": 0.15000000000000002,
+            "drop_attempts_rate": 0.2
+          }
+        }
+      },
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 7,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0,
+            "after": 45,
+            "net": 38
+          },
+          "reb": {
+            "before": 2.8,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16,
+            "after": 18,
+            "net": 15.2
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15,
+            "after": 121.5,
+            "net": 119.4
+          },
+          "stl": {
+            "before": 0.7,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16,
+            "after": 30.5,
+            "net": 29.8
+          },
+          "blk": {
+            "before": 0.35,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17,
+            "after": 2.25,
+            "net": 1.9
+          },
+          "threes": {
+            "before": 0.7,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16,
+            "after": 4.5,
+            "net": 3.8
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fgm": {
+            "before": 2.1000000000000005,
+            "add": 12,
+            "drop": 0.6000000000000001,
+            "spillover": -1.3322676295501878e-15,
+            "after": 13.5,
+            "net": 11.399999999999999
+          },
+          "fga": {
+            "before": 4.200000000000001,
+            "add": 24,
+            "drop": 1.2000000000000002,
+            "spillover": -2.6645352591003757e-15,
+            "after": 27,
+            "net": 22.799999999999997
+          },
+          "ftm": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fta": {
+            "before": 1.4,
+            "add": 8,
+            "drop": 0.4,
+            "spillover": -3.3306690738754696e-16,
+            "after": 9,
+            "net": 7.6
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 7,
+            "after": 45,
+            "net": 38,
+            "opponent_before": 140,
+            "opponent_after": 140,
+            "lower_is_better": false,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0
+          },
+          "reb": {
+            "before": 2.8,
+            "after": 18,
+            "net": 15.2,
+            "opponent_before": 56,
+            "opponent_after": 56,
+            "lower_is_better": false,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "after": 121.5,
+            "net": 119.4,
+            "opponent_before": 42,
+            "opponent_after": 42,
+            "lower_is_better": false,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15
+          },
+          "stl": {
+            "before": 0.7,
+            "after": 30.5,
+            "net": 29.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16
+          },
+          "blk": {
+            "before": 0.35,
+            "after": 2.25,
+            "net": 1.9,
+            "opponent_before": 7,
+            "opponent_after": 7,
+            "lower_is_better": false,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17
+          },
+          "threes": {
+            "before": 0.7,
+            "after": 4.5,
+            "net": 3.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "after": 6.75,
+            "net": 5.699999999999999,
+            "opponent_before": 21,
+            "opponent_after": 21,
+            "lower_is_better": true,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 2.1000000000000005,
+              "add": 12,
+              "drop": 0.6000000000000001,
+              "spillover": -1.3322676295501878e-15,
+              "after": 13.5,
+              "net": 11.399999999999999
+            },
+            "attempts": {
+              "before": 4.200000000000001,
+              "add": 24,
+              "drop": 1.2000000000000002,
+              "spillover": -2.6645352591003757e-15,
+              "after": 27,
+              "net": 22.799999999999997
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7500000000000002,
+            "after": 0.75,
+            "net": -2.220446049250313e-16,
+            "opponent_before": 0.75,
+            "opponent_after": 0.75,
+            "lower_is_better": false,
+            "makes": {
+              "before": 1.0500000000000003,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16,
+              "after": 6.75,
+              "net": 5.699999999999999
+            },
+            "attempts": {
+              "before": 1.4,
+              "add": 8,
+              "drop": 0.4,
+              "spillover": -3.3306690738754696e-16,
+              "after": 9,
+              "net": 7.6
+            },
+            "percentage_points": -2.220446049250313e-14,
+            "additive": false
+          }
+        }
+      },
+      "add_starts": 2,
+      "add_usable_dates": [
+        "2026-11-07",
+        "2026-11-08"
+      ],
+      "drop_starts": 2,
+      "zero_drop_reason": null,
+      "lineup_changes": {
+        "displaced": [],
+        "recovered": [],
+        "net_starts": 0
+      },
+      "rate_provenance": {
+        "add": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+        "drop": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}"
+      },
+      "rate_evidence": {
+        "add": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        },
+        "drop": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        }
+      },
+      "add_rates": {
+        "pts": 20,
+        "reb": 8,
+        "ast": 60,
+        "stl": 15,
+        "blk": 1,
+        "threes": 2,
+        "to": 3,
+        "fgm": 6,
+        "fga": 12,
+        "ftm": 3,
+        "fta": 4,
+        "minutes": 32
+      },
+      "drop_rates": {
+        "pts": 1,
+        "reb": 0.4,
+        "ast": 0.30000000000000004,
+        "stl": 0.1,
+        "blk": 0.05,
+        "threes": 0.1,
+        "to": 0.15000000000000002,
+        "fgm": 0.30000000000000004,
+        "fga": 0.6000000000000001,
+        "ftm": 0.15000000000000002,
+        "fta": 0.2,
+        "minutes": 32
+      },
+      "score_before": 0.40000020000000075,
+      "score_after": 0.7999994,
+      "focus_score_gain": 0.3999991999999993,
+      "estimated_win_gain": 0.3999991999999993,
+      "net_score": 0.3999991999999993,
+      "probability_gain": 0.25438698288807204,
+      "gains": {
+        "pts": 38,
+        "reb": 15.2,
+        "ast": 119.4,
+        "stl": 29.8,
+        "blk": 1.9,
+        "threes": 3.8,
+        "to": 5.699999999999999,
+        "fgm": 11.399999999999999,
+        "fga": 22.799999999999997,
+        "ftm": 5.699999999999999,
+        "fta": 7.6
+      },
+      "category_impacts": {
+        "pts": {
+          "before": 7,
+          "after": 45,
+          "margin_before": -133,
+          "margin_after": -95,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "reb": {
+          "before": 2.8,
+          "after": 18,
+          "margin_before": -53.2,
+          "margin_after": -38,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ast": {
+          "before": 2.1000000000000005,
+          "after": 121.5,
+          "margin_before": -39.9,
+          "margin_after": 79.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "stl": {
+          "before": 0.7,
+          "after": 30.5,
+          "margin_before": -13.3,
+          "margin_after": 16.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "blk": {
+          "before": 0.35,
+          "after": 2.25,
+          "margin_before": -6.65,
+          "margin_after": -4.75,
+          "estimate_gain": 0.008332382420583317,
+          "flips_projection": false
+        },
+        "threes": {
+          "before": 0.7,
+          "after": 4.5,
+          "margin_before": -13.3,
+          "margin_after": -9.5,
+          "estimate_gain": 1.7083242571548186e-8,
+          "flips_projection": false
+        },
+        "to": {
+          "before": 1.0500000000000003,
+          "after": 6.75,
+          "margin_before": 19.95,
+          "margin_after": 14.25,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "fg_pct": {
+          "before": 0.5,
+          "after": 0.5,
+          "margin_before": 0,
+          "margin_after": 0,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ft_pct": {
+          "before": 0.7500000000000002,
+          "after": 0.75,
+          "margin_before": 2.220446049250313e-16,
+          "margin_after": 0,
+          "estimate_gain": -3.552713678800501e-15,
+          "flips_projection": false
+        }
+      },
+      "category_probability_gains": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0.9999979999999999,
+        "stl": 0.9999979999999999,
+        "blk": 0.008332382420583317,
+        "threes": 1.7083242571548186e-8,
+        "to": 0,
+        "fg_pct": 0,
+        "ft_pct": -3.552713678800501e-15
+      },
+      "target_categories": [
+        "ast",
+        "stl"
+      ],
+      "games_gain": 0,
+      "minutes_gain": 0,
+      "season_value": {
+        "drop": 0.21633333333333335,
+        "add": 19.74333333333334,
+        "basis": "per-game heuristic proxy"
+      },
+      "long_term_tradeoff": {
+        "cost": 0,
+        "explanation": "Soft per-game opportunity cost, not future-week modeling."
+      },
+      "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.",
+      "stream_roster_id": "1"
+    }
+  ],
+  "recommendations": [
+    {
+      "date": "2026-11-07",
+      "add_id": "100",
+      "drop_id": "1",
+      "stream_slot": "1",
+      "season_cost": 0,
+      "calculation": {
+        "pts": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 20,
+          "drop_rate": 1,
+          "added_total": 40,
+          "lost_total": 2,
+          "net_total": 38,
+          "lineup_other_net": 0
+        },
+        "reb": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 8,
+          "drop_rate": 0.4,
+          "added_total": 16,
+          "lost_total": 0.8,
+          "net_total": 15.2,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "ast": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 60,
+          "drop_rate": 0.30000000000000004,
+          "added_total": 120,
+          "lost_total": 0.6000000000000001,
+          "net_total": 119.4,
+          "lineup_other_net": 5.773159728050814e-15
+        },
+        "stl": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 15,
+          "drop_rate": 0.1,
+          "added_total": 30,
+          "lost_total": 0.2,
+          "net_total": 29.8,
+          "lineup_other_net": 7.216449660063518e-16
+        },
+        "blk": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 1,
+          "drop_rate": 0.05,
+          "added_total": 2,
+          "lost_total": 0.1,
+          "net_total": 1.9,
+          "lineup_other_net": -8.326672684688674e-17
+        },
+        "threes": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 2,
+          "drop_rate": 0.1,
+          "added_total": 4,
+          "lost_total": 0.2,
+          "net_total": 3.8,
+          "lineup_other_net": -1.6653345369377348e-16
+        },
+        "to": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": true,
+          "add_rate": 3,
+          "drop_rate": 0.15000000000000002,
+          "added_total": 6,
+          "lost_total": 0.30000000000000004,
+          "net_total": 5.699999999999999,
+          "lineup_other_net": -6.661338147750939e-16
+        },
+        "fg_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.5,
+          "drop_rate": 0.5,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": 0,
+          "weighted": {
+            "before_makes": 2.1000000000000005,
+            "before_attempts": 4.200000000000001,
+            "after_makes": 13.5,
+            "after_attempts": 27,
+            "add_makes_rate": 6,
+            "add_attempts_rate": 12,
+            "drop_makes_rate": 0.30000000000000004,
+            "drop_attempts_rate": 0.6000000000000001
+          }
+        },
+        "ft_pct": {
+          "add_starts": 2,
+          "drop_starts": 2,
+          "add_eligible_games": 2,
+          "drop_eligible_games": 2,
+          "lower_is_better": false,
+          "add_rate": 0.75,
+          "drop_rate": 0.7500000000000001,
+          "added_total": null,
+          "lost_total": null,
+          "lineup_other_net": null,
+          "net_total": -2.220446049250313e-16,
+          "weighted": {
+            "before_makes": 1.0500000000000003,
+            "before_attempts": 1.4,
+            "after_makes": 6.75,
+            "after_attempts": 9,
+            "add_makes_rate": 3,
+            "add_attempts_rate": 4,
+            "drop_makes_rate": 0.15000000000000002,
+            "drop_attempts_rate": 0.2
+          }
+        }
+      },
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 7,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0,
+            "after": 45,
+            "net": 38
+          },
+          "reb": {
+            "before": 2.8,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16,
+            "after": 18,
+            "net": 15.2
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15,
+            "after": 121.5,
+            "net": 119.4
+          },
+          "stl": {
+            "before": 0.7,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16,
+            "after": 30.5,
+            "net": 29.8
+          },
+          "blk": {
+            "before": 0.35,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17,
+            "after": 2.25,
+            "net": 1.9
+          },
+          "threes": {
+            "before": 0.7,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16,
+            "after": 4.5,
+            "net": 3.8
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fgm": {
+            "before": 2.1000000000000005,
+            "add": 12,
+            "drop": 0.6000000000000001,
+            "spillover": -1.3322676295501878e-15,
+            "after": 13.5,
+            "net": 11.399999999999999
+          },
+          "fga": {
+            "before": 4.200000000000001,
+            "add": 24,
+            "drop": 1.2000000000000002,
+            "spillover": -2.6645352591003757e-15,
+            "after": 27,
+            "net": 22.799999999999997
+          },
+          "ftm": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "fta": {
+            "before": 1.4,
+            "add": 8,
+            "drop": 0.4,
+            "spillover": -3.3306690738754696e-16,
+            "after": 9,
+            "net": 7.6
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 7,
+            "after": 45,
+            "net": 38,
+            "opponent_before": 140,
+            "opponent_after": 140,
+            "lower_is_better": false,
+            "add": 40,
+            "drop": 2,
+            "spillover": 0
+          },
+          "reb": {
+            "before": 2.8,
+            "after": 18,
+            "net": 15.2,
+            "opponent_before": 56,
+            "opponent_after": 56,
+            "lower_is_better": false,
+            "add": 16,
+            "drop": 0.8,
+            "spillover": -6.661338147750939e-16
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "after": 121.5,
+            "net": 119.4,
+            "opponent_before": 42,
+            "opponent_after": 42,
+            "lower_is_better": false,
+            "add": 120,
+            "drop": 0.6000000000000001,
+            "spillover": 5.773159728050814e-15
+          },
+          "stl": {
+            "before": 0.7,
+            "after": 30.5,
+            "net": 29.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 30,
+            "drop": 0.2,
+            "spillover": 7.216449660063518e-16
+          },
+          "blk": {
+            "before": 0.35,
+            "after": 2.25,
+            "net": 1.9,
+            "opponent_before": 7,
+            "opponent_after": 7,
+            "lower_is_better": false,
+            "add": 2,
+            "drop": 0.1,
+            "spillover": -8.326672684688674e-17
+          },
+          "threes": {
+            "before": 0.7,
+            "after": 4.5,
+            "net": 3.8,
+            "opponent_before": 14,
+            "opponent_after": 14,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.2,
+            "spillover": -1.6653345369377348e-16
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "after": 6.75,
+            "net": 5.699999999999999,
+            "opponent_before": 21,
+            "opponent_after": 21,
+            "lower_is_better": true,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 2.1000000000000005,
+              "add": 12,
+              "drop": 0.6000000000000001,
+              "spillover": -1.3322676295501878e-15,
+              "after": 13.5,
+              "net": 11.399999999999999
+            },
+            "attempts": {
+              "before": 4.200000000000001,
+              "add": 24,
+              "drop": 1.2000000000000002,
+              "spillover": -2.6645352591003757e-15,
+              "after": 27,
+              "net": 22.799999999999997
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7500000000000002,
+            "after": 0.75,
+            "net": -2.220446049250313e-16,
+            "opponent_before": 0.75,
+            "opponent_after": 0.75,
+            "lower_is_better": false,
+            "makes": {
+              "before": 1.0500000000000003,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16,
+              "after": 6.75,
+              "net": 5.699999999999999
+            },
+            "attempts": {
+              "before": 1.4,
+              "add": 8,
+              "drop": 0.4,
+              "spillover": -3.3306690738754696e-16,
+              "after": 9,
+              "net": 7.6
+            },
+            "percentage_points": -2.220446049250313e-14,
+            "additive": false
+          }
+        }
+      },
+      "add_starts": 2,
+      "add_usable_dates": [
+        "2026-11-07",
+        "2026-11-08"
+      ],
+      "drop_starts": 2,
+      "zero_drop_reason": null,
+      "lineup_changes": {
+        "displaced": [],
+        "recovered": [],
+        "net_starts": 0
+      },
+      "rate_provenance": {
+        "add": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+        "drop": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}"
+      },
+      "rate_evidence": {
+        "add": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        },
+        "drop": {
+          "source": "espn_actual_season",
+          "season": "2026-27",
+          "games": 2,
+          "small_sample": true,
+          "fallback": true,
+          "reason": "NBA batch unavailable, stale, or identity/sample missing",
+          "status": "fallback",
+          "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+        }
+      },
+      "add_rates": {
+        "pts": 20,
+        "reb": 8,
+        "ast": 60,
+        "stl": 15,
+        "blk": 1,
+        "threes": 2,
+        "to": 3,
+        "fgm": 6,
+        "fga": 12,
+        "ftm": 3,
+        "fta": 4,
+        "minutes": 32
+      },
+      "drop_rates": {
+        "pts": 1,
+        "reb": 0.4,
+        "ast": 0.30000000000000004,
+        "stl": 0.1,
+        "blk": 0.05,
+        "threes": 0.1,
+        "to": 0.15000000000000002,
+        "fgm": 0.30000000000000004,
+        "fga": 0.6000000000000001,
+        "ftm": 0.15000000000000002,
+        "fta": 0.2,
+        "minutes": 32
+      },
+      "score_before": 0.40000020000000075,
+      "score_after": 0.7999994,
+      "focus_score_gain": 0.3999991999999993,
+      "estimated_win_gain": 0.3999991999999993,
+      "net_score": 0.3999991999999993,
+      "probability_gain": 0.25438698288807204,
+      "gains": {
+        "pts": 38,
+        "reb": 15.2,
+        "ast": 119.4,
+        "stl": 29.8,
+        "blk": 1.9,
+        "threes": 3.8,
+        "to": 5.699999999999999,
+        "fgm": 11.399999999999999,
+        "fga": 22.799999999999997,
+        "ftm": 5.699999999999999,
+        "fta": 7.6
+      },
+      "category_impacts": {
+        "pts": {
+          "before": 7,
+          "after": 45,
+          "margin_before": -133,
+          "margin_after": -95,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "reb": {
+          "before": 2.8,
+          "after": 18,
+          "margin_before": -53.2,
+          "margin_after": -38,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ast": {
+          "before": 2.1000000000000005,
+          "after": 121.5,
+          "margin_before": -39.9,
+          "margin_after": 79.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "stl": {
+          "before": 0.7,
+          "after": 30.5,
+          "margin_before": -13.3,
+          "margin_after": 16.5,
+          "estimate_gain": 0.9999979999999999,
+          "flips_projection": true
+        },
+        "blk": {
+          "before": 0.35,
+          "after": 2.25,
+          "margin_before": -6.65,
+          "margin_after": -4.75,
+          "estimate_gain": 0.008332382420583317,
+          "flips_projection": false
+        },
+        "threes": {
+          "before": 0.7,
+          "after": 4.5,
+          "margin_before": -13.3,
+          "margin_after": -9.5,
+          "estimate_gain": 1.7083242571548186e-8,
+          "flips_projection": false
+        },
+        "to": {
+          "before": 1.0500000000000003,
+          "after": 6.75,
+          "margin_before": 19.95,
+          "margin_after": 14.25,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "fg_pct": {
+          "before": 0.5,
+          "after": 0.5,
+          "margin_before": 0,
+          "margin_after": 0,
+          "estimate_gain": 0,
+          "flips_projection": false
+        },
+        "ft_pct": {
+          "before": 0.7500000000000002,
+          "after": 0.75,
+          "margin_before": 2.220446049250313e-16,
+          "margin_after": 0,
+          "estimate_gain": -3.552713678800501e-15,
+          "flips_projection": false
+        }
+      },
+      "category_probability_gains": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0.9999979999999999,
+        "stl": 0.9999979999999999,
+        "blk": 0.008332382420583317,
+        "threes": 1.7083242571548186e-8,
+        "to": 0,
+        "fg_pct": 0,
+        "ft_pct": -3.552713678800501e-15
+      },
+      "target_categories": [
+        "ast",
+        "stl"
+      ],
+      "games_gain": 0,
+      "minutes_gain": 0,
+      "season_value": {
+        "drop": 0.21633333333333335,
+        "add": 19.74333333333334,
+        "basis": "per-game heuristic proxy"
+      },
+      "long_term_tradeoff": {
+        "cost": 0,
+        "explanation": "Soft per-game opportunity cost, not future-week modeling."
+      },
+      "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.",
+      "rank": 1,
+      "conditional_on_one_add": false
+    }
+  ],
+  "recommendation_kind": "alternatives",
+  "strategy": {
+    "pts": {
+      "classification": "trailing",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -133,
+      "historical_margin": -1,
+      "target_priority": 0,
+      "estimate": 0.000001,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 7,
+      "projected_opponent": 140,
+      "previous_period_id": 1,
+      "previous_user": 40,
+      "previous_opponent": 41,
+      "lower_is_better": false,
+      "selected": false,
+      "safe_win": false,
+      "improvement_target": false,
+      "best_pickup_margin": -95,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 0,
+      "recommended_target": false
+    },
+    "reb": {
+      "classification": "trailing",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -53.2,
+      "historical_margin": -1,
+      "target_priority": 0,
+      "estimate": 0.000001,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 2.8,
+      "projected_opponent": 56,
+      "previous_period_id": 1,
+      "previous_user": 16,
+      "previous_opponent": 17,
+      "lower_is_better": false,
+      "selected": false,
+      "safe_win": false,
+      "improvement_target": false,
+      "best_pickup_margin": -38,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 0,
+      "recommended_target": false
+    },
+    "ast": {
+      "classification": "reachable",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -39.9,
+      "historical_margin": -1,
+      "target_priority": 0.000003999996,
+      "estimate": 0.000001,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 2.1000000000000005,
+      "projected_opponent": 42,
+      "previous_period_id": 1,
+      "previous_user": 12,
+      "previous_opponent": 13,
+      "lower_is_better": false,
+      "selected": true,
+      "safe_win": false,
+      "improvement_target": true,
+      "best_pickup_margin": 79.5,
+      "can_flip_with_one_move": true,
+      "best_estimate_gain": 0.9999979999999999,
+      "recommended_target": true
+    },
+    "stl": {
+      "classification": "reachable",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -13.3,
+      "historical_margin": -1,
+      "target_priority": 0.000003999996,
+      "estimate": 0.000001,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 0.7,
+      "projected_opponent": 14,
+      "previous_period_id": 1,
+      "previous_user": 4,
+      "previous_opponent": 5,
+      "lower_is_better": false,
+      "selected": true,
+      "safe_win": false,
+      "improvement_target": true,
+      "best_pickup_margin": 16.5,
+      "can_flip_with_one_move": true,
+      "best_estimate_gain": 0.9999979999999999,
+      "recommended_target": true
+    },
+    "blk": {
+      "classification": "trailing",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -6.65,
+      "historical_margin": -1,
+      "target_priority": 0,
+      "estimate": 0.000442092675155048,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 0.35,
+      "projected_opponent": 7,
+      "previous_period_id": 1,
+      "previous_user": 2,
+      "previous_opponent": 3,
+      "lower_is_better": false,
+      "selected": false,
+      "safe_win": false,
+      "improvement_target": false,
+      "best_pickup_margin": -4.75,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 0.008332382420583317,
+      "recommended_target": false
+    },
+    "threes": {
+      "classification": "trailing",
+      "explanation": "Trailing in the model; recovery requires an explored feasible plan. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": -13.3,
+      "historical_margin": -1,
+      "target_priority": 0,
+      "estimate": 0.000001,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 0.7,
+      "projected_opponent": 14,
+      "previous_period_id": 1,
+      "previous_user": 4,
+      "previous_opponent": 5,
+      "lower_is_better": false,
+      "selected": false,
+      "safe_win": false,
+      "improvement_target": false,
+      "best_pickup_margin": -9.5,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 1.7083242571548186e-8,
+      "recommended_target": false
+    },
+    "to": {
+      "classification": "cushion",
+      "explanation": "Modeled cushion under heuristic uncertainty, not a guaranteed win. Latest complete prior-week comparison favored us; actuals plus remaining games drive this forecast.",
+      "projected_margin": 19.95,
+      "historical_margin": 1,
+      "target_priority": 0,
+      "estimate": 0.999999,
+      "current_user": 0,
+      "current_opponent": 0,
+      "projected_user": 1.0500000000000003,
+      "projected_opponent": 21,
+      "previous_period_id": 1,
+      "previous_user": 6,
+      "previous_opponent": 7,
+      "lower_is_better": true,
+      "selected": true,
+      "safe_win": true,
+      "improvement_target": false,
+      "best_pickup_margin": 14.25,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 0,
+      "recommended_target": false
+    },
+    "fg_pct": {
+      "classification": "swing",
+      "explanation": "Close projected category; small net changes can alter the matchup. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": 0,
+      "historical_margin": -0.020000000000000018,
+      "target_priority": 1,
+      "estimate": 0.5,
+      "current_user": null,
+      "current_opponent": null,
+      "projected_user": 0.5,
+      "projected_opponent": 0.5,
+      "previous_period_id": 1,
+      "previous_user": 0.5,
+      "previous_opponent": 0.52,
+      "lower_is_better": false,
+      "selected": true,
+      "safe_win": false,
+      "improvement_target": true,
+      "best_pickup_margin": 0,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": 0,
+      "recommended_target": false
+    },
+    "ft_pct": {
+      "classification": "swing",
+      "explanation": "Close projected category; small net changes can alter the matchup. Latest complete prior-week comparison trailed; actuals plus remaining games drive this forecast.",
+      "projected_margin": 2.220446049250313e-16,
+      "historical_margin": -0.02777777777777779,
+      "target_priority": 1,
+      "estimate": 0.5000000000000036,
+      "current_user": null,
+      "current_opponent": null,
+      "projected_user": 0.7500000000000002,
+      "projected_opponent": 0.75,
+      "previous_period_id": 1,
+      "previous_user": 0.75,
+      "previous_opponent": 0.7777777777777778,
+      "lower_is_better": false,
+      "selected": true,
+      "safe_win": false,
+      "improvement_target": true,
+      "best_pickup_margin": 0,
+      "can_flip_with_one_move": false,
+      "best_estimate_gain": -3.552713678800501e-15,
+      "recommended_target": false
+    }
+  },
+  "baseline": {
+    "basis": "forecast",
+    "totals": {
+      "pts": 7,
+      "reb": 2.8,
+      "ast": 2.1000000000000005,
+      "stl": 0.7,
+      "blk": 0.35,
+      "threes": 0.7,
+      "to": 1.0500000000000003,
+      "fgm": 2.1000000000000005,
+      "fga": 4.200000000000001,
+      "ftm": 1.0500000000000003,
+      "fta": 1.4
+    },
+    "games": 7,
+    "minutes": 224,
+    "probability_five_wins": 0.000001,
+    "categories": {
+      "pts": {
+        "user": 7,
+        "opponent": 140,
+        "margin": -133,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "reb": {
+        "user": 2.8,
+        "opponent": 56,
+        "margin": -53.2,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "ast": {
+        "user": 2.1000000000000005,
+        "opponent": 42,
+        "margin": -39.9,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "stl": {
+        "user": 0.7,
+        "opponent": 14,
+        "margin": -13.3,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "blk": {
+        "user": 0.35,
+        "opponent": 7,
+        "margin": -6.65,
+        "state": "losing",
+        "win_probability": 0.000442092675155048,
+        "model_edge": 0.000442092675155048,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "threes": {
+        "user": 0.7,
+        "opponent": 14,
+        "margin": -13.3,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "to": {
+        "user": 1.0500000000000003,
+        "opponent": 21,
+        "margin": 19.95,
+        "state": "winning",
+        "win_probability": 0.999999,
+        "model_edge": 0.999999,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "cushion"
+      },
+      "fg_pct": {
+        "user": 0.5,
+        "opponent": 0.5,
+        "margin": 0,
+        "state": "tied",
+        "win_probability": 0.5,
+        "model_edge": 0.5,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "swing"
+      },
+      "ft_pct": {
+        "user": 0.7500000000000002,
+        "opponent": 0.75,
+        "margin": 2.220446049250313e-16,
+        "state": "winning",
+        "win_probability": 0.5000000000000036,
+        "model_edge": 0.5000000000000036,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "swing"
+      }
+    },
+    "opponent_totals": {
+      "pts": 140,
+      "reb": 56,
+      "ast": 42,
+      "stl": 14,
+      "blk": 7,
+      "threes": 14,
+      "to": 21,
+      "fgm": 42,
+      "fga": 84,
+      "ftm": 21,
+      "fta": 28
+    },
+    "actual_primitives": {
+      "user": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      },
+      "opponent": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      }
+    },
+    "remaining_primitives": {
+      "user": {
+        "pts": 7,
+        "reb": 2.8,
+        "ast": 2.1000000000000005,
+        "stl": 0.7,
+        "blk": 0.35,
+        "threes": 0.7,
+        "to": 1.0500000000000003,
+        "fgm": 2.1000000000000005,
+        "fga": 4.200000000000001,
+        "ftm": 1.0500000000000003,
+        "fta": 1.4
+      },
+      "opponent": {
+        "pts": 140,
+        "reb": 56,
+        "ast": 42,
+        "stl": 14,
+        "blk": 7,
+        "threes": 14,
+        "to": 21,
+        "fgm": 42,
+        "fga": 84,
+        "ftm": 21,
+        "fta": 28
+      }
+    },
+    "starts": [
+      {
+        "date": "2026-11-02",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-02",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-03",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-03",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-04",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-04",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-05",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-05",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-06",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-06",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-07",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-07",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-08",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-08",
+        "owner": "opponent",
+        "player_id": "2"
+      }
+    ]
+  },
+  "projected": {
+    "basis": "forecast",
+    "totals": {
+      "pts": 45,
+      "reb": 18,
+      "ast": 121.5,
+      "stl": 30.5,
+      "blk": 2.25,
+      "threes": 4.5,
+      "to": 6.75,
+      "fgm": 13.5,
+      "fga": 27,
+      "ftm": 6.75,
+      "fta": 9
+    },
+    "games": 7,
+    "minutes": 224,
+    "probability_five_wins": 0.254387982888072,
+    "categories": {
+      "pts": {
+        "user": 45,
+        "opponent": 140,
+        "margin": -95,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "reb": {
+        "user": 18,
+        "opponent": 56,
+        "margin": -38,
+        "state": "losing",
+        "win_probability": 0.000001,
+        "model_edge": 0.000001,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "ast": {
+        "user": 121.5,
+        "opponent": 42,
+        "margin": 79.5,
+        "state": "winning",
+        "win_probability": 0.999999,
+        "model_edge": 0.999999,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "cushion"
+      },
+      "stl": {
+        "user": 30.5,
+        "opponent": 14,
+        "margin": 16.5,
+        "state": "winning",
+        "win_probability": 0.999999,
+        "model_edge": 0.999999,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "cushion"
+      },
+      "blk": {
+        "user": 2.25,
+        "opponent": 7,
+        "margin": -4.75,
+        "state": "losing",
+        "win_probability": 0.008774475095738365,
+        "model_edge": 0.008774475095738365,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "threes": {
+        "user": 4.5,
+        "opponent": 14,
+        "margin": -9.5,
+        "state": "losing",
+        "win_probability": 0.0000010170832425715481,
+        "model_edge": 0.0000010170832425715481,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "trailing"
+      },
+      "to": {
+        "user": 6.75,
+        "opponent": 21,
+        "margin": 14.25,
+        "state": "winning",
+        "win_probability": 0.999999,
+        "model_edge": 0.999999,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "cushion"
+      },
+      "fg_pct": {
+        "user": 0.5,
+        "opponent": 0.5,
+        "margin": 0,
+        "state": "tied",
+        "win_probability": 0.5,
+        "model_edge": 0.5,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "swing"
+      },
+      "ft_pct": {
+        "user": 0.75,
+        "opponent": 0.75,
+        "margin": 0,
+        "state": "tied",
+        "win_probability": 0.5,
+        "model_edge": 0.5,
+        "estimate_kind": "uncalibrated heuristic edge",
+        "attainability": "swing"
+      }
+    },
+    "opponent_totals": {
+      "pts": 140,
+      "reb": 56,
+      "ast": 42,
+      "stl": 14,
+      "blk": 7,
+      "threes": 14,
+      "to": 21,
+      "fgm": 42,
+      "fga": 84,
+      "ftm": 21,
+      "fta": 28
+    },
+    "actual_primitives": {
+      "user": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      },
+      "opponent": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      }
+    },
+    "remaining_primitives": {
+      "user": {
+        "pts": 45,
+        "reb": 18,
+        "ast": 121.5,
+        "stl": 30.5,
+        "blk": 2.25,
+        "threes": 4.5,
+        "to": 6.75,
+        "fgm": 13.5,
+        "fga": 27,
+        "ftm": 6.75,
+        "fta": 9
+      },
+      "opponent": {
+        "pts": 140,
+        "reb": 56,
+        "ast": 42,
+        "stl": 14,
+        "blk": 7,
+        "threes": 14,
+        "to": 21,
+        "fgm": 42,
+        "fga": 84,
+        "ftm": 21,
+        "fta": 28
+      }
+    },
+    "starts": [
+      {
+        "date": "2026-11-02",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-02",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-03",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-03",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-04",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-04",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-05",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-05",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-06",
+        "owner": "user",
+        "player_id": "1"
+      },
+      {
+        "date": "2026-11-06",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-07",
+        "owner": "user",
+        "player_id": "100"
+      },
+      {
+        "date": "2026-11-07",
+        "owner": "opponent",
+        "player_id": "2"
+      },
+      {
+        "date": "2026-11-08",
+        "owner": "user",
+        "player_id": "100"
+      },
+      {
+        "date": "2026-11-08",
+        "owner": "opponent",
+        "player_id": "2"
+      }
+    ]
+  },
+  "remaining_adds": 6,
+  "assumptions": [
+    "Independent normal margins use historical variation where available, otherwise labeled heuristic scales.",
+    "Ties do not count as wins; five outright category wins are required.",
+    "Continuous normal approximation ignores discrete tie mass; numerical probabilities bounded to [1e-6, 1-1e-6].",
+    "Rates and supplied schedules remain constant; unavailable dates contribute no games.",
+    "Available current-season rates are primary, including small samples; missing fields use labeled prior fallback.",
+    "Availability and transaction eligibility are assumed unless explicitly reported out or locked."
+  ],
+  "limitations": [
+    "Model sensitivity estimates are not calibrated probabilities or guarantees; category correlations are ignored.",
+    "Bounded beam search and greedy daily lineup selection can miss globally optimal plans.",
+    "Schedules and rates must be observed; unknown availability/locks use the stated availability assumption.",
+    "Only modeled daily slots are enforced; unsupported daily acquisition rules keep plans conditional.",
+    "No same-day game-time ordering, waiver clearance, transaction execution or automatic roster changes.",
+    "Upstream whole-market coverage is partial or unverified."
+  ],
+  "data_gaps": [],
+  "provenance": {
+    "context": {
+      "league_id": 604550749,
+      "season_id": 2027,
+      "team_id": 1,
+      "matchup_period_id": 3,
+      "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+    },
+    "snapshot_data_gaps": [
+      "Selected matchup acquisition usage is unavailable; season/day counts are not matchup usage.",
+      "Public league team selection does not verify ownership."
+    ],
+    "usage_declaration": {
+      "league_id": 604550749,
+      "season_id": 2027,
+      "team_id": 1,
+      "matchup_period_id": 3,
+      "used": 0,
+      "confirmed_at": "2026-11-02T17:02:22.264988Z",
+      "expires_at": "2026-11-02T18:02:22.264988Z",
+      "snapshot_at": "2026-11-02T17:42:22.264988+00:00",
+      "roster_ids": [
+        "1"
+      ],
+      "season_acquisitions": 21,
+      "source": "User explicitly confirmed current new-matchup 7 cap / 0 used in accepted 2026-11-02 handoff; fixed evidence-time lease, not an ESPN counter or renewed confirmation."
+    },
+    "counts": "espn_acquisition_settings; scoped user-declared current matchup usage",
+    "acquisition_cap": {
+      "value": 7,
+      "source": "espn_acquisition_settings"
+    },
+    "reported_acquisition_limit": {
+      "value": 1,
+      "scope": "matchup_game_day_rate",
+      "source": "ESPN acquisition settings; not automatically a matchup cap"
+    },
+    "daily_acquisition_rule": {
+      "matchup_allowance_scaled_per_game_day": true,
+      "source": "ESPN acquisition settings",
+      "modeled_scope": "matchup allowance; scaling flag does not establish a daily constraint",
+      "bound_proof": null,
+      "calendar_aligned": false
+    },
+    "rate_basis:1": {
+      "source": "espn_actual_season",
+      "season": "2026-27",
+      "games": 2,
+      "small_sample": true,
+      "fallback": true,
+      "reason": "NBA batch unavailable, stale, or identity/sample missing",
+      "status": "fallback",
+      "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+    },
+    "schedule:1": "espn_schedule",
+    "rate_basis:2": {
+      "source": "espn_actual_season",
+      "season": "2026-27",
+      "games": 2,
+      "small_sample": true,
+      "fallback": true,
+      "reason": "NBA batch unavailable, stale, or identity/sample missing",
+      "status": "fallback",
+      "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+    },
+    "schedule:2": "espn_schedule",
+    "rate_basis:100": {
+      "source": "espn_actual_season",
+      "season": "2026-27",
+      "games": 2,
+      "small_sample": true,
+      "fallback": true,
+      "reason": "NBA batch unavailable, stale, or identity/sample missing",
+      "status": "fallback",
+      "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+    },
+    "schedule:100": "espn_schedule",
+    "actuals:user": {
+      "official": {
+        "source": "espn_official",
+        "totals": {
+          "pts": 0,
+          "blk": 0,
+          "stl": 0,
+          "ast": 0,
+          "reb": 0,
+          "to": 0,
+          "fgm": 0,
+          "fga": 0,
+          "ftm": 0,
+          "fta": 0,
+          "threes": 0,
+          "fg_pct": null,
+          "ft_pct": null,
+          "minutes": 0,
+          "games": 0
+        },
+        "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+      },
+      "nba_derived": {
+        "source": "nba_derived",
+        "totals": {
+          "pts": 0,
+          "reb": 0,
+          "ast": 0,
+          "stl": 0,
+          "blk": 0,
+          "threes": 0,
+          "to": 0,
+          "fgm": 0,
+          "fga": 0,
+          "ftm": 0,
+          "fta": 0,
+          "fg_pct": null,
+          "ft_pct": null
+        },
+        "complete": true,
+        "provisional": false,
+        "expected_player_games": 0,
+        "eligible_coverage_known": true,
+        "covered_player_games": 0,
+        "gaps": [],
+        "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+      },
+      "forecast_source": "nba_derived",
+      "forecast_totals": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0,
+        "fg_pct": null,
+        "ft_pct": null
+      },
+      "forecast_complete": true,
+      "discrepancy": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      },
+      "started_game_policy": "banked_only_no_projected_remainder",
+      "historical_ownership_policy": "daily side context; explicit onTeamId/teamId must agree; duplicates rejected",
+      "sources": []
+    },
+    "actuals:opponent": {
+      "official": {
+        "source": "espn_official",
+        "totals": {
+          "pts": 0,
+          "blk": 0,
+          "stl": 0,
+          "ast": 0,
+          "reb": 0,
+          "to": 0,
+          "fgm": 0,
+          "fga": 0,
+          "ftm": 0,
+          "fta": 0,
+          "threes": 0,
+          "fg_pct": null,
+          "ft_pct": null,
+          "minutes": 0,
+          "games": 0
+        },
+        "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+      },
+      "nba_derived": {
+        "source": "nba_derived",
+        "totals": {
+          "pts": 0,
+          "reb": 0,
+          "ast": 0,
+          "stl": 0,
+          "blk": 0,
+          "threes": 0,
+          "to": 0,
+          "fgm": 0,
+          "fga": 0,
+          "ftm": 0,
+          "fta": 0,
+          "fg_pct": null,
+          "ft_pct": null
+        },
+        "complete": true,
+        "provisional": false,
+        "expected_player_games": 0,
+        "eligible_coverage_known": true,
+        "covered_player_games": 0,
+        "gaps": [],
+        "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+      },
+      "forecast_source": "nba_derived",
+      "forecast_totals": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0,
+        "fg_pct": null,
+        "ft_pct": null
+      },
+      "forecast_complete": true,
+      "discrepancy": {
+        "pts": 0,
+        "reb": 0,
+        "ast": 0,
+        "stl": 0,
+        "blk": 0,
+        "threes": 0,
+        "to": 0,
+        "fgm": 0,
+        "fga": 0,
+        "ftm": 0,
+        "fta": 0
+      },
+      "started_game_policy": "banked_only_no_projected_remainder",
+      "historical_ownership_policy": "daily side context; explicit onTeamId/teamId must agree; duplicates rejected",
+      "sources": []
+    },
+    "rates": {
+      "1": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+      "2": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+      "100": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}"
+    },
+    "uncertainty": "1 complete prior weekly comparisons; model_estimate; uncalibrated model estimates",
+    "availability": "0 players assumed available unless explicitly out; user toggles take precedence",
+    "transactions": "ESPN locks/undroppable, user Protect and default core guard enforced; core override never bypasses official locks"
+  },
+  "acquisition_budget": {
+    "matchup_cap": 7,
+    "used": 0,
+    "remaining": 7,
+    "cap_source": "espn_acquisition_settings",
+    "usage_source": "scoped user-declared current matchup usage",
+    "daily_limit": null,
+    "daily_applicability": "matchup"
+  },
+  "candidate_coverage": {
+    "requested": 1,
+    "qualified": 1,
+    "selected": 1,
+    "limit": 998,
+    "resource_bound_reached": false,
+    "excluded_count": 0,
+    "scope": "normalized candidates; separate from raw market enumeration"
+  },
+  "search": {
+    "evaluations": 7,
+    "evaluation_limit_reached": false,
+    "evaluation_limit": 5000,
+    "beam_width": 8,
+    "beam_pruned": false,
+    "candidate_limit": 1,
+    "candidate_pool": 1,
+    "evaluated_drop_ids": [
+      "1"
+    ],
+    "legal_drop_ids": [
+      "1"
+    ],
+    "forecasts": 8,
+    "category_sets_evaluated": 126,
+    "first_layer_pairs_evaluated": 7,
+    "first_layer_pairs_total": 7,
+    "first_layer_complete": true,
+    "candidate_truncated": false,
+    "budget_zero": false,
+    "upstream_market_complete": false,
+    "plan_search": "best explored; bounded beam and shared greedy nine-category lineup policy",
+    "alternatives_complete": true
+  },
+  "uncertainty": {
+    "source": "model_estimate",
+    "calibrated": false,
+    "margin_sd": {
+      "pts": 17.64,
+      "reb": 7.055999999999999,
+      "ast": 5.292,
+      "stl": 2,
+      "blk": 2,
+      "threes": 2,
+      "to": 2.646,
+      "fg_pct": 0.025,
+      "ft_pct": 0.025
+    },
+    "history_samples": 1
+  },
+  "protected_players": {},
+  "protection_policy": {
+    "automatic": "top-50 season rank, explicit core designation, or disclosed rate proxy",
+    "override": "allow_core_drops / player core_protection_override; ESPN and user locks persist",
+    "rank_metadata_missing": [
+      "1"
+    ]
+  },
+  "recommended_plan": {
+    "moves": [
+      {
+        "date": "2026-11-07",
+        "add_id": "100",
+        "drop_id": "1",
+        "stream_slot": 1,
+        "season_cost": 0,
+        "calculation": {
+          "pts": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 20,
+            "drop_rate": 1,
+            "added_total": 40,
+            "lost_total": 2,
+            "net_total": 38,
+            "lineup_other_net": 0
+          },
+          "reb": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 8,
+            "drop_rate": 0.4,
+            "added_total": 16,
+            "lost_total": 0.8,
+            "net_total": 15.2,
+            "lineup_other_net": -6.661338147750939e-16
+          },
+          "ast": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 60,
+            "drop_rate": 0.30000000000000004,
+            "added_total": 120,
+            "lost_total": 0.6000000000000001,
+            "net_total": 119.4,
+            "lineup_other_net": 5.773159728050814e-15
+          },
+          "stl": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 15,
+            "drop_rate": 0.1,
+            "added_total": 30,
+            "lost_total": 0.2,
+            "net_total": 29.8,
+            "lineup_other_net": 7.216449660063518e-16
+          },
+          "blk": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 1,
+            "drop_rate": 0.05,
+            "added_total": 2,
+            "lost_total": 0.1,
+            "net_total": 1.9,
+            "lineup_other_net": -8.326672684688674e-17
+          },
+          "threes": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 2,
+            "drop_rate": 0.1,
+            "added_total": 4,
+            "lost_total": 0.2,
+            "net_total": 3.8,
+            "lineup_other_net": -1.6653345369377348e-16
+          },
+          "to": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": true,
+            "add_rate": 3,
+            "drop_rate": 0.15000000000000002,
+            "added_total": 6,
+            "lost_total": 0.30000000000000004,
+            "net_total": 5.699999999999999,
+            "lineup_other_net": -6.661338147750939e-16
+          },
+          "fg_pct": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 0.5,
+            "drop_rate": 0.5,
+            "added_total": null,
+            "lost_total": null,
+            "lineup_other_net": null,
+            "net_total": 0,
+            "weighted": {
+              "before_makes": 2.1000000000000005,
+              "before_attempts": 4.200000000000001,
+              "after_makes": 13.5,
+              "after_attempts": 27,
+              "add_makes_rate": 6,
+              "add_attempts_rate": 12,
+              "drop_makes_rate": 0.30000000000000004,
+              "drop_attempts_rate": 0.6000000000000001
+            }
+          },
+          "ft_pct": {
+            "add_starts": 2,
+            "drop_starts": 2,
+            "add_eligible_games": 2,
+            "drop_eligible_games": 2,
+            "lower_is_better": false,
+            "add_rate": 0.75,
+            "drop_rate": 0.7500000000000001,
+            "added_total": null,
+            "lost_total": null,
+            "lineup_other_net": null,
+            "net_total": -2.220446049250313e-16,
+            "weighted": {
+              "before_makes": 1.0500000000000003,
+              "before_attempts": 1.4,
+              "after_makes": 6.75,
+              "after_attempts": 9,
+              "add_makes_rate": 3,
+              "add_attempts_rate": 4,
+              "drop_makes_rate": 0.15000000000000002,
+              "drop_attempts_rate": 0.2
+            }
+          }
+        },
+        "arithmetic": {
+          "primitives": {
+            "pts": {
+              "before": 7,
+              "add": 40,
+              "drop": 2,
+              "spillover": 0,
+              "after": 45,
+              "net": 38
+            },
+            "reb": {
+              "before": 2.8,
+              "add": 16,
+              "drop": 0.8,
+              "spillover": -6.661338147750939e-16,
+              "after": 18,
+              "net": 15.2
+            },
+            "ast": {
+              "before": 2.1000000000000005,
+              "add": 120,
+              "drop": 0.6000000000000001,
+              "spillover": 5.773159728050814e-15,
+              "after": 121.5,
+              "net": 119.4
+            },
+            "stl": {
+              "before": 0.7,
+              "add": 30,
+              "drop": 0.2,
+              "spillover": 7.216449660063518e-16,
+              "after": 30.5,
+              "net": 29.8
+            },
+            "blk": {
+              "before": 0.35,
+              "add": 2,
+              "drop": 0.1,
+              "spillover": -8.326672684688674e-17,
+              "after": 2.25,
+              "net": 1.9
+            },
+            "threes": {
+              "before": 0.7,
+              "add": 4,
+              "drop": 0.2,
+              "spillover": -1.6653345369377348e-16,
+              "after": 4.5,
+              "net": 3.8
+            },
+            "to": {
+              "before": 1.0500000000000003,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16,
+              "after": 6.75,
+              "net": 5.699999999999999
+            },
+            "fgm": {
+              "before": 2.1000000000000005,
+              "add": 12,
+              "drop": 0.6000000000000001,
+              "spillover": -1.3322676295501878e-15,
+              "after": 13.5,
+              "net": 11.399999999999999
+            },
+            "fga": {
+              "before": 4.200000000000001,
+              "add": 24,
+              "drop": 1.2000000000000002,
+              "spillover": -2.6645352591003757e-15,
+              "after": 27,
+              "net": 22.799999999999997
+            },
+            "ftm": {
+              "before": 1.0500000000000003,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16,
+              "after": 6.75,
+              "net": 5.699999999999999
+            },
+            "fta": {
+              "before": 1.4,
+              "add": 8,
+              "drop": 0.4,
+              "spillover": -3.3306690738754696e-16,
+              "after": 9,
+              "net": 7.6
+            }
+          },
+          "categories": {
+            "pts": {
+              "before": 7,
+              "after": 45,
+              "net": 38,
+              "opponent_before": 140,
+              "opponent_after": 140,
+              "lower_is_better": false,
+              "add": 40,
+              "drop": 2,
+              "spillover": 0
+            },
+            "reb": {
+              "before": 2.8,
+              "after": 18,
+              "net": 15.2,
+              "opponent_before": 56,
+              "opponent_after": 56,
+              "lower_is_better": false,
+              "add": 16,
+              "drop": 0.8,
+              "spillover": -6.661338147750939e-16
+            },
+            "ast": {
+              "before": 2.1000000000000005,
+              "after": 121.5,
+              "net": 119.4,
+              "opponent_before": 42,
+              "opponent_after": 42,
+              "lower_is_better": false,
+              "add": 120,
+              "drop": 0.6000000000000001,
+              "spillover": 5.773159728050814e-15
+            },
+            "stl": {
+              "before": 0.7,
+              "after": 30.5,
+              "net": 29.8,
+              "opponent_before": 14,
+              "opponent_after": 14,
+              "lower_is_better": false,
+              "add": 30,
+              "drop": 0.2,
+              "spillover": 7.216449660063518e-16
+            },
+            "blk": {
+              "before": 0.35,
+              "after": 2.25,
+              "net": 1.9,
+              "opponent_before": 7,
+              "opponent_after": 7,
+              "lower_is_better": false,
+              "add": 2,
+              "drop": 0.1,
+              "spillover": -8.326672684688674e-17
+            },
+            "threes": {
+              "before": 0.7,
+              "after": 4.5,
+              "net": 3.8,
+              "opponent_before": 14,
+              "opponent_after": 14,
+              "lower_is_better": false,
+              "add": 4,
+              "drop": 0.2,
+              "spillover": -1.6653345369377348e-16
+            },
+            "to": {
+              "before": 1.0500000000000003,
+              "after": 6.75,
+              "net": 5.699999999999999,
+              "opponent_before": 21,
+              "opponent_after": 21,
+              "lower_is_better": true,
+              "add": 6,
+              "drop": 0.30000000000000004,
+              "spillover": -6.661338147750939e-16
+            },
+            "fg_pct": {
+              "before": 0.5,
+              "after": 0.5,
+              "net": 0,
+              "opponent_before": 0.5,
+              "opponent_after": 0.5,
+              "lower_is_better": false,
+              "makes": {
+                "before": 2.1000000000000005,
+                "add": 12,
+                "drop": 0.6000000000000001,
+                "spillover": -1.3322676295501878e-15,
+                "after": 13.5,
+                "net": 11.399999999999999
+              },
+              "attempts": {
+                "before": 4.200000000000001,
+                "add": 24,
+                "drop": 1.2000000000000002,
+                "spillover": -2.6645352591003757e-15,
+                "after": 27,
+                "net": 22.799999999999997
+              },
+              "percentage_points": 0,
+              "additive": false
+            },
+            "ft_pct": {
+              "before": 0.7500000000000002,
+              "after": 0.75,
+              "net": -2.220446049250313e-16,
+              "opponent_before": 0.75,
+              "opponent_after": 0.75,
+              "lower_is_better": false,
+              "makes": {
+                "before": 1.0500000000000003,
+                "add": 6,
+                "drop": 0.30000000000000004,
+                "spillover": -6.661338147750939e-16,
+                "after": 6.75,
+                "net": 5.699999999999999
+              },
+              "attempts": {
+                "before": 1.4,
+                "add": 8,
+                "drop": 0.4,
+                "spillover": -3.3306690738754696e-16,
+                "after": 9,
+                "net": 7.6
+              },
+              "percentage_points": -2.220446049250313e-14,
+              "additive": false
+            }
+          }
+        },
+        "add_starts": 2,
+        "add_usable_dates": [
+          "2026-11-07",
+          "2026-11-08"
+        ],
+        "drop_starts": 2,
+        "zero_drop_reason": null,
+        "lineup_changes": {
+          "displaced": [],
+          "recovered": [],
+          "net_starts": 0
+        },
+        "rate_provenance": {
+          "add": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}",
+          "drop": "normalized season_rates; {'source': 'espn_actual_season', 'season': '2026-27', 'games': 2.0, 'small_sample': True, 'fallback': True, 'reason': 'NBA batch unavailable, stale, or identity/sample missing', 'status': 'fallback', 'fetched_at': '2026-11-02T17:42:22.264988+00:00'}"
+        },
+        "rate_evidence": {
+          "add": {
+            "source": "espn_actual_season",
+            "season": "2026-27",
+            "games": 2,
+            "small_sample": true,
+            "fallback": true,
+            "reason": "NBA batch unavailable, stale, or identity/sample missing",
+            "status": "fallback",
+            "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+          },
+          "drop": {
+            "source": "espn_actual_season",
+            "season": "2026-27",
+            "games": 2,
+            "small_sample": true,
+            "fallback": true,
+            "reason": "NBA batch unavailable, stale, or identity/sample missing",
+            "status": "fallback",
+            "fetched_at": "2026-11-02T17:42:22.264988+00:00"
+          }
+        },
+        "add_rates": {
+          "pts": 20,
+          "reb": 8,
+          "ast": 60,
+          "stl": 15,
+          "blk": 1,
+          "threes": 2,
+          "to": 3,
+          "fgm": 6,
+          "fga": 12,
+          "ftm": 3,
+          "fta": 4,
+          "minutes": 32
+        },
+        "drop_rates": {
+          "pts": 1,
+          "reb": 0.4,
+          "ast": 0.30000000000000004,
+          "stl": 0.1,
+          "blk": 0.05,
+          "threes": 0.1,
+          "to": 0.15000000000000002,
+          "fgm": 0.30000000000000004,
+          "fga": 0.6000000000000001,
+          "ftm": 0.15000000000000002,
+          "fta": 0.2,
+          "minutes": 32
+        },
+        "score_before": 0.40000020000000075,
+        "score_after": 0.7999994,
+        "focus_score_gain": 0.3999991999999993,
+        "estimated_win_gain": 0.3999991999999993,
+        "net_score": 0.3999991999999993,
+        "probability_gain": 0.25438698288807204,
+        "gains": {
+          "pts": 38,
+          "reb": 15.2,
+          "ast": 119.4,
+          "stl": 29.8,
+          "blk": 1.9,
+          "threes": 3.8,
+          "to": 5.699999999999999,
+          "fgm": 11.399999999999999,
+          "fga": 22.799999999999997,
+          "ftm": 5.699999999999999,
+          "fta": 7.6
+        },
+        "category_impacts": {
+          "pts": {
+            "before": 7,
+            "after": 45,
+            "margin_before": -133,
+            "margin_after": -95,
+            "estimate_gain": 0,
+            "flips_projection": false
+          },
+          "reb": {
+            "before": 2.8,
+            "after": 18,
+            "margin_before": -53.2,
+            "margin_after": -38,
+            "estimate_gain": 0,
+            "flips_projection": false
+          },
+          "ast": {
+            "before": 2.1000000000000005,
+            "after": 121.5,
+            "margin_before": -39.9,
+            "margin_after": 79.5,
+            "estimate_gain": 0.9999979999999999,
+            "flips_projection": true
+          },
+          "stl": {
+            "before": 0.7,
+            "after": 30.5,
+            "margin_before": -13.3,
+            "margin_after": 16.5,
+            "estimate_gain": 0.9999979999999999,
+            "flips_projection": true
+          },
+          "blk": {
+            "before": 0.35,
+            "after": 2.25,
+            "margin_before": -6.65,
+            "margin_after": -4.75,
+            "estimate_gain": 0.008332382420583317,
+            "flips_projection": false
+          },
+          "threes": {
+            "before": 0.7,
+            "after": 4.5,
+            "margin_before": -13.3,
+            "margin_after": -9.5,
+            "estimate_gain": 1.7083242571548186e-8,
+            "flips_projection": false
+          },
+          "to": {
+            "before": 1.0500000000000003,
+            "after": 6.75,
+            "margin_before": 19.95,
+            "margin_after": 14.25,
+            "estimate_gain": 0,
+            "flips_projection": false
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "margin_before": 0,
+            "margin_after": 0,
+            "estimate_gain": 0,
+            "flips_projection": false
+          },
+          "ft_pct": {
+            "before": 0.7500000000000002,
+            "after": 0.75,
+            "margin_before": 2.220446049250313e-16,
+            "margin_after": 0,
+            "estimate_gain": -3.552713678800501e-15,
+            "flips_projection": false
+          }
+        },
+        "category_probability_gains": {
+          "pts": 0,
+          "reb": 0,
+          "ast": 0.9999979999999999,
+          "stl": 0.9999979999999999,
+          "blk": 0.008332382420583317,
+          "threes": 1.7083242571548186e-8,
+          "to": 0,
+          "fg_pct": 0,
+          "ft_pct": -3.552713678800501e-15
+        },
+        "target_categories": [
+          "ast",
+          "stl"
+        ],
+        "games_gain": 0,
+        "minutes_gain": 0,
+        "season_value": {
+          "drop": 0.21633333333333335,
+          "add": 19.74333333333334,
+          "basis": "per-game heuristic proxy"
+        },
+        "long_term_tradeoff": {
+          "cost": 0,
+          "explanation": "Soft per-game opportunity cost, not future-week modeling."
+        },
+        "rationale": "Full-roster counterfactual including lost starts and spillover; focus score is a heuristic, not win probability.",
+        "stream_roster_id": "1"
+      }
+    ],
+    "selected_categories": [
+      "ast",
+      "stl",
+      "to",
+      "fg_pct",
+      "ft_pct"
+    ],
+    "score_before": 0.40000020000000075,
+    "score_after": 0.7999994,
+    "focus_score_after": 0.7999994,
+    "season_cost": 0,
+    "net_score_gain": 0.3999991999999993,
+    "arithmetic": {
+      "primitives": {
+        "pts": {
+          "before": 7,
+          "add": 40,
+          "drop": 2,
+          "spillover": 0,
+          "after": 45,
+          "net": 38
+        },
+        "reb": {
+          "before": 2.8,
+          "add": 16,
+          "drop": 0.8,
+          "spillover": -6.661338147750939e-16,
+          "after": 18,
+          "net": 15.2
+        },
+        "ast": {
+          "before": 2.1000000000000005,
+          "add": 120,
+          "drop": 0.6000000000000001,
+          "spillover": 5.773159728050814e-15,
+          "after": 121.5,
+          "net": 119.4
+        },
+        "stl": {
+          "before": 0.7,
+          "add": 30,
+          "drop": 0.2,
+          "spillover": 7.216449660063518e-16,
+          "after": 30.5,
+          "net": 29.8
+        },
+        "blk": {
+          "before": 0.35,
+          "add": 2,
+          "drop": 0.1,
+          "spillover": -8.326672684688674e-17,
+          "after": 2.25,
+          "net": 1.9
+        },
+        "threes": {
+          "before": 0.7,
+          "add": 4,
+          "drop": 0.2,
+          "spillover": -1.6653345369377348e-16,
+          "after": 4.5,
+          "net": 3.8
+        },
+        "to": {
+          "before": 1.0500000000000003,
+          "add": 6,
+          "drop": 0.30000000000000004,
+          "spillover": -6.661338147750939e-16,
+          "after": 6.75,
+          "net": 5.699999999999999
+        },
+        "fgm": {
+          "before": 2.1000000000000005,
+          "add": 12,
+          "drop": 0.6000000000000001,
+          "spillover": -1.3322676295501878e-15,
+          "after": 13.5,
+          "net": 11.399999999999999
+        },
+        "fga": {
+          "before": 4.200000000000001,
+          "add": 24,
+          "drop": 1.2000000000000002,
+          "spillover": -2.6645352591003757e-15,
+          "after": 27,
+          "net": 22.799999999999997
+        },
+        "ftm": {
+          "before": 1.0500000000000003,
+          "add": 6,
+          "drop": 0.30000000000000004,
+          "spillover": -6.661338147750939e-16,
+          "after": 6.75,
+          "net": 5.699999999999999
+        },
+        "fta": {
+          "before": 1.4,
+          "add": 8,
+          "drop": 0.4,
+          "spillover": -3.3306690738754696e-16,
+          "after": 9,
+          "net": 7.6
+        }
+      },
+      "categories": {
+        "pts": {
+          "before": 7,
+          "after": 45,
+          "net": 38,
+          "opponent_before": 140,
+          "opponent_after": 140,
+          "lower_is_better": false,
+          "add": 40,
+          "drop": 2,
+          "spillover": 0
+        },
+        "reb": {
+          "before": 2.8,
+          "after": 18,
+          "net": 15.2,
+          "opponent_before": 56,
+          "opponent_after": 56,
+          "lower_is_better": false,
+          "add": 16,
+          "drop": 0.8,
+          "spillover": -6.661338147750939e-16
+        },
+        "ast": {
+          "before": 2.1000000000000005,
+          "after": 121.5,
+          "net": 119.4,
+          "opponent_before": 42,
+          "opponent_after": 42,
+          "lower_is_better": false,
+          "add": 120,
+          "drop": 0.6000000000000001,
+          "spillover": 5.773159728050814e-15
+        },
+        "stl": {
+          "before": 0.7,
+          "after": 30.5,
+          "net": 29.8,
+          "opponent_before": 14,
+          "opponent_after": 14,
+          "lower_is_better": false,
+          "add": 30,
+          "drop": 0.2,
+          "spillover": 7.216449660063518e-16
+        },
+        "blk": {
+          "before": 0.35,
+          "after": 2.25,
+          "net": 1.9,
+          "opponent_before": 7,
+          "opponent_after": 7,
+          "lower_is_better": false,
+          "add": 2,
+          "drop": 0.1,
+          "spillover": -8.326672684688674e-17
+        },
+        "threes": {
+          "before": 0.7,
+          "after": 4.5,
+          "net": 3.8,
+          "opponent_before": 14,
+          "opponent_after": 14,
+          "lower_is_better": false,
+          "add": 4,
+          "drop": 0.2,
+          "spillover": -1.6653345369377348e-16
+        },
+        "to": {
+          "before": 1.0500000000000003,
+          "after": 6.75,
+          "net": 5.699999999999999,
+          "opponent_before": 21,
+          "opponent_after": 21,
+          "lower_is_better": true,
+          "add": 6,
+          "drop": 0.30000000000000004,
+          "spillover": -6.661338147750939e-16
+        },
+        "fg_pct": {
+          "before": 0.5,
+          "after": 0.5,
+          "net": 0,
+          "opponent_before": 0.5,
+          "opponent_after": 0.5,
+          "lower_is_better": false,
+          "makes": {
+            "before": 2.1000000000000005,
+            "add": 12,
+            "drop": 0.6000000000000001,
+            "spillover": -1.3322676295501878e-15,
+            "after": 13.5,
+            "net": 11.399999999999999
+          },
+          "attempts": {
+            "before": 4.200000000000001,
+            "add": 24,
+            "drop": 1.2000000000000002,
+            "spillover": -2.6645352591003757e-15,
+            "after": 27,
+            "net": 22.799999999999997
+          },
+          "percentage_points": 0,
+          "additive": false
+        },
+        "ft_pct": {
+          "before": 0.7500000000000002,
+          "after": 0.75,
+          "net": -2.220446049250313e-16,
+          "opponent_before": 0.75,
+          "opponent_after": 0.75,
+          "lower_is_better": false,
+          "makes": {
+            "before": 1.0500000000000003,
+            "add": 6,
+            "drop": 0.30000000000000004,
+            "spillover": -6.661338147750939e-16,
+            "after": 6.75,
+            "net": 5.699999999999999
+          },
+          "attempts": {
+            "before": 1.4,
+            "add": 8,
+            "drop": 0.4,
+            "spillover": -3.3306690738754696e-16,
+            "after": 9,
+            "net": 7.6
+          },
+          "percentage_points": -2.220446049250313e-14,
+          "additive": false
+        }
+      }
+    },
+    "budget_before": 7,
+    "acquisitions": 1,
+    "budget_after": 6,
+    "weakest_selected_edge": 0.5,
+    "viable_five": true,
+    "guard_policy": "selected baseline cushion >=.80; preserve viable-edge count >=.40",
+    "aggressive_opt_in": false,
+    "coverage": {
+      "evaluations": 7,
+      "evaluation_limit_reached": false,
+      "evaluation_limit": 5000,
+      "beam_width": 8,
+      "beam_pruned": false,
+      "candidate_limit": 1,
+      "candidate_pool": 1,
+      "evaluated_drop_ids": [
+        "1"
+      ],
+      "legal_drop_ids": [
+        "1"
+      ],
+      "forecasts": 8,
+      "category_sets_evaluated": 126,
+      "first_layer_pairs_evaluated": 7,
+      "first_layer_pairs_total": 7,
+      "first_layer_complete": true,
+      "candidate_truncated": false,
+      "budget_zero": false,
+      "upstream_market_complete": false,
+      "plan_search": "best explored; bounded beam and shared greedy nine-category lineup policy",
+      "alternatives_complete": true
+    },
+    "optimality": "best explored",
+    "sensitivity": {
+      "scale_multiplier": 1.5,
+      "net_score_gain": 0.3999656455392998,
+      "basis": "same final totals and chosen five; wider heuristic scale, not reranked alternatives"
+    }
+  },
+  "primary_recommendation_kind": "ordered_plan",
+  "projection_metadata": {
+    "matchup_calendar": {
+      "complete": true,
+      "source": "espn_scoring_date_anchors",
+      "reason": "Verified ESPN scoring-date anchor"
+    },
+    "schedule_freshness_team_1": {
+      "complete": true,
+      "source": "per_player_schedule_source",
+      "reason": "No stale schedules selected"
+    },
+    "rate_freshness_team_1": {
+      "complete": true,
+      "source": "per_player_rate_provenance",
+      "reason": "No stale rates selected"
+    },
+    "schedule_freshness_team_2": {
+      "complete": true,
+      "source": "per_player_schedule_source",
+      "reason": "No stale schedules selected"
+    },
+    "rate_freshness_team_2": {
+      "complete": true,
+      "source": "per_player_rate_provenance",
+      "reason": "No stale rates selected"
+    },
+    "actuals_team_1": {
+      "complete": true,
+      "source": "nba_derived",
+      "as_of": "2026-11-02T17:42:22.264988+00:00",
+      "reason": "Completeness-gated banked production; started games have no projected remainder."
+    },
+    "actuals_team_2": {
+      "complete": true,
+      "source": "nba_derived",
+      "as_of": "2026-11-02T17:42:22.264988+00:00",
+      "reason": "Completeness-gated banked production; started games have no projected remainder."
+    },
+    "actuals:user": {
+      "complete": true,
+      "source": "nba_derived",
+      "reason": null
+    },
+    "actuals:opponent": {
+      "complete": true,
+      "source": "nba_derived",
+      "reason": null
+    }
+  },
+  "score_basis": "selected_five_heuristic_edges_minus_soft_season_cost",
+  "selected_categories": [
+    "ast",
+    "stl",
+    "to",
+    "fg_pct",
+    "ft_pct"
+  ],
+  "safe_categories": [
+    "to"
+  ],
+  "improvement_categories": [
+    "ast",
+    "stl",
+    "fg_pct",
+    "ft_pct"
+  ],
+  "category_selection_source": "common feasible full-roster plan library; all 126 sets",
+  "horizon": {
+    "basis": "banked actuals plus remaining usable starts",
+    "as_of": "2026-11-02T17:42:22.264988+00:00",
+    "matchup_end": "2026-11-08",
+    "remaining_dates": [
+      "2026-11-02",
+      "2026-11-03",
+      "2026-11-04",
+      "2026-11-05",
+      "2026-11-06",
+      "2026-11-07",
+      "2026-11-08"
+    ]
+  },
+  "recommendation_groups": {
+    "1": [
+      1
+    ]
+  },
+  "alternatives_explanation": "Secondary alternatives compete; only recommended_plan.moves form one ordered plan."
+}

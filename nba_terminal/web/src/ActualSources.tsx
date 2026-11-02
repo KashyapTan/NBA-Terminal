@@ -33,8 +33,14 @@ function groupedGaps(gaps: NonNullable<LeagueTeam["actuals"]>["nba_derived"]["ga
 }
 
 /** Keep provider scoring and reconstructed NBA production distinct. */
-export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) {
-  return (
+export function ActualSources({
+  teams,
+  compact = false,
+}: {
+  teams: (LeagueTeam | undefined)[];
+  compact?: boolean;
+}) {
+  const content = (
     <section className="actual-sources" aria-label="Actual scoring sources">
       <h3>Actual scoring & source coverage</h3>
       <p>
@@ -208,5 +214,18 @@ export function ActualSources({ teams }: { teams: (LeagueTeam | undefined)[] }) 
         not guaranteed.
       </small>
     </section>
+  );
+  return compact ? (
+    <details className="source-coverage-details">
+      <summary>
+        Scoring sources ·{" "}
+        {teams.filter(Boolean).every((team) => team?.actuals?.forecast_complete)
+          ? "complete banked basis; optional reconstruction details"
+          : "review scoring coverage"}
+      </summary>
+      {content}
+    </details>
+  ) : (
+    content
   );
 }

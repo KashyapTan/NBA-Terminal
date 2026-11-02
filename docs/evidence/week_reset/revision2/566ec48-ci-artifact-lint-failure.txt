@@ -1,0 +1,87 @@
+test	Ruff	﻿2026-11-02T17:50:57.2542351Z ##[group]Run uv run ruff check .
+test	Ruff	2026-11-02T17:50:57.2542706Z ^[[36;1muv run ruff check .^[[0m
+test	Ruff	2026-11-02T17:50:57.2572840Z shell: /usr/bin/bash -e {0}
+test	Ruff	2026-11-02T17:50:57.2573114Z env:
+test	Ruff	2026-11-02T17:50:57.2573478Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+test	Ruff	2026-11-02T17:50:57.2573946Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+test	Ruff	2026-11-02T17:50:57.2574385Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+test	Ruff	2026-11-02T17:50:57.2574773Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+test	Ruff	2026-11-02T17:50:57.2575168Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+test	Ruff	2026-11-02T17:50:57.2575562Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+test	Ruff	2026-11-02T17:50:57.2575943Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+test	Ruff	2026-11-02T17:50:57.2576246Z ##[endgroup]
+test	Ruff	2026-11-02T17:50:57.3051169Z I001 [*] Import block is un-sorted or un-formatted
+test	Ruff	2026-11-02T17:50:57.3052154Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:1:1
+test	Ruff	2026-11-02T17:50:57.3052891Z    |
+test	Ruff	2026-11-02T17:50:57.3053242Z  1 | / import json
+test	Ruff	2026-11-02T17:50:57.3053656Z  2 | | from datetime import timedelta
+test	Ruff	2026-11-02T17:50:57.3054277Z  3 | | from nba_terminal.services import espn_fantasy as espn
+test	Ruff	2026-11-02T17:50:57.3055002Z  4 | | from nba_terminal.services import fantasy_actuals as actuals
+test	Ruff	2026-11-02T17:50:57.3055670Z  5 | | from nba_terminal.services import fantasy_planner_adapter as adapter
+test	Ruff	2026-11-02T17:50:57.3056159Z  6 | | from tests.test_week_reset import normalized, prefs
+test	Ruff	2026-11-02T17:50:57.3056579Z  7 | | from tests.week_reset_fixture import NOW, new_week_payload
+test	Ruff	2026-11-02T17:50:57.3056992Z  8 | | from tests.fantasy_v2_fixture import nba_schedule_payload
+test	Ruff	2026-11-02T17:50:57.3057374Z    | |_________________________________________________________^
+test	Ruff	2026-11-02T17:50:57.3057900Z  9 |
+test	Ruff	2026-11-02T17:50:57.3058088Z 10 |   results = {}
+test	Ruff	2026-11-02T17:50:57.3058288Z    |
+test	Ruff	2026-11-02T17:50:57.3058476Z help: Organize imports
+test	Ruff	2026-11-02T17:50:57.3058625Z 
+test	Ruff	2026-11-02T17:50:57.3058727Z E501 Line too long (136 > 120)
+test	Ruff	2026-11-02T17:50:57.3059139Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:17:121
+test	Ruff	2026-11-02T17:50:57.3059576Z    |
+test	Ruff	2026-11-02T17:50:57.3060193Z 15 | …
+test	Ruff	2026-11-02T17:50:57.3060422Z 16 | …
+test	Ruff	2026-11-02T17:50:57.3060947Z 17 | …n_state'], 'budget': res['acquisition_budget'], 'moves': len(res['plan'])}
+test	Ruff	2026-11-02T17:50:57.3061410Z    |                                                            ^^^^^^^^^^^^^^^^
+test	Ruff	2026-11-02T17:50:57.3061830Z 18 | …al fresh NBA has one later game for those teams.
+test	Ruff	2026-11-02T17:50:57.3062146Z 19 | …
+test	Ruff	2026-11-02T17:50:57.3062320Z    |
+test	Ruff	2026-11-02T17:50:57.3062422Z 
+test	Ruff	2026-11-02T17:50:57.3062516Z E501 Line too long (153 > 120)
+test	Ruff	2026-11-02T17:50:57.3062920Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:29:121
+test	Ruff	2026-11-02T17:50:57.3063348Z    |
+test	Ruff	2026-11-02T17:50:57.3063528Z 27 | …
+test	Ruff	2026-11-02T17:50:57.3063753Z 28 | …data['cards'], {}, 1, now=NOW)
+test	Ruff	2026-11-02T17:50:57.3064207Z 29 | …, data['cards'], {}, 1, now=NOW, nba={'schedule': nba, 'schedule_status': 'fresh'})
+test	Ruff	2026-11-02T17:50:57.3064691Z    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test	Ruff	2026-11-02T17:50:57.3065425Z 30 | …[k] for k in ['no_started_games_verified', 'bankable_scoring_period_ids']}, 'after': {k: merged['period'][k] for k in ['no_started_ga…
+test	Ruff	2026-11-02T17:50:57.3066156Z 31 | …], no_started_games=merged['period']['no_started_games_verified'])
+test	Ruff	2026-11-02T17:50:57.3066518Z    |
+test	Ruff	2026-11-02T17:50:57.3066615Z 
+test	Ruff	2026-11-02T17:50:57.3066711Z E501 Line too long (250 > 120)
+test	Ruff	2026-11-02T17:50:57.3067107Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:30:121
+test	Ruff	2026-11-02T17:50:57.3067532Z    |
+test	Ruff	2026-11-02T17:50:57.3067715Z 28 | …
+test	Ruff	2026-11-02T17:50:57.3067972Z 29 | …le': nba, 'schedule_status': 'fresh'})
+test	Ruff	2026-11-02T17:50:57.3068660Z 30 | …ankable_scoring_period_ids']}, 'after': {k: merged['period'][k] for k in ['no_started_games_verified', 'bankable_scoring_period_ids']}}
+test	Ruff	2026-11-02T17:50:57.3069588Z    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test	Ruff	2026-11-02T17:50:57.3070429Z 31 | …ted_games_verified'])
+test	Ruff	2026-11-02T17:50:57.3070690Z 32 | …
+test	Ruff	2026-11-02T17:50:57.3070879Z    |
+test	Ruff	2026-11-02T17:50:57.3070987Z 
+test	Ruff	2026-11-02T17:50:57.3071082Z E501 Line too long (136 > 120)
+test	Ruff	2026-11-02T17:50:57.3071494Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:31:121
+test	Ruff	2026-11-02T17:50:57.3071909Z    |
+test	Ruff	2026-11-02T17:50:57.3072311Z 29 | …['pool'], data['cards'], {}, 1, now=NOW, nba={'schedule': nba, 'schedule_status': 'fresh'})
+test	Ruff	2026-11-02T17:50:57.3073115Z 30 | …period'][k] for k in ['no_started_games_verified', 'bankable_scoring_period_ids']}, 'after': {k: merged['period'][k] for k in ['no_st…
+test	Ruff	2026-11-02T17:50:57.3073874Z 31 | …ched_at'], no_started_games=merged['period']['no_started_games_verified'])
+test	Ruff	2026-11-02T17:50:57.3074304Z    |                                                            ^^^^^^^^^^^^^^^^
+test	Ruff	2026-11-02T17:50:57.3074667Z 32 | …_complete', 'forecast_source']}
+test	Ruff	2026-11-02T17:50:57.3074929Z 33 | …
+test	Ruff	2026-11-02T17:50:57.3075107Z    |
+test	Ruff	2026-11-02T17:50:57.3075203Z 
+test	Ruff	2026-11-02T17:50:57.3075332Z E501 Line too long (129 > 120)
+test	Ruff	2026-11-02T17:50:57.3075808Z   --> docs/evidence/week_reset/revision2/original-review-review_adversarial.py:40:121
+test	Ruff	2026-11-02T17:50:57.3076361Z    |
+test	Ruff	2026-11-02T17:50:57.3076676Z 38 | data['league']['settings']['scheduleSettings']['periodTypeId'] = 2
+test	Ruff	2026-11-02T17:50:57.3077265Z 39 | data['league']['settings']['scheduleSettings']['matchupPeriods']['3'] = [3,4]
+test	Ruff	2026-11-02T17:50:57.3078062Z 40 | periods, source = espn.matchup_scoring_periods(data['league'], espn.normalize_schedule(data['schedule'], NOW, anchors_only=True))
+test	Ruff	2026-11-02T17:50:57.3078943Z    |                                                                                                                         ^^^^^^^^^
+test	Ruff	2026-11-02T17:50:57.3080009Z 41 | results['weekly_expansion'] = {'periods': periods, 'source': source}
+test	Ruff	2026-11-02T17:50:57.3081177Z 42 | # Strict sparse zero and invalid maps through normalizer, positive API beats stale declaration through adapter.
+test	Ruff	2026-11-02T17:50:57.3082088Z    |
+test	Ruff	2026-11-02T17:50:57.3082257Z 
+test	Ruff	2026-11-02T17:50:57.3082393Z Found 6 errors.
+test	Ruff	2026-11-02T17:50:57.3082771Z [*] 1 fixable with the `--fix` option.
+test	Ruff	2026-11-02T17:50:57.3103912Z ##[error]Process completed with exit code 1.

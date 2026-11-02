@@ -1,0 +1,213 @@
+[
+  {
+    "url": "https://cdn1.espn.net/kona/49f1381346a2-1.522/_next/1904a5b5-6da5-4c47-86b8-1c4b4638d358/page/basketball/league/settings.js",
+    "at": "2026-11-02T17:16:36.607484+00:00",
+    "size": 285229,
+    "matches": [
+      {
+        "field": "matchupLimitPerScoringPeriod",
+        "offset": 70236,
+        "text": "isition Limit\"},matchupPeriodAcquisitionLimits:{id:\"matchupPeriodAcquisitionLimit\",defaultMessage:\"{current} / {max}\"}});const T=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,-1];const x=\"acquisitionSettings.matchupAcquisitionLimit\";const I=\"acquisitionSettings.matchupLimitPerScoringPeriod\";const k=7;const j=({acquisitionLimit:e,daysInWeek:t=k,perScoringPeriod:n,saving:s=false,settings:{scheduleSettings:{matchupPeriodLength:a}}})=>{if(n&&e>0){const n=a*t;s?e/=n:e=Math.round(e*n)}return e};const M=function(){var e=C(function*({config:e,league:t,matchupPeriodId:n}){let s=p()(t,\"settings.acquisitionSettings."
+      },
+      {
+        "field": "matchupLimitPerScoringPeriod",
+        "offset": 70656,
+        "text": ")=>{if(n&&e>0){const n=a*t;s?e/=n:e=Math.round(e*n)}return e};const M=function(){var e=C(function*({config:e,league:t,matchupPeriodId:n}){let s=p()(t,\"settings.acquisitionSettings.matchupAcquisitionLimit\");const a=p()(t,\"settings.acquisitionSettings.matchupLimitPerScoringPeriod\");if(a&&s>0){const a=yield Object(O[\"a\"])({config:e,league:t,matchupPeriodId:n});s=Math.round(a*s)}return s});return function t(n){return e.apply(this,arguments)}}();const N=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMessage:\"Matchup Acquisition Limit\"});t[\"a\"]=N;const P=({acquisitionLimi"
+      },
+      {
+        "field": "matchupAcquisitionLimit",
+        "offset": 70182,
+        "text": "nSettings_tooltip_header\",defaultMessage:\"Matchup Acquisition Limit\"},matchupPeriodAcquisitionLimits:{id:\"matchupPeriodAcquisitionLimit\",defaultMessage:\"{current} / {max}\"}});const T=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,-1];const x=\"acquisitionSettings.matchupAcquisitionLimit\";const I=\"acquisitionSettings.matchupLimitPerScoringPeriod\";const k=7;const j=({acquisitionLimit:e,daysInWeek:t=k,perScoringPeriod:n,saving:s=false,settings:{scheduleSettings:{matchupPeriodLength:a}}})=>{if(n&&e>0){const n=a*t;s?e/=n:e=Math.round(e*n)}return e};const M=function(){var e=C(function*({config:e,league:t,matchupP"
+      },
+      {
+        "field": "matchupAcquisitionLimit",
+        "offset": 70586,
+        "text": ":n,saving:s=false,settings:{scheduleSettings:{matchupPeriodLength:a}}})=>{if(n&&e>0){const n=a*t;s?e/=n:e=Math.round(e*n)}return e};const M=function(){var e=C(function*({config:e,league:t,matchupPeriodId:n}){let s=p()(t,\"settings.acquisitionSettings.matchupAcquisitionLimit\");const a=p()(t,\"settings.acquisitionSettings.matchupLimitPerScoringPeriod\");if(a&&s>0){const a=yield Object(O[\"a\"])({config:e,league:t,matchupPeriodId:n});s=Math.round(a*s)}return s});return function t(n){return e.apply(this,arguments)}}();const N=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMe"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 69015,
+        "text": "cquisitionSettings_sameLimit_titles\",defaultMessage:\"{\\n\\t\\t\\tperScoringPeriod, select,\\n\\t\\t\\t\\tfalse {(for all matchups)}\\n\\t\\t\\t\\ttrue {(for 7-day matchups)}\\n\\t\\t}\"},titles:{id:\"matchupAcquisitionSettings_dropdownTitles\",defaultMessage:\"{\\n\\t\\t\\tacquisitionLimit, select,\\n\\t\\t\\t\\t0 {No Limit}\\n\\t\\t\\t\\t-1 {No Limit}\\n\\t\\t\\t\\tother {{acquisitionLimit} per matchup}\\n\\t\\t}\"},tooltip:{id:\"matchupAcquisitionSettings_tooltip\",defaultMessage:\"Set the number of total player acquisitions (through free agency and waivers) each team is allowed during a matchup with 7 days of {sport} games. By default,"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 69103,
+        "text": "n\\t\\t\\t\\tfalse {(for all matchups)}\\n\\t\\t\\t\\ttrue {(for 7-day matchups)}\\n\\t\\t}\"},titles:{id:\"matchupAcquisitionSettings_dropdownTitles\",defaultMessage:\"{\\n\\t\\t\\tacquisitionLimit, select,\\n\\t\\t\\t\\t0 {No Limit}\\n\\t\\t\\t\\t-1 {No Limit}\\n\\t\\t\\t\\tother {{acquisitionLimit} per matchup}\\n\\t\\t}\"},tooltip:{id:\"matchupAcquisitionSettings_tooltip\",defaultMessage:\"Set the number of total player acquisitions (through free agency and waivers) each team is allowed during a matchup with 7 days of {sport} games. By default, matchups with 7 days of {sport} games will have a limit of 7 acquisitions, and matchups"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 70286,
+        "text": ":\"matchupPeriodAcquisitionLimit\",defaultMessage:\"{current} / {max}\"}});const T=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,-1];const x=\"acquisitionSettings.matchupAcquisitionLimit\";const I=\"acquisitionSettings.matchupLimitPerScoringPeriod\";const k=7;const j=({acquisitionLimit:e,daysInWeek:t=k,perScoringPeriod:n,saving:s=false,settings:{scheduleSettings:{matchupPeriodLength:a}}})=>{if(n&&e>0){const n=a*t;s?e/=n:e=Math.round(e*n)}return e};const M=function(){var e=C(function*({config:e,league:t,matchupPeriodId:n}){let s=p()(t,\"settings.acquisitionSettings.matchupAcquisitionLimit\");const a=p()(t,\"settings."
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 70991,
+        "text": "ue:t,matchupPeriodId:n});s=Math.round(a*s)}return s});return function t(n){return e.apply(this,arguments)}}();const N=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMessage:\"Matchup Acquisition Limit\"});t[\"a\"]=N;const P=({acquisitionLimit:e,intl:t,perScoringPeriod:n,settings:s})=>t.formatMessage(w.titles,{acquisitionLimit:j({acquisitionLimit:e,perScoringPeriod:n,settings:s})});t[\"c\"]=Object(d[\"observer\"])(class e extends o.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChange.bind(this):null;this.onToggleSameLimit=this.onToggleSameLimit"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 71076,
+        "text": "pply(this,arguments)}}();const N=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMessage:\"Matchup Acquisition Limit\"});t[\"a\"]=N;const P=({acquisitionLimit:e,intl:t,perScoringPeriod:n,settings:s})=>t.formatMessage(w.titles,{acquisitionLimit:j({acquisitionLimit:e,perScoringPeriod:n,settings:s})});t[\"c\"]=Object(d[\"observer\"])(class e extends o.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChange.bind(this):null;this.onToggleSameLimit=this.onToggleSameLimit.bind(this)}onChange(e){const t=this.props.leagueSettingsStore.settings;const n=parse"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 71096,
+        "text": "}}();const N=()=>o.a.createElement(c[\"b\"],{id:\"acquisitionSettings_matchupLimit\",defaultMessage:\"Matchup Acquisition Limit\"});t[\"a\"]=N;const P=({acquisitionLimit:e,intl:t,perScoringPeriod:n,settings:s})=>t.formatMessage(w.titles,{acquisitionLimit:j({acquisitionLimit:e,perScoringPeriod:n,settings:s})});t[\"c\"]=Object(d[\"observer\"])(class e extends o.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChange.bind(this):null;this.onToggleSameLimit=this.onToggleSameLimit.bind(this)}onChange(e){const t=this.props.leagueSettingsStore.settings;const n=parseInt(e.target.value,1"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 71510,
+        "text": "hange?this.onChange.bind(this):null;this.onToggleSameLimit=this.onToggleSameLimit.bind(this)}onChange(e){const t=this.props.leagueSettingsStore.settings;const n=parseInt(e.target.value,10);const s=p()(t,I);this.props.onChange(e,{settings:b()({},x,j({acquisitionLimit:n,perScoringPeriod:s,saving:true,settings:t}))})}onToggleSameLimit(e){const t=this.props.leagueSettingsStore.settings;const n=!e.target.checked;const s={};b()(s,x,j({acquisitionLimit:p()(t,x),perScoringPeriod:true,saving:n,settings:t}));b()(s,I,n);this.props.onChange(e,{settings:s})}render(){const e=this.props,t=e.config,n=e.intl,s"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 71693,
+        "text": "e,10);const s=p()(t,I);this.props.onChange(e,{settings:b()({},x,j({acquisitionLimit:n,perScoringPeriod:s,saving:true,settings:t}))})}onToggleSameLimit(e){const t=this.props.leagueSettingsStore.settings;const n=!e.target.checked;const s={};b()(s,x,j({acquisitionLimit:p()(t,x),perScoringPeriod:true,saving:n,settings:t}));b()(s,I,n);this.props.onChange(e,{settings:s})}render(){const e=this.props,t=e.config,n=e.intl,s=e.isEditing,i=e.label,l=e.leagueSettingsStore;const c=l.settings;const g=p()(c,x);const d=p()(c,I);const u=j({acquisitionLimit:g,perScoringPeriod:d,settings:c});const m=h()(this.prop"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 71971,
+        "text": "rScoringPeriod:true,saving:n,settings:t}));b()(s,I,n);this.props.onChange(e,{settings:s})}render(){const e=this.props,t=e.config,n=e.intl,s=e.isEditing,i=e.label,l=e.leagueSettingsStore;const c=l.settings;const g=p()(c,x);const d=p()(c,I);const u=j({acquisitionLimit:g,perScoringPeriod:d,settings:c});const m=h()(this.props,[\"config\",\"intl\",\"isEditing\",\"label\",\"league\",\"leagueSettingsStore\"]);const f=_()(\"matchup-acquisition-limit flex items-center\",this.props.className);let b=null;m.className=f;if(s){m.value=u;m.label=false===i?null:i||o.a.createElement(N,null);m.onChange=this.onChange;m.fillWi"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 72754,
+        "text": "splay:-webkit-inline-box;display:-webkit-inline-flex;display:-ms-inline-flexbox;display:inline-flex;margin-bottom:0px;}\"]}),o.a.createElement(r[\"Dropdown\"],m,T.map(e=>{0===u&&-1===e&&(e=0);return o.a.createElement(r[\"DropdownOption\"],{key:e,title:P({acquisitionLimit:e,intl:n,perScoringPeriod:false,settings:c}),value:e})})),o.a.createElement(E[\"Checkbox\"],{label:n.formatMessage(w.sameLimit),onChange:this.onToggleSameLimit,checked:!d}),o.a.createElement(S[\"a\"],{message:n.formatMessage(w.tooltip,{sport:t.proAbbreviation}),title:n.formatMessage(w.tooltipHeader)}))}else b=o.a.createElement(\"span\",m"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 73118,
+        "text": "n.formatMessage(w.sameLimit),onChange:this.onToggleSameLimit,checked:!d}),o.a.createElement(S[\"a\"],{message:n.formatMessage(w.tooltip,{sport:t.proAbbreviation}),title:n.formatMessage(w.tooltipHeader)}))}else b=o.a.createElement(\"span\",m,\"\".concat(P({acquisitionLimit:u,intl:n,perScoringPeriod:false,settings:c}),\" \").concat(n.formatMessage(w.sameLimitTitles,{perScoringPeriod:d})));return b}});class L extends o.a.Component{constructor(e){super(e);this.state=Object(g[\"n\"])({max:\"--\"})}componentDidMount(){var e=this;return C(function*(){const t=e.props,n=t.config,s=t.league,a=t.matchupPeriodId,i=e."
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 127629,
+        "text": "Slots,{injuryRequired:true}).abbrev}),title:s.formatMessage(j.tooltipHeader)}))}else f=a.a.createElement(\"span\",p,L({game:v,intl:s,name:d}));return f}});const R=Object(o[\"h\"])({titles:{id:\"acquisitionSettings_dropdownTitles\",defaultMessage:\"{\\n\\t\\t\\tacquisitionLimit, select,\\n\\t\\t\\t\\tother {{acquisitionLimit}} \\n\\t\\t\\t\\t0 {None Allowed}\\n\\t\\t\\t\\t-1 {No Limit}\\n\\t\\t}\"},tooltip:{id:\"acquisitionSettings_tooltip\",defaultMessage:\"Set the number of total player acquisitions (through free agency and waivers) each team is allowed over the course of the entire season. Most leagues will select 'No Limit"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 127672,
+        "text": ":s.formatMessage(j.tooltipHeader)}))}else f=a.a.createElement(\"span\",p,L({game:v,intl:s,name:d}));return f}});const R=Object(o[\"h\"])({titles:{id:\"acquisitionSettings_dropdownTitles\",defaultMessage:\"{\\n\\t\\t\\tacquisitionLimit, select,\\n\\t\\t\\t\\tother {{acquisitionLimit}} \\n\\t\\t\\t\\t0 {None Allowed}\\n\\t\\t\\t\\t-1 {No Limit}\\n\\t\\t}\"},tooltip:{id:\"acquisitionSettings_tooltip\",defaultMessage:\"Set the number of total player acquisitions (through free agency and waivers) each team is allowed over the course of the entire season. Most leagues will select 'No Limit', where teams have no restrictions on addi"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 128421,
+        "text": "},tooltipHeader:{id:\"acquisitionSettings_tooltip_header\",defaultMessage:\"FA/Waiver Acquisition Limit\"}});const H=[0,1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,-1];const F=\"acquisitionSettings.acquisitionLimit\";const B=()=>a.a.createElement(o[\"b\"],{id:\"acquisitionSettings_seasonLimit\",defaultMessage:\"Season Acquisition Limit\"});const V=({acquisitionLimit:e,intl:t})=>t.formatMessage(R.titles,{acquisitionLimit:e});var q=Object(r[\"observer\"])(class e extends a.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChan"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 128568,
+        "text": "0,35,40,45,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,-1];const F=\"acquisitionSettings.acquisitionLimit\";const B=()=>a.a.createElement(o[\"b\"],{id:\"acquisitionSettings_seasonLimit\",defaultMessage:\"Season Acquisition Limit\"});const V=({acquisitionLimit:e,intl:t})=>t.formatMessage(R.titles,{acquisitionLimit:e});var q=Object(r[\"observer\"])(class e extends a.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChange.bind(this):null}onChange(e){this.props.onChange(e,{settings:v()({},F,parseInt(e.target.value,10))})}render(){const e=this.props,t=e.className,n="
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 128623,
+        "text": "70,180,190,200,-1];const F=\"acquisitionSettings.acquisitionLimit\";const B=()=>a.a.createElement(o[\"b\"],{id:\"acquisitionSettings_seasonLimit\",defaultMessage:\"Season Acquisition Limit\"});const V=({acquisitionLimit:e,intl:t})=>t.formatMessage(R.titles,{acquisitionLimit:e});var q=Object(r[\"observer\"])(class e extends a.a.Component{constructor(e){super(e);this.onChange=this.props.onChange?this.onChange.bind(this):null}onChange(e){this.props.onChange(e,{settings:v()({},F,parseInt(e.target.value,10))})}render(){const e=this.props,t=e.className,n=e.intl,s=e.isEditing,i=e.label,o=e.leagueSettingsStore;"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 129390,
+        "text": "n-limit\",t);if(s){c.value=l;c.label=false===i?null:i||a.a.createElement(B,null);c.onChange=this.onChange;c.fillWidth=true;g=a.a.createElement(\"div\",null,a.a.createElement(h[\"Dropdown\"],c,H.map(e=>a.a.createElement(h[\"DropdownOption\"],{key:e,title:V({acquisitionLimit:e,intl:n}),value:e}))),a.a.createElement(E[\"a\"],{message:n.formatMessage(R.tooltip),title:n.formatMessage(R.tooltipHeader)}))}else g=a.a.createElement(\"span\",c,V({acquisitionLimit:l,intl:n}));return g}});var U=n(388);var W=n(389);var G=n(477);var Y=n(364);const K=Object(o[\"h\"])({tooltipFixed:{id:\"transactionSettings_waiverOrder_too"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 129570,
+        "text": "wn\"],c,H.map(e=>a.a.createElement(h[\"DropdownOption\"],{key:e,title:V({acquisitionLimit:e,intl:n}),value:e}))),a.a.createElement(E[\"a\"],{message:n.formatMessage(R.tooltip),title:n.formatMessage(R.tooltipHeader)}))}else g=a.a.createElement(\"span\",c,V({acquisitionLimit:l,intl:n}));return g}});var U=n(388);var W=n(389);var G=n(477);var Y=n(364);const K=Object(o[\"h\"])({tooltipFixed:{id:\"transactionSettings_waiverOrder_tooltipFixed\",defaultMessage:\"This setting is fixed to 'Move to Last After Claim' and can not be changed. This means that after a team claims a player off waivers, that team is shifte"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 67945,
+        "text": "eof n&&a(e,t,n)){n=0;i=o}return s(e,t,n,i)}e.exports=i},387:function(e,t,n){\"use strict\";var s=n(6);var a=n.n(s);const i={FBA:{2021:{0:{15:{42:72}}}},FHL:{2021:{0:{5:{30:56},10:{30:56}}}}};const o=({config:{abbreviation:e,currentSeason:t}={},league:{periodTypeId:n}={},lineupSlot:s,lineupSlotId:o=s&&s.id,statId:r})=>a()(i,[e,t,n,o,r]);t[\"a\"]=o},388:function(e,t,n){\"use strict\";var s=n(5);var a=n.n(s);var i=n(0);var o=n.n(i);var r=n(20);var l=n.n(r);var c=n(2);var g=n(9);var d=n(3);var u=n(6);var p=n.n(u);var m=n(13);var h=n.n(m);var f=n(17);var b=n.n(f);var v=n(4);var _=n.n(v);var S=n(30);var E"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 197920,
+        "text": "_EditButton:i,leagueSettingsStore:o,view:r,config:l,intl:c})=>{const d=l.constants,u=d.lineupSlots,h=d.rosterSettings,f=h.limitableLineupSlots,b=h.lineupLimitOptions,v=d.statSettings.stats;let _=null;const S=f.length;if(S){const d=Object(g[\"r\"])(b[n.periodTypeId]);const h=[];f.forEach(i=>{const r=d[i];if(r){const g=G()(u,{id:i});let d=[];d.push({value:-1,title:c.formatMessage(jt.noLimit)});r.stats.forEach(({default:e,statId:t})=>{const s=G()(v,{id:t});d.push({default:Object(It[\"a\"])({config:l,league:n,lineupSlotId:i,statId:t})||e,title:s.abbrev,value:t})});h.push([Object(St[\"b\"])(g).name,a.a.c"
+      }
+    ]
+  },
+  {
+    "url": "https://cdn1.espn.net/kona/49f1381346a2-1.522/_next/1904a5b5-6da5-4c47-86b8-1c4b4638d358/page/_app.js",
+    "at": "2026-11-02T17:16:36.407818+00:00",
+    "size": 3534,
+    "matches": []
+  },
+  {
+    "url": "https://cdn1.espn.net/kona/49f1381346a2-1.522/_next/1904a5b5-6da5-4c47-86b8-1c4b4638d358/page/_error.js",
+    "at": "2026-11-02T17:16:36.403855+00:00",
+    "size": 156,
+    "matches": []
+  },
+  {
+    "url": "https://cdn1.espn.net/kona/49f1381346a2-1.522/_next/static/commons/main-3005fbcf034081036a77.js",
+    "at": "2026-11-02T17:16:36.606657+00:00",
+    "size": 9712219,
+    "matches": [
+      {
+        "field": "acquisitionLimit",
+        "offset": 162677,
+        "text": "ttings.rosterSettings.isUsingUndroppableList),allowsTrading:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&0!==y.settings.tradeSettings.max),allowsAcquisitions:Object(le[\"c\"])(()=>y.settings.acquisitionSettings&&(-1===y.settings.acquisitionSettings.acquisitionLimit||y.settings.acquisitionSettings.acquisitionLimit>0)),allowsMatchupAcquisitions:Object(le[\"c\"])(()=>y.isH2H&&\"FFL\"!==e.abbreviation),usesVetoVoting:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&y.settings.tradeSettings.vetoVotesRequired>0),usesTradeReview:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&y.settings.tradeSettings.rev"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 162726,
+        "text": "owsTrading:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&0!==y.settings.tradeSettings.max),allowsAcquisitions:Object(le[\"c\"])(()=>y.settings.acquisitionSettings&&(-1===y.settings.acquisitionSettings.acquisitionLimit||y.settings.acquisitionSettings.acquisitionLimit>0)),allowsMatchupAcquisitions:Object(le[\"c\"])(()=>y.isH2H&&\"FFL\"!==e.abbreviation),usesVetoVoting:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&y.settings.tradeSettings.vetoVotesRequired>0),usesTradeReview:Object(le[\"c\"])(()=>!!y.settings.tradeSettings&&y.settings.tradeSettings.revisionHours>0),waiverRanks:Object(le[\"c\"])(()=>j()"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 912651,
+        "text": "=n(224);var P=n(940);var w=n(209);var R=n(43);var I=n(450);var z=n(158);var C=n(306);var L=n(667);var N=n(221);const k=Object(p[\"h\"])({label:{id:\"add_action_button\",defaultMessage:\"Add\"},action:{id:\"add_action_success\",defaultMessage:\"Player Added\"},acquisitionLimitReached:{id:\"acquisitionLimitReached_title\",defaultMessage:\"Unable to Add - Acquisition Limit Reached\"},draftNotYetCompleted:{id:\"draftNotYetCompleted_title\",defaultMessage:\"Unable to Add - Draft Not Yet Completed\"},keepersLocked:{defaultMessage:\"Unable to Add - Keepers Locked\",id:\"keepersLocked_title\"},addPlayerDescription:{id:\"add"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 912680,
+        "text": "209);var R=n(43);var I=n(450);var z=n(158);var C=n(306);var L=n(667);var N=n(221);const k=Object(p[\"h\"])({label:{id:\"add_action_button\",defaultMessage:\"Add\"},action:{id:\"add_action_success\",defaultMessage:\"Player Added\"},acquisitionLimitReached:{id:\"acquisitionLimitReached_title\",defaultMessage:\"Unable to Add - Acquisition Limit Reached\"},draftNotYetCompleted:{id:\"draftNotYetCompleted_title\",defaultMessage:\"Unable to Add - Draft Not Yet Completed\"},keepersLocked:{defaultMessage:\"Unable to Add - Keepers Locked\",id:\"keepersLocked_title\"},addPlayerDescription:{id:\"add_action_button_description\",d"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 916967,
+        "text": "l=e.isLeagueManager,c=e.label,d=e.league,p=e.onClick,v=e.modalStore.isActive,h=e.player,m=e.skipTransactionCounters,y=e.team;let _=e.disabled,S=e.title;S=S||a.formatMessage(k.label);if(!l||s){const e=d.draftCompleted,t=d.settings.acquisitionSettings.acquisitionLimit;const n=O()(E()(Object(f[\"r\"])(y.transactionCounter.matchupAcquisitionTotals)));let r;if(m||-1===t||-1!==t&&n<t)if(e)Object(P[\"a\"])({league:d,team:y})||(r=\"cannotModifyRoster\");else{r=\"draftNotYetCompleted\";Object(T[\"d\"])(d)&&(r=Object(T[\"a\"])(d)?void 0:\"keepersLocked\")}else r=\"acquisitionLimitReached\";if(r){_=true;S=a.formatMessag"
+      },
+      {
+        "field": "acquisitionLimit",
+        "offset": 917263,
+        "text": ")(y.transactionCounter.matchupAcquisitionTotals)));let r;if(m||-1===t||-1!==t&&n<t)if(e)Object(P[\"a\"])({league:d,team:y})||(r=\"cannotModifyRoster\");else{r=\"draftNotYetCompleted\";Object(T[\"d\"])(d)&&(r=Object(T[\"a\"])(d)?void 0:\"keepersLocked\")}else r=\"acquisitionLimitReached\";if(r){_=true;S=a.formatMessage(k[r])}}_=v||_;return i.a.createElement(M[\"a\"],Object(b[\"mix\"])({},[g()(e,[\"config\",\"confirmNavigation\",\"fromTeamId\",\"guest\",\"iconTitle\",\"intl\",\"league\",\"modalStore\",\"onAction\",\"onNavigation\",\"onSuccessAddTransaction\",\"page\",\"player\",\"skipTransactionCounters\",\"team\",\"url\"]),{\"aria-label\":a.form"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 151257,
+        "text": "MatchupPeriod),dateDraft:Object(le[\"c\"])(()=>y.settings.draftSettings?y.settings.draftSettings.date:null),dateDraftCompleted:Object(le[\"c\"])(()=>b.draftDetail?b.draftDetail.completeDate:null),daily:Object(le[\"c\"])(()=>p()(y.segment.periodTypes,{id:y.periodTypeId}).daily),dateCurrentKeeperLock:Object(le[\"c\"])(()=>y.settings.draftSettings?y.settings.draftSettings.keeperDeadlineDate:0),dateFutureKeeperLock:Object(le[\"c\"])(()=>y.settings.draftSettings?y.settings.draftSettings.keeperDeadlineFutureDate:0),divisions:Object(le[\"c\"])(()=>y.settings.scheduleSettings?y.settings.scheduleSettings.divisions"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 158347,
+        "text": "ingTransactions:Object(le[\"c\"])(()=>Object(le[\"r\"])(b.pendingTransactions)||[]),pendingTransactionsMap:Object(le[\"c\"])(()=>{const e={};y.pendingTransactions.forEach(t=>{e[t.id]=t});return e}),periods:Object(le[\"c\"])(()=>{const e=y.matchupPeriods,t=y.periodTypeId,n=y.segment.periodTypes;const r=h()(e);return p()(n,{id:t}).periods.filter(({id:e})=>A()(r,e))}),periodTypeId:Object(le[\"c\"])(()=>y.settings.scheduleSettings.periodTypeId),positions:Object(le[\"c\"])(()=>{const t=y.lineupSlots;const n=ne()(h()(t.filter(({starter:e})=>e),({eligiblePositions:e})=>Object(le[\"r\"])(e)));return Q()(u()(e.const"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 158457,
+        "text": "le[\"c\"])(()=>{const e={};y.pendingTransactions.forEach(t=>{e[t.id]=t});return e}),periods:Object(le[\"c\"])(()=>{const e=y.matchupPeriods,t=y.periodTypeId,n=y.segment.periodTypes;const r=h()(e);return p()(n,{id:t}).periods.filter(({id:e})=>A()(r,e))}),periodTypeId:Object(le[\"c\"])(()=>y.settings.scheduleSettings.periodTypeId),positions:Object(le[\"c\"])(()=>{const t=y.lineupSlots;const n=ne()(h()(t.filter(({starter:e})=>e),({eligiblePositions:e})=>Object(le[\"r\"])(e)));return Q()(u()(e.constants.positions,({id:e})=>A()(n,e)),\"displayOrder\")}),positionAgainstOpponentRatings:O()(b,\"positionAgainstOppo"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 158518,
+        "text": "t.id]=t});return e}),periods:Object(le[\"c\"])(()=>{const e=y.matchupPeriods,t=y.periodTypeId,n=y.segment.periodTypes;const r=h()(e);return p()(n,{id:t}).periods.filter(({id:e})=>A()(r,e))}),periodTypeId:Object(le[\"c\"])(()=>y.settings.scheduleSettings.periodTypeId),positions:Object(le[\"c\"])(()=>{const t=y.lineupSlots;const n=ne()(h()(t.filter(({starter:e})=>e),({eligiblePositions:e})=>Object(le[\"r\"])(e)));return Q()(u()(e.constants.positions,({id:e})=>A()(n,e)),\"displayOrder\")}),positionAgainstOpponentRatings:O()(b,\"positionAgainstOpponent.positionalRatings\",{}),positionLimits:Object(le[\"c\"])(()"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 160266,
+        "text": "(le[\"c\"])(()=>Q()(y.scoringItems.map(({statId:e})=>s[e]),\"displayOrder\")),scoringType:Object(le[\"c\"])(()=>y.settings.scoringSettings.scoringType),seasonId:Object(le[\"c\"])(()=>b.seasonId),seasonLong:Object(le[\"c\"])(()=>p()(y.segment.periodTypes,{id:y.periodTypeId}).seasonLong),segment:Object(le[\"c\"])(()=>Object(le[\"r\"])(p()(e.constants.segments,{id:y.segmentId}))),segmentPeriods:Object(le[\"c\"])(()=>{const e=y.periodTypeId,t=y.segment.periodTypes;const n=[...p()(t,{id:e}).periods];n.pop();return n}),segmentId:Object(le[\"c\"])(()=>b.segmentId),serverTimeOffset:f,settings:Object(le[\"c\"])(()=>Object"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 160428,
+        "text": "le[\"c\"])(()=>b.seasonId),seasonLong:Object(le[\"c\"])(()=>p()(y.segment.periodTypes,{id:y.periodTypeId}).seasonLong),segment:Object(le[\"c\"])(()=>Object(le[\"r\"])(p()(e.constants.segments,{id:y.segmentId}))),segmentPeriods:Object(le[\"c\"])(()=>{const e=y.periodTypeId,t=y.segment.periodTypes;const n=[...p()(t,{id:e}).periods];n.pop();return n}),segmentId:Object(le[\"c\"])(()=>b.segmentId),serverTimeOffset:f,settings:Object(le[\"c\"])(()=>Object(le[\"r\"])(b.settings)),standingsRunForCurrentPeriod:Object(le[\"c\"])(()=>{const t=p()(e.constants.scoringPeriods,{id:y.latestScoringPeriodId});return new Date(y.st"
+      },
+      {
+        "field": "periodTypeId",
+        "offset": 163271,
+        "text": "gs.revisionHours>0),waiverRanks:Object(le[\"c\"])(()=>j()(y.teams,e=>e.waiverRank).map(e=>e.id)),pickOrder:Object(le[\"c\"])(()=>y.settings.draftSettings?y.settings.draftSettings.pickOrder:null),weekly:Object(le[\"c\"])(()=>p()(y.segment.periodTypes,{id:y.periodTypeId}).weekly),setWaiverRanks:Object(le[\"b\"])(t=>{const n=[];const r=b.teams.map(e=>Object.assign({},e));t.forEach((e,t)=>{const r=t+1;p()(b.teams,{id:e}).waiverRank=r;n.push({id:e,waiverRank:r})});const o=io(e,b.seasonId,b.id,n);o.catch(Object(le[\"b\"])(()=>b.teams=r));return o}),setTeamRanks:Object(le[\"b\"])(t=>{const n=[];const r=b.teams.m"
+      }
+    ]
+  }
+]

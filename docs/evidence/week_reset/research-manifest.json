@@ -1,0 +1,83 @@
+{
+  "task": "NBA_WEEK_RESET_RESEARCH",
+  "accepted_brief_revision": 1,
+  "attempt": "attempt-18e449cc39df1bb8-42806-0",
+  "assessed_revision": "53e7ac1f4030d555a957124098e893496690b92e",
+  "created_at": "2026-11-02T17:22:03.899698+00:00",
+  "private_payload_observed": false,
+  "implementation_edits": false,
+  "files": {
+    "live-public.json": {
+      "bytes": 26290,
+      "sha256": "4afd17f42a9bac3e7cbcaca1df92c842f0301377b6e7c6c9e25ee8e838730d8b"
+    },
+    "espn-bundle-2.js": {
+      "bytes": 156,
+      "sha256": "f4e9df95927a995274c39038d89741bb6977c0b841e8e4756dcb579995c2f21a"
+    },
+    "public-period-config.json": {
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    "espn-bundle-3.js": {
+      "bytes": 9747188,
+      "sha256": "b538b8a9a42782eb4d5f66e0f6d0ba6b7d7303a846bb7edc975c454b4bb049ae"
+    },
+    "reproduce.py": {
+      "bytes": 2190,
+      "sha256": "17bd56b2a81c29ea337f837da6871447567a69a8e3bce5e6518c0bde9a79bbfb"
+    },
+    "reproductions.json": {
+      "bytes": 6824,
+      "sha256": "e8d8107546df214e3c6527633e74ffea46ca18d793459e3bfeb5777702641a23"
+    },
+    "report.md": {
+      "bytes": 24080,
+      "sha256": "827bfbbff280e210417a3d2e1a6ce18ff068bfdca3b9eb4bcec5a66d3a62c01c"
+    },
+    "bundle-evidence.json": {
+      "bytes": 27311,
+      "sha256": "8f0cbbbd350d543f358f73b0bccfe2bd40702b0b2a23c4131441fc8c727cf545"
+    },
+    "early-handoff.md": {
+      "bytes": 2385,
+      "sha256": "2c5ad95c7f3dfd23466396e0e0014d27b16cbc550c114c84310acf38d5591f75"
+    },
+    "public-page.html": {
+      "bytes": 298992,
+      "sha256": "a2ab5592091d1d5cb1cab2910bcf69a8f36b6e5f122f5310cb0a3834d1bd0183"
+    },
+    "transaction-metadata.json": {
+      "bytes": 1470,
+      "sha256": "43b1c82824af12d4c6141d645df372bb9b576413e857f6d6748cd2c676e7f0ae"
+    },
+    "team-bundle-evidence.json": {
+      "bytes": 4208,
+      "sha256": "5bd7c27d99b6ea390c3afe4c8a865966927fb932d90a6ce4471ab6b162315c7a"
+    },
+    "probe.py": {
+      "bytes": 2219,
+      "sha256": "444af273cf5618fcecdc195a033b86463326bdf77d1cb39ac508534bf01ff73b"
+    },
+    "decisive-correction.md": {
+      "bytes": 3397,
+      "sha256": "2764314534b3e40bed8114e31d4f1f93c7b5f9a025608f3bc4c4bc0b996603f2"
+    },
+    "espn-bundle-0.js": {
+      "bytes": 285245,
+      "sha256": "8c2fa3c08cd4b04d5d8e4e9954d6bd3351972fa7c36e3665ebb728445b4cc091"
+    },
+    "brief.md": {
+      "bytes": 17692,
+      "sha256": "1a9b3ff7de66e2eaf0b5da7659e346568f080aaa9fc78269680c1839de26ecf9"
+    },
+    "espn-team.js": {
+      "bytes": 787336,
+      "sha256": "ef51e9be27decfb2619f505caec76d9e2530cfda87de947a8e7317b1b7b05b1a"
+    },
+    "espn-bundle-1.js": {
+      "bytes": 3534,
+      "sha256": "f91f3110e59978ed38119ed17fd4254adc167d03448ba85d811a4c340eeff6c7"
+    }
+  }
+}

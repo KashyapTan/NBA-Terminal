@@ -114,7 +114,7 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert snapshot["enrichment"]["schedule_status"] == "fresh"
                 assert roster["injured"] is True and roster["health_status"] == "available"
                 assert snapshot["teams"][0]["roster"][2]["draft_round"] == 1
-                context = {"league_id": 123, "team_id": 1, "matchup_period_id": 2}
+                context = {"league_id": 123, "season_id": 2027, "team_id": 1, "matchup_period_id": 2}
 
                 async def plan(overrides=None, **preferences):
                     response = await browser.post(
@@ -129,7 +129,7 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert unverified["status"] == "incomplete"
                 assert unverified["recommended_plan"] is None
                 assert all(row["classification"] == "unknown" for row in unverified["strategy"].values())
-                # NBA schedule/rates stay primary, but ESPN must independently anchor scoring days.
+                # NBA rates and missing-schedule fallback remain; verified ESPN schedule coverage is preserved.
                 raw["schedule"] = anchored_schedule
                 verified = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
                 assert verified["projection_metadata"]["matchup_calendar"]["complete"] is True
@@ -173,7 +173,7 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert fallback["remaining_adds"] + len(fallback["actions"]) == 1
                 assert refreshed["league"]["acquisition_settings"]["weekly_add_limit"] is None
                 assert refreshed["league"]["id"] == 123
-                raw["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {}
+                raw["league"]["teams"][0]["transactionCounter"].pop("matchupAcquisitionTotals")
                 await browser.get("/api/fantasy/espn/snapshot?refresh=true")
                 unknown = await plan(matchup_add_limit_fallback=7)
                 assert unknown["remaining_adds"] is None
