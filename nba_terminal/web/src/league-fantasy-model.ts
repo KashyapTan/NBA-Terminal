@@ -150,6 +150,13 @@ export interface LeagueSnapshot {
     provider_total?: number | null;
     limit?: number;
     source: string;
+    stopped_reason?: string;
+    page_count?: number;
+    eligible_freeagent_count?: number;
+    waiver_count?: number;
+    roster_conflict_count?: number;
+    no_sample_count?: number;
+    no_schedule_count?: number;
     fetched_at?: string;
   };
   projection_metadata?: Record<
@@ -157,6 +164,7 @@ export interface LeagueSnapshot {
     { complete: boolean; source?: string; as_of?: string; reason?: string }
   >;
   data_gaps: string[];
+  modeling_notes?: string[];
 }
 export const DEFAULT_ESPN_LEAGUE_ID = 604550749;
 export const DEFAULT_ESPN_SEASON_ID = 2027;
@@ -178,6 +186,7 @@ export interface PlannerPreferences {
   used_adds?: number | null;
   available_adds?: number | null;
   user_confirmed_counts?: boolean;
+  counts_snapshot_at?: string;
   protected_ids?: string[];
   uncertainty_mode?: "history" | "sensitivity";
   margin_sd?: Partial<Record<Category, number>>;
@@ -333,6 +342,24 @@ export interface RecommendedPlan {
   optimality: string;
 }
 export interface WaiverPlan {
+  candidate_coverage?: {
+    requested: number;
+    qualified: number;
+    selected: number;
+    limit: number;
+    excluded_count: number;
+    resource_bound_reached: boolean;
+    scope: string;
+  };
+  acquisition_budget?: {
+    matchup_cap: number | null;
+    used: number | null;
+    remaining: number | null;
+    cap_source: string;
+    usage_source: string | null;
+    daily_limit: number | null;
+    daily_applicability: "daily" | "matchup" | "unreported";
+  };
   evaluation_state?:
     | "required_inputs_unknown"
     | "known_zero_acquisitions"

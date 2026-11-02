@@ -177,6 +177,67 @@ def test_correction_replaces_same_key_live_not_append(monkeypatch):
     assert result["started_game_policy"] == "banked_only_no_projected_remainder"
 
 
+def test_partial_historical_logs_recover_required_dnp_without_unrelated_games(monkeypatch):
+    monkeypatch.setattr(nba, "_CACHE", {})
+    record = {field: values().get(key, 1) for field, key in nba.FIELDS.items()} | {
+        "PLAYER_ID": 1,
+        "GAME_ID": "0021",
+        "GAME_DATE": DAYS[1],
+    }
+    monkeypatch.setattr(actuals, "fetch_logs", lambda *a: {"rows": [record], "fetched_at": STAMP})
+    calls = []
+
+    def live(game_id):
+        calls.append(game_id)
+        return {
+            "rows": [{"nba_player_id": 2, "totals": dict.fromkeys(actuals.PRIMITIVES, 0.0)}],
+            "final": True,
+            "fetched_at": STAMP,
+        }
+
+    monkeypatch.setattr(actuals, "fetch_live", live)
+    schedule = {
+        1: [
+            {"game_id": "0021", "date": DAYS[1], "started": True, "final": True},
+            {"game_id": "002unrelated", "date": DAYS[1], "started": True, "final": True},
+        ]
+    }
+    needed = {("0021", "1"), ("0021", "2")}
+    data, _ = actuals.production(2027, [DAYS[1]], schedule, needed)
+    assert calls == ["0021"]
+    assert data[("0021", "2")]["totals"]["pts"] == 0
+    assert data[("0021", "1")]["totals"]["pts"] == 10
+    assert ("0021", "3") not in data  # No inference for a missing box-score row.
+    nba._CACHE.clear()
+    calls.clear()
+    actuals.production(2027, [DAYS[1]], schedule, {("0021", "1")})
+    assert not calls  # Complete fresh required log coverage needs no game request.
+
+
+def test_recovery_keys_use_historical_active_eligibility_and_known_identity_only():
+    history = {1: {10: [entry(1), entry(2, slot=12), entry(99)]}}
+    assert actuals.required_production_keys({1: DAYS[1]}, history, schedules()) == {("0021", "1")}
+    history[1][10].append(entry(3, owner=20))
+    assert not actuals.required_production_keys({1: DAYS[1]}, history, schedules())
+
+
+@pytest.mark.parametrize("owner", [999, None])
+def test_explicit_historical_onteam_owner_conflict_cannot_certify_empty_schedule(owner):
+    daily_entry = entry()
+    pool = daily_entry["playerPoolEntry"]
+    pool.pop("teamId")
+    pool["onTeamId"] = owner
+    result = reconstruct({1: {10: [daily_entry]}}, days={1: DAYS[1]}, schedules={1: []})
+    assert not result["nba_derived"]["complete"]
+    assert result["forecast_source"] == "espn_official"
+    assert result["nba_derived"]["gaps"][0]["reason"] == "historical_daily_ownership_conflict"
+    pool["onTeamId"] = 10
+    assert reconstruct({1: {10: [daily_entry]}}, days={1: DAYS[1]}, schedules={1: []})["nba_derived"]["complete"]
+    assert not reconstruct({1: {10: [daily_entry, daily_entry]}}, days={1: DAYS[1]}, schedules={1: []})["nba_derived"][
+        "complete"
+    ]
+
+
 def test_independent_cache_resources_do_not_serialize_network(monkeypatch):
     monkeypatch.setattr(nba, "_CACHE", {})
     barrier = Barrier(2)
@@ -290,9 +351,9 @@ def test_rates_one_two_game_primary_and_prior_fallback():
         player = {
             "name": "Player 1",
             "pro_team_id": 1,
-            "current_rates": values(99),
+            "current_rates": values(99) | {"minutes": 30},
             "current_games": 5,
-            "prior_rates": values(20),
+            "prior_rates": values(20) | {"minutes": 30},
             "prior_games": 70,
             "current_rates_source": "espn_actual_season",
         }
@@ -331,29 +392,36 @@ def test_market_pages_and_provider_bound(monkeypatch):
     def get(self, views, filters=None, **kwargs):
         offset = filters["players"]["offset"]
         calls.append(offset)
-        return {"players": [entry(pid, owner=0) for pid in range(offset, min(offset + 100, 235))], "totalPlayers": 235}
+        return {
+            "players": [entry(pid, owner=0) for pid in range(offset, min(offset + filters["players"]["limit"], 843))],
+            "totalPlayers": 843,
+        }
 
     monkeypatch.setattr(espn.EspnClient, "get", get)
     market = espn.EspnClient(1, 2027).market(10)
-    assert calls == [0, 100, 200]
-    assert len(market["players"]) == 235
+    assert calls == [0, 500]
+    assert len(market["players"]) == 843
     assert market["coverage"]["complete"]
 
     def endless(self, views, filters=None, **kwargs):
         offset = filters["players"]["offset"]
-        return {"players": [entry(pid, owner=0) for pid in range(offset, offset + 100)], "totalPlayers": 9999}
+        return {
+            "players": [entry(pid, owner=0) for pid in range(offset, offset + filters["players"]["limit"])],
+            "totalPlayers": 9999,
+        }
 
     monkeypatch.setattr(espn.EspnClient, "get", endless)
     bounded = espn.EspnClient(1, 2027).market(10)
-    assert len(bounded["players"]) == 800
+    assert len(bounded["players"]) == 2000
+    assert bounded["coverage"]["stopped_reason"] == "application_bound"
     assert not bounded["coverage"]["complete"]
 
 
 def test_market_repeated_page_and_partial_failure(monkeypatch):
-    page = {"players": [entry(pid, owner=0) for pid in range(100)]}
+    page = {"players": [entry(pid, owner=0) for pid in range(500)]}
     monkeypatch.setattr(espn.EspnClient, "get", lambda *a, **kw: page)
     repeated = espn.EspnClient(1, 2027).market(1)
-    assert len(repeated["players"]) == 100
+    assert len(repeated["players"]) == 500
     assert not repeated["coverage"]["complete"]
 
     def get(self, views, filters=None, **kwargs):
@@ -381,6 +449,7 @@ def test_cap_zero_absent_seven_and_usage_unknown():
     assert result["teams"][0]["remaining_adds"] == 0
     assert result["league"]["acquisition_settings"]["cap_source"] == "espn_acquisition_settings"
     del acquisition["matchupAcquisitionLimit"]
+    league["id"] = 604550749  # Authorized context-bound user fallback, not a generic league default.
     for team in league["teams"]:
         team["transactionCounter"] = {"acquisitions": 99}
     result = espn.normalize(league, fixture["schedule"], fixture["pool"], {}, {}, 1)
@@ -402,6 +471,18 @@ def test_ir_kept_as_legal_drop_without_active_starts():
 def test_history_partial_flag_or_unknown_calendar_disallows_nba_complete():
     history = {i: {10: [entry()]} for i in DAYS}
     assert reconstruct(history, history_complete=False)["forecast_source"] == "espn_official"
+
+
+def test_verified_id_crosswalk_recovers_new_identity_without_current_ownership_proxy(monkeypatch):
+    monkeypatch.setattr(nba.players, "get_players", lambda: [])
+    history = {1: {10: [entry(99)]}}
+    identity = {"99": 2}
+    assert actuals.required_production_keys({1: DAYS[1]}, history, schedules(), identity) == {("0021", "2")}
+    result = reconstruct(history, days={1: DAYS[1]}, identities=identity)
+    assert result["forecast_source"] == "nba_derived"
+    assert result["forecast_totals"]["pts"] == 20
+    history[1][10][0]["playerPoolEntry"]["onTeamId"] = 20
+    assert reconstruct(history, days={1: DAYS[1]}, identities=identity)["forecast_source"] == "espn_official"
 
 
 def test_live_request_bound_is_per_game_not_player(monkeypatch):
@@ -511,7 +592,7 @@ def test_stale_nba_rates_prefer_espn_and_missing_rates_remain_unknown():
         "id": "1",
         "name": "Player 1",
         "pro_team_id": 1,
-        "current_rates": values(99),
+        "current_rates": values(99) | {"minutes": 30},
         "current_rates_source": "espn_actual_season",
         "current_games": 2,
         "prior_rates": None,

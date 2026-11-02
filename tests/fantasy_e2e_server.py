@@ -71,9 +71,17 @@ def synthetic_get(self, views, *args, **kwargs):
                 if player["id"] == 100:
                     player["fullName"] = "Fixture assist specialist"  # No matching NBA sample in this fixture.
                 for split in player["stats"]:
-                    split["stats"].update({"0": 300 if player["id"] == 1 else 0,
-                                          "3": 0 if player["id"] == 1 else 200,
-                                          "2": 1, "6": 1, "17": 1, "11": 10, "42": 10})
+                    split["stats"].update(
+                        {
+                            "0": 300 if player["id"] == 1 else 0,
+                            "3": 0 if player["id"] == 1 else 200,
+                            "2": 1,
+                            "6": 1,
+                            "17": 1,
+                            "11": 10,
+                            "42": 10,
+                        }
+                    )
     if self.league_id == 125:
         data["league"]["settings"]["scoringSettings"]["scoringType"] = "H2H_POINTS"
     if self.league_id == 124:
@@ -86,6 +94,7 @@ def synthetic_get(self, views, *args, **kwargs):
     return data[
         {
             "mSettings": "league",
+            "mTeam": "league",
             "proTeamSchedules_wl": "schedule",
             "kona_player_info": "pool",
             "kona_playercard": "cards",
@@ -103,6 +112,7 @@ def blocked_cdn(*args, **kwargs):
 nba.leaguedashplayerstats.LeagueDashPlayerStats = lambda **kwargs: SimpleNamespace(get_dict=nba_rates_payload)
 nba.scheduleleaguev2.ScheduleLeagueV2 = lambda **kwargs: SimpleNamespace(get_dict=nba_schedule_payload)
 nba.requests.get = blocked_cdn
+nba.fetch_identities = lambda year: []
 espn.datetime = Clock
 adapter.datetime = Clock
 espn.EspnClient.get = synthetic_get
@@ -139,6 +149,7 @@ fantasy_stats.fetch_fantasy_season = lambda season, phase="Regular Season": {
     "phase": phase,
     "players": PLAYERS,
 }
+
 
 @webapp.app.get("/__test__/fantasy-fixture")
 def fixture_marker():

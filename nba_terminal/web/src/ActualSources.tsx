@@ -9,7 +9,7 @@ const basisLabel = (source: string | null) =>
   source === "nba_derived"
     ? "NBA-derived reconstruction (unofficial)"
     : source === "espn_official"
-      ? "ESPN official scoring (NBA reconstruction fallback)"
+      ? "ESPN official scoring"
       : (source ?? "Unavailable");
 const gapLabels: Record<string, string> = {
   historical_daily_lineup_missing: "Historical active scoring lineup missing",
@@ -17,6 +17,7 @@ const gapLabels: Record<string, string> = {
   schedule_missing: "NBA schedule missing",
   nba_player_game_missing: "NBA player/game production missing",
   duplicate_credit: "Conflicting duplicate scoring credit",
+  historical_daily_ownership_conflict: "Historical scoring ownership conflict or duplicate player",
 };
 function groupedGaps(gaps: NonNullable<LeagueTeam["actuals"]>["nba_derived"]["gaps"]) {
   const groups = new Map<string, string[]>();

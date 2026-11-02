@@ -201,22 +201,47 @@ class EspnClient:
                 return {}
 
         period = raw.get("scoringPeriodId")
+        matchup = raw.get("status", {}).get("currentMatchupPeriod")
+        selected_team = next((team for team in raw["teams"] if team["id"] == selected), {})
+        ledger = selected_team.get("transactionCounter", {}).get("matchupAcquisitionTotals")
+        used = count(ledger.get(str(matchup))) if isinstance(ledger, dict) else None
+        if used is None:
+            refreshed = optional("Current matchup acquisition ledger", lambda: self.get(["mTeam"]))
+            if (
+                refreshed.get("id") == raw["id"]
+                and refreshed.get("seasonId") == raw["seasonId"]
+                and refreshed.get("status", {}).get("currentMatchupPeriod") == matchup
+            ):
+                fresh_team = next((team for team in refreshed.get("teams", []) if team.get("id") == selected), {})
+                counter = fresh_team.get("transactionCounter", {})
+                values = counter.get("matchupAcquisitionTotals")
+                if isinstance(values, dict) and count(values.get(str(matchup))) is not None:
+                    raw = raw | {
+                        "teams": [
+                            team | {"transactionCounter": counter} if team["id"] == selected else team
+                            for team in raw["teams"]
+                        ],
+                        "_matchup_counter_refreshed": selected,
+                    }
+            elif refreshed:
+                gaps.append("Current matchup acquisition refresh rejected: league, season or matchup context mismatch.")
         schedule = optional("Professional schedule", lambda: self.get(["proTeamSchedules_wl"], season=True))
         pool = optional("Free agents", lambda: self.market(period))
-        # One batched card request for selected rosters and bounded FA sample, not per-player calls.
+        # Bounded card batches for roster and market IDs; never one request per player.
         ids = {player_id(entry) for team in raw["teams"] for entry in team.get("roster", {}).get("entries", [])}
         ids.update(player_id(entry) for entry in pool.get("players", []))
         ids.discard(None)
-        if len(ids) > 1000:
+        if len(ids) > 5000:
             raise EspnError("league_too_large", "This league exceeds the supported player batch size.")
-        cards = (
-            optional(
+        card_rows = []
+        for offset in range(0, len(ids), 250):
+            card_batch = optional(
                 "Player season samples",
-                lambda: self.get(
+                lambda offset=offset: self.get(
                     ["kona_playercard"],
                     {
                         "players": {
-                            "filterIds": {"value": sorted(ids)},
+                            "filterIds": {"value": sorted(ids)[offset : offset + 250]},
                             "filterStatsForTopScoringPeriodIds": {
                                 "value": period or 0,
                                 "additionalValue": [f"00{self.season_id}", f"00{self.season_id - 1}"],
@@ -225,9 +250,8 @@ class EspnClient:
                     },
                 ),
             )
-            if ids
-            else {}
-        )
+            card_rows.extend(card_batch.get("players", []))
+        cards = {"players": card_rows}
         transactions = optional(
             "Transactions",
             lambda: self.get(
@@ -267,60 +291,102 @@ class EspnClient:
         result = normalize(
             raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps, nba=bundle
         )
+        if any(
+            p.get("season_rates") is None
+            for team in result["teams"]
+            for p in team["roster"]
+            if team["id"] in {selected, result["opponent_team_id"]}
+        ) or any(p.get("eligible") and p.get("season_rates") is None for p in result["free_agents"]):
+            bundle |= fantasy_nba.load_prior_rates(self.season_id)
+            fantasy_nba.enrich_players(result, bundle)
+            update_rate_coverage(result)
         nba_schedule = fantasy_nba.schedule_games(bundle.get("schedule"), self.season_id, datetime.now(timezone.utc))
         # NBA game IDs are required for production; ESPN IDs must never be passed to NBA endpoints.
         fantasy_actuals.enrich_snapshot(self, raw, result, nba_schedule)
         return result
 
     def market(self, period: int | None) -> dict:
-        """Page the observed market, stopping honestly at the 800-player resource bound."""
-        entries, seen, complete = [], set(), False
-        total = None
-        for offset in range(0, 800, 100):
+        """Enumerate observed league status pages with independent row/request bounds."""
+        entries, seen, pages = [], set(), []
+        total, offset, duplicates = None, 0, 0
+        complete, stopped = False, "application_bound"
+        page_size, market_limit, page_limit = 500, 2000, 8
+        while offset < market_limit and len(pages) < page_limit:
+            requested = min(page_size, market_limit - offset)
             try:
                 page = self.get(
                     ["kona_player_info"],
                     {
                         "players": {
                             "filterStatus": {"value": ["FREEAGENT", "WAIVERS"]},
-                            "limit": 100,
+                            "limit": requested,
                             "offset": offset,
                             "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
                         }
                     },
                     scoring_period=period,
                 )
-            except EspnError:
+            except EspnError as exc:
                 if not entries:
                     raise
+                stopped = "request_timeout" if exc.code == "timeout" else "upstream_error"
                 break
             rows = page.get("players")
+            pages.append(
+                {"offset": offset, "requested": requested, "returned": len(rows) if isinstance(rows, list) else None}
+            )
             if not isinstance(rows, list):
+                stopped = "invalid_response"
                 break
-            total = count(page.get("totalPlayers"))
+            reported_total = count(page.get("totalPlayers"))
+            if reported_total is not None:
+                if total is not None and total != reported_total:
+                    stopped = "unstable_total"
+                    break
+                total = reported_total
             added = 0
-            for entry in rows:
+            for entry in rows[:requested]:
                 pid = player_id(entry)
                 if pid is not None and pid not in seen:
                     seen.add(pid)
                     entries.append(entry)
                     added += 1
-            if not rows or (len(rows) < 100 and (total is None or len(entries) >= total)):
-                complete = True
+            duplicates += len(rows[:requested]) - added
+            if len(rows) > requested:
+                # Never advance past rows discarded by the request-size guard
+                # and then certify a later empty page as complete enumeration.
+                stopped = "oversized_page"
+                break
+            if added < len(rows[:requested]):
+                stopped = "repeated_or_invalid_page"
+                break
+            if not rows:
+                complete = total is None or len(entries) >= total
+                stopped = "terminal_page" if complete else "empty_before_reported_total"
                 break
             if total is not None and len(entries) >= total:
-                complete = True
+                complete, stopped = True, "provider_total"
                 break
-            if added < len(rows):  # Repeated/unstable page: never claim full market.
-                break
+            # Confirm exhaustion with an empty page when no total is reported.
+            # Advancing by returned size also handles a server's smaller page cap.
+            offset += len(rows)
         return {
             "players": entries,
             "coverage": {
                 "complete": complete,
                 "observed": len(entries),
                 "provider_total": total,
-                "limit": 800,
-                "page_size": 100,
+                "limit": market_limit,
+                "page_size": page_size,
+                "page_limit": page_limit,
+                "page_count": len(pages),
+                "pages": pages,
+                "duplicate_count": duplicates,
+                "terminal_observed": complete,
+                "stopped_reason": stopped,
+                "enumeration_filter": ["FREEAGENT", "WAIVERS"],
+                "season_id": self.season_id,
+                "scoring_period_id": period,
                 "source": "espn_paginated_market",
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -362,14 +428,25 @@ def samples(player: dict, year: int) -> tuple[dict | None, float | None]:
     return averages, games
 
 
-def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
+def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=False) -> dict[int, list[dict]]:
     result = {}
     for team in raw.get("settings", {}).get("proTeams", []):
         if "proGamesByScoringPeriod" not in team:
             continue
         games, unknown = [], False
         for period, entries in team["proGamesByScoringPeriod"].items():
+            try:
+                scoring_id = int(period)
+            except (ValueError, TypeError):
+                unknown = True
+                continue
+            if periods is not None and scoring_id not in periods:
+                unknown |= any(count(g.get("scoringPeriodId")) in periods for g in entries)
+                continue
             for game in entries:
+                if "scoringPeriodId" in game and count(game["scoringPeriodId"]) != scoring_id:
+                    unknown = True
+                    continue
                 timestamp = number(game.get("date"))
                 if timestamp is None:
                     unknown = True
@@ -398,7 +475,7 @@ def normalize_schedule(raw: dict, now: datetime) -> dict[int, list[dict]]:
                         else game.get("homeProTeamId"),
                     }
                 )
-        if not unknown:
+        if not unknown or anchors_only:
             result[team["id"]] = sorted(games, key=lambda game: game["start_at"])
     return result
 
@@ -427,7 +504,15 @@ def normalize_player(
     availability = "ONTEAM" if rostered else pool.get("status", "UNKNOWN")
     positions = [SLOTS.get(slot, f"UNKNOWN_{slot}") for slot in player.get("eligibleSlots", [])]
     injury = player.get("injuryStatus")
-    out = injury in {"OUT", "INJURY_RESERVE", "SUSPENSION", "RESERVE_RETIRED"}
+    out = str(injury or "").upper() in {
+        "OUT",
+        "O",
+        "INACTIVE",
+        "INJURY_RESERVE",
+        "SUSPENDED",
+        "SUSPENSION",
+        "RESERVE_RETIRED",
+    }
     droppable = player.get("droppable") if isinstance(player.get("droppable"), bool) else None
     return {
         "id": str(player.get("id", original.get("id"))),
@@ -448,8 +533,16 @@ def normalize_player(
         "draft_round": None,
         "injured": player.get("injured"),
         "locked": None,
+        "provider_locks": {
+            key: pool.get(key)
+            for key in ("lineupLocked", "rosterLocked", "tradeLocked")
+            if isinstance(pool.get(key), bool)
+        },
+        "lock_semantics": "Provider flags retained separately; they do not by themselves establish drop legality.",
+        "on_team_id": pool.get("onTeamId"),
         "availability": availability,
         "eligible": availability == "FREEAGENT"
+        and pool.get("onTeamId") in (None, 0)
         and any(position in set(SLOTS.values()) - {"BENCH", "IR", "IR+", "Rookie"} for position in positions),
         "current_rates": current,
         "current_rates_source": "espn_actual_season" if current is not None else None,
@@ -586,12 +679,14 @@ def normalize(
         and {item["key"] for item in categories} == set(CATEGORIES)
     )
     matchup = raw.get("status", {}).get("currentMatchupPeriod")
-    schedules = normalize_schedule(schedule, now)
+    anchor_schedules = normalize_schedule(schedule, now, anchors_only=True)
+    scoped_periods, scoped_source = matchup_scoring_periods(raw, anchor_schedules)
+    schedules = normalize_schedule(schedule, now, periods=set(scoped_periods) if scoped_periods else None)
     schedule_sources = {team: "espn_schedule" for team in schedules}
-    calendar_verified = len(scoring_date_anchors(schedules)) == 1
+    calendar_verified = len(scoring_date_anchors(anchor_schedules)) == 1
     if nba is not None:
         fallback = fantasy_nba.schedule_games(nba.get("schedule"), raw["seasonId"], now)
-        anchors = scoring_date_anchors(schedules)
+        anchors = scoring_date_anchors(anchor_schedules)
         if len(anchors) == 1:
             anchor = next(iter(anchors))
             for games in fallback.values():
@@ -604,12 +699,14 @@ def normalize(
         schedules = (
             (schedules | fallback) if nba.get("schedule_status") in ("fresh", "cached") else (fallback | schedules)
         )
-    periods, period_source = matchup_scoring_periods(raw, schedules)
+    periods, period_source = (
+        (scoped_periods, scoped_source) if calendar_verified else matchup_scoring_periods(raw, schedules)
+    )
     dates = sorted(
         {game["date"] for games in schedules.values() for game in games if game["scoring_period_id"] in periods}
     )
     if period_source == "espn_weekly_calendar" and periods:
-        anchors = scoring_date_anchors(schedules)
+        anchors = scoring_date_anchors(anchor_schedules) if calendar_verified else scoring_date_anchors(schedules)
         if len(anchors) == 1:
             anchor = next(iter(anchors))
             dates = [(anchor + timedelta(days=period)).isoformat() for period in periods]
@@ -631,7 +728,12 @@ def normalize(
     raw_cap = count(acquisition.get("matchupAcquisitionLimit"))
     per_day = acquisition.get("matchupLimitPerScoringPeriod")
     absent_cap = "matchupAcquisitionLimit" not in acquisition or acquisition["matchupAcquisitionLimit"] is None
-    fallback_cap = absent_cap and per_day is not True
+    fallback_cap = (
+        raw["id"] == 604550749
+        and raw["seasonId"] == 2027
+        and acquisition.get("matchupAcquisitionLimit") != -1
+        and (absent_cap or per_day is not False)
+    )
     cap = 7 if fallback_cap else raw_cap if per_day is False else None
     totals, opponent, history = {}, None, []
     for match in raw.get("schedule", []):
@@ -690,7 +792,13 @@ def normalize(
                 ),
                 "season_acquisitions": team.get("transactionCounter", {}).get("acquisitions"),
                 "weekly_used_adds": used,
-                "weekly_usage_source": "espn_matchup_acquisition_totals" if used is not None else None,
+                "weekly_usage_source": (
+                    "espn_matchup_acquisition_totals_targeted_refresh"
+                    if raw.get("_matchup_counter_refreshed") == team["id"]
+                    else "espn_matchup_acquisition_totals"
+                    if used is not None
+                    else None
+                ),
                 "weekly_usage_complete": used is not None,
                 "remaining_adds": max(0, cap - used) if cap is not None and used is not None else None,
             }
@@ -710,23 +818,18 @@ def normalize(
         if int(slot) not in (12, 13, 14, 15)
         for _ in range(min(max(int(count), 0), 50))
     ]
-    if any(team["weekly_used_adds"] is None for team in teams):
-        gaps.append("Some matchup acquisition totals are unavailable; season/day counts are not weekly usage.")
-    gaps.extend(
-        [
-            "Player game-start drop locks are not exposed; ESPN transaction validation remains authoritative.",
-            "Transaction rows cover the requested scoring day; matchup usage uses ESPN's separate matchup counter.",
-        ]
-    )
+    if next(team for team in teams if team["id"] == selected)["weekly_used_adds"] is None:
+        gaps.append("Selected matchup acquisition usage is unavailable; season/day counts are not matchup usage.")
     if not periods or not dates:
         gaps.append("Matchup date coverage is unavailable; no dates were inferred from a nominal week.")
     all_players = [p for team in teams for p in team["roster"]] + free_agents
+    required_players = [p for team in teams if team["id"] in {selected, opponent} for p in team["roster"]]
     for player in all_players:
         player["schedule_source"] = (
             schedule_sources.get(player["pro_team_id"]) if player["schedule"] is not None else None
         )
-    if any(p["schedule"] is None for p in all_players):
-        gaps.append("Some professional team schedules are unavailable; missing schedules are not zero games.")
+    if any(p["schedule"] is None and p["active"] and p["health_status"] != "out" for p in required_players):
+        gaps.append("Selected-roster professional schedules are unavailable; missing schedules are not zero games.")
     if not swid:
         gaps.append("Public league team selection does not verify ownership.")
     compare_id = comparison if comparison is not None else opponent
@@ -750,6 +853,8 @@ def normalize(
                 "weekly_add_limit": cap,
                 "limit_per_scoring_period": per_day,
                 "matchup_add_limit": cap,
+                "reported_add_limit": raw_cap,
+                "reported_limit_scope": "day" if per_day is True else "matchup" if per_day is False else "unknown",
                 "daily_add_limit": raw_cap if per_day is True else None,
                 "cap_source": "league_fallback_7"
                 if fallback_cap
@@ -820,6 +925,11 @@ def normalize(
         if "transactions" in transactions
         else None,
         "data_gaps": gaps,
+        "modeling_notes": [
+            "Provider lineup/roster/trade lock flags are retained; their drop semantics are unverified. "
+            "ESPN transaction validation remains authoritative.",
+            "Transaction rows cover the requested scoring day; matchup usage uses ESPN's separate matchup counter.",
+        ],
         "optimizer": {
             "status": "requires_inputs",
             "reason": "Submit snapshot-bound confirmed constraints to the read-only planner.",
@@ -829,12 +939,54 @@ def normalize(
 
     if nba is not None:
         fantasy_nba.enrich_players(result, nba)
-    # Report the selected forecast basis after enrichment, not missing unused ESPN samples.
-    selected_rates = [p.get("season_rates") or p.get("current_rates") or p.get("prior_rates") for p in all_players]
-    if any(rates is None for rates in selected_rates):
-        result["data_gaps"].append("Some current/prior season average samples are unavailable after NBA enrichment.")
-    if any((rates or {}).get(key) is None for rates in selected_rates for key in ("fgm", "fga", "ftm", "fta")):
-        result["data_gaps"].append(
-            "Some shooting attempts/makes are unavailable; percentage gains cannot be weighted safely."
-        )
+    update_rate_coverage(result)
     return result
+
+
+def update_rate_coverage(snapshot):
+    """Scope required gaps to the selected forecast; retain separate market exclusion counts."""
+    required = [
+        p
+        for team in snapshot["teams"]
+        if team["id"] in {snapshot["selected_team_id"], snapshot["opponent_team_id"]}
+        for p in team["roster"]
+    ]
+
+    def basis(p):
+        if "season_rates" in p:
+            return p["season_rates"]
+        current = p.get("current_rates")
+        return current if fantasy_nba.usable_rates(current) else p.get("prior_rates")
+
+    missing = [p for p in required if not fantasy_nba.usable_rates(basis(p))]
+    snapshot["data_gaps"] = [
+        g
+        for g in snapshot["data_gaps"]
+        if not g.startswith(
+            (
+                "Selected-roster rate samples",
+                "Selected-roster shooting",
+                "Some current/prior season average samples",
+                "Some shooting attempts/makes",
+            )
+        )
+    ]
+    if missing:
+        snapshot["data_gaps"].append(
+            f"Selected-roster rate samples unavailable for {len(missing)} players after source fallbacks."
+        )
+    if any((basis(p) or {}).get(k) is None for p in required for k in ("fgm", "fga", "ftm", "fta")):
+        snapshot["data_gaps"].append(
+            "Selected-roster shooting pairs unavailable; percentage gains cannot be weighted safely."
+        )
+    market = snapshot["free_agents"]
+    snapshot["market_coverage"].update(
+        {
+            "eligible_freeagent_count": sum(p["eligible"] for p in market),
+            "waiver_count": sum(p["availability"] == "WAIVERS" for p in market),
+            "roster_conflict_count": sum(p.get("on_team_id") not in (None, 0) for p in market),
+            "no_sample_count": sum(not fantasy_nba.usable_rates(basis(p)) for p in market),
+            "no_schedule_count": sum(p["schedule"] is None for p in market),
+        }
+    )
+    snapshot["data_gaps"] = list(dict.fromkeys(snapshot["data_gaps"]))

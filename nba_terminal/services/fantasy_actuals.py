@@ -84,10 +84,10 @@ def fetch_live(game_id):
     }
 
 
-def production(year, dates, schedules):
+def production(year, dates, schedules, required_keys=None):
     """One league-wide log batch plus at most 16 live/missing game requests, never N players."""
     rows, sources = {}, []
-    if not dates:
+    if not dates or required_keys == set():
         return rows, sources
     logs, status = nba.cached(
         ("actual_logs", year, min(dates), max(dates)), lambda: fetch_logs(year, min(dates), max(dates)), 60
@@ -105,11 +105,30 @@ def production(year, dates, schedules):
             "fetched_at": logs["fetched_at"],
             "source": "nba_player_game_logs",
         }
-    games = {str(g["game_id"]): g for items in schedules.values() for g in items if g["date"] in dates and g["started"]}
+    required_games = {key[0] for key in required_keys} if required_keys is not None else None
+    games = {
+        str(g["game_id"]): g
+        for items in schedules.values()
+        for g in items
+        if g["date"] in dates and g["started"] and (required_games is None or str(g["game_id"]) in required_games)
+    }
     live_requests = 0
     for game_id, game in sorted(games.items()):
         # Logs cover finalized games. Today's games need live polling/corrections.
-        if game["date"] < datetime.now(nba.NY).date().isoformat() and any(k[0] == game_id for k in rows):
+        # A game log has played-player rows, not proof that every required starter
+        # is covered. Recover missing/DNP rows from the explicit box score instead
+        # of treating another player's row as complete game coverage.
+        needed = {key for key in required_keys if key[0] == game_id} if required_keys is not None else None
+        covered = (
+            all(
+                key in rows and complete(rows[key]["totals"]) and rows[key]["status"] in ("fresh", "cached")
+                for key in needed
+            )
+            and game.get("final") is True
+            if needed is not None
+            else any(k[0] == game_id for k in rows)
+        )
+        if game["date"] < datetime.now(nba.NY).date().isoformat() and covered:
             continue
         if live_requests >= 16:
             break
@@ -135,6 +154,44 @@ def production(year, dates, schedules):
     return rows, sources
 
 
+def historical_identity(player, identities=None):
+    known = (identities or {}).get(str(player.get("id")))
+    if known is not None:
+        return {"nba_player_id": known}
+    return nba.match_player({"name": player.get("fullName"), "pro_team_id": player.get("proTeamId")}, [])[1]
+
+
+def required_production_keys(days, lineups, schedules, identities=None):
+    """Scope recovery to verified historical active lineups; unknown identities stay unknown."""
+    required = set()
+    for period, day in days.items():
+        if not valid_daily_ownership(lineups.get(period, {})):
+            continue
+        for team_id, entries in lineups.get(period, {}).items():
+            for entry in entries:
+                slot = entry.get("lineupSlotId")
+                pool = entry.get("playerPoolEntry", {})
+                player = pool.get("player", {})
+                eligible = player.get("eligibleSlots")
+                if (
+                    isinstance(slot, bool)
+                    or slot not in ACTIVE
+                    or not isinstance(eligible, list)
+                    or slot not in eligible
+                    or any(pool[key] != team_id for key in ("onTeamId", "teamId") if key in pool)
+                ):
+                    continue
+                identity = historical_identity(player, identities)
+                if identity["nba_player_id"] is None:
+                    continue
+                required.update(
+                    (str(game["game_id"]), str(identity["nba_player_id"]))
+                    for game in schedules.get(player.get("proTeamId"), [])
+                    if game["date"] == day and game["started"]
+                )
+    return required
+
+
 def daily_lineups(raw, period, matchup, team_ids):
     """Require the explicit daily roster field and echoed scoring scope; reject current-roster proxies."""
     result = {}
@@ -148,22 +205,39 @@ def daily_lineups(raw, period, matchup, team_ids):
             team = side.get("teamId")
             if team in team_ids and isinstance(roster, dict) and isinstance(roster.get("entries"), list):
                 result[team] = roster["entries"]
-    # Conflicting ownership or duplicate daily entries invalidate the whole day.
-    ids = [
-        entry.get("playerPoolEntry", {}).get("player", {}).get("id") for entries in result.values() for entry in entries
-    ]
-    if None in ids or len(set(ids)) != len(ids):
-        return {}
-    return result
+    return result if valid_daily_ownership(result) else {}
 
 
-def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *, history_complete=True):
+def valid_daily_ownership(lineups):
+    """The historical side supplies context only when an explicit owner is absent."""
+    seen = set()
+    for team_id, entries in lineups.items():
+        for entry in entries:
+            pool = entry.get("playerPoolEntry", {})
+            pid = pool.get("player", {}).get("id")
+            if pid is None or str(pid) in seen:
+                return False
+            seen.add(str(pid))
+            # Actual ESPN history uses onTeamId; teamId is retained for older
+            # shapes. When both are present they must both agree with the side.
+            if any(pool[key] != team_id for key in ("onTeamId", "teamId") if key in pool):
+                return False
+    return True
+
+
+def reconstruct(
+    team_id, days, lineups, schedules, rows, official, fetched_at, *, history_complete=True, identities=None
+):
     totals = dict.fromkeys(PRIMITIVES, 0.0)
     gaps, credited = [], set()
     expected, covered = 0, 0
     fresh, finalized = True, True
     expected_known = bool(days) and history_complete
     for period, day in sorted(days.items()):
+        if not valid_daily_ownership(lineups.get(period, {})):
+            expected_known = False
+            gaps.append({"period": period, "reason": "historical_daily_ownership_conflict"})
+            continue
         entries = lineups.get(period, {}).get(team_id)
         if entries is None:
             expected_known = False
@@ -180,7 +254,11 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
                 or slot not in ACTIVE
                 or not isinstance(eligible, list)
                 or slot not in eligible
-                or entry.get("playerPoolEntry", {}).get("teamId", team_id) != team_id
+                or any(
+                    entry.get("playerPoolEntry", {}).get(key) != team_id
+                    for key in ("onTeamId", "teamId")
+                    if key in entry.get("playerPoolEntry", {})
+                )
             ):
                 expected_known = False
                 gaps.append({"period": period, "player_id": player.get("id"), "reason": "active_eligibility_unknown"})
@@ -190,7 +268,7 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
                 expected_known = False
                 gaps.append({"period": period, "player_id": player.get("id"), "reason": "schedule_missing"})
                 continue
-            _, identity = nba.match_player({"name": player.get("fullName"), "pro_team_id": player.get("proTeamId")}, [])
+            identity = historical_identity(player, identities)
             for game in games:
                 if game["date"] != day or not game["started"]:
                     continue
@@ -240,6 +318,7 @@ def reconstruct(team_id, days, lineups, schedules, rows, official, fetched_at, *
         if is_complete and derived is not None and complete(official)
         else None,
         "started_game_policy": "banked_only_no_projected_remainder",
+        "historical_ownership_policy": "daily side context; explicit onTeamId/teamId must agree; duplicates rejected",
     }
 
 
@@ -264,6 +343,11 @@ def enrich_snapshot(client, raw, snapshot, schedules):
     }
     team_ids = {snapshot["selected_team_id"], snapshot["opponent_team_id"]}
     lineups, failures = {}, []
+    identities = {
+        str(p["id"]): p["identity"]["nba_player_id"]
+        for p in [p for team in snapshot["teams"] for p in team["roster"]] + snapshot.get("free_agents", [])
+        if p.get("identity", {}).get("nba_player_id") is not None
+    }
     for period in sorted(days)[:14]:
         try:
             daily = client.get(
@@ -274,7 +358,16 @@ def enrich_snapshot(client, raw, snapshot, schedules):
             lineups[period] = daily_lineups(daily, period, matchup, team_ids)
         except EspnError as exc:
             failures.append({"period": period, "reason": exc.code})
-    rows, sources = production(client.season_id, list(days.values()), schedules) if any(lineups.values()) else ({}, [])
+    rows, sources = (
+        production(
+            client.season_id,
+            list(days.values()),
+            schedules,
+            required_production_keys(days, lineups, schedules, identities),
+        )
+        if any(lineups.values())
+        else ({}, [])
+    )
     for team in snapshot["teams"]:
         if team["id"] in team_ids:
             team["actuals"] = reconstruct(
@@ -285,6 +378,7 @@ def enrich_snapshot(client, raw, snapshot, schedules):
                 rows,
                 team["totals"],
                 snapshot["fetched_at"],
+                identities=identities,
                 history_complete=snapshot.get("enrichment", {}).get("schedule_status") != "stale"
                 and len(days) <= 14
                 and len(days) == len([p for p in periods if isinstance(current, int) and p <= current])

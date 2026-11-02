@@ -41,6 +41,7 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
     def get(self, views, *args, **kwargs):
         key = {
             "mSettings": "league",
+            "mTeam": "league",
             "proTeamSchedules_wl": "schedule",
             "kona_player_info": "pool",
             "kona_playercard": "cards",
@@ -99,7 +100,10 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert pickup["current_rates"] is None
                 assert pickup["schedule"] is None
                 assert snapshot["enrichment"]["rates_status"] == "unavailable"
-                assert any("NBA schedule unavailable" in gap for gap in snapshot["data_gaps"])
+                assert any(
+                    "NBA schedule unavailable" in gap
+                    for gap in snapshot["data_gaps"] + snapshot.get("modeling_notes", [])
+                )
             else:
                 assert pickup["current_rates"]["minutes"] == 28
                 assert pickup["current_rates_source"] == "nba_stats"
@@ -145,10 +149,7 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert {item["drop_id"] for item in initial["recommendations"]} >= {"1", "1002"}
                 best = initial["recommendations"][0]
                 assert best["target_categories"]
-                assert all(
-                    initial["strategy"][key]["improvement_target"]
-                    for key in best["target_categories"]
-                )
+                assert all(initial["strategy"][key]["improvement_target"] for key in best["target_categories"])
                 out = await plan({"100": {"injured": True}})
                 assert all(item["add_id"] != "100" for item in out["recommendations"])
                 protected = await plan({"1": {"protected": True}, "1002": {"protected": False}})
@@ -167,10 +168,10 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                 assert not explicit["recommendations"]
                 raw["league"]["settings"]["acquisitionSettings"].pop("matchupAcquisitionLimit")
                 refreshed = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
-                assert refreshed["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
+                assert refreshed["league"]["acquisition_settings"]["cap_source"] is None
                 fallback = await plan(matchup_add_limit_fallback=7)
                 assert fallback["remaining_adds"] + len(fallback["actions"]) == 1
-                assert refreshed["league"]["acquisition_settings"]["weekly_add_limit"] == 7
+                assert refreshed["league"]["acquisition_settings"]["weekly_add_limit"] is None
                 assert refreshed["league"]["id"] == 123
                 raw["league"]["teams"][0]["transactionCounter"]["matchupAcquisitionTotals"] = {}
                 await browser.get("/api/fantasy/espn/snapshot?refresh=true")

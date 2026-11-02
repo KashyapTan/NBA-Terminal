@@ -12,6 +12,11 @@ from nba_terminal.services import fantasy_nba as nba
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
 
 
+@pytest.fixture(autouse=True)
+def offline_identity_batch(monkeypatch):
+    monkeypatch.setattr(nba, "fetch_identities", lambda year: [])
+
+
 def schedule():
     def game(id, start, home=1610612737, away=1610612738, **extra):
         return {
@@ -97,6 +102,7 @@ def test_batch_current_season_rates_are_primary():
         {
             "rates": [
                 {
+                    **{field: 1 for field in nba.FIELDS},
                     "PLAYER_ID": 123,
                     "PLAYER_NAME": "Sample Player",
                     "TEAM_ABBREVIATION": "ATL",
@@ -115,6 +121,32 @@ def test_batch_current_season_rates_are_primary():
     assert player["current_rates"]["fgm"] == 5
     assert player["current_rates_source"] == "nba_stats"
     assert player["current_games"] == 4
+
+
+@pytest.mark.parametrize("bad_field,bad_value", [("FGM", None), ("FGA", 0), ("AST", float("nan"))])
+def test_partial_or_invalid_nba_sample_does_not_overwrite_complete_espn(bad_field, bad_value):
+    current = {key: 1.0 for key in nba.FIELDS.values()}
+    player = {
+        "name": "Sample Player",
+        "pro_team_id": 1,
+        "current_rates": current.copy(),
+        "current_games": 4,
+        "current_rates_source": "espn_actual_season",
+        "prior_rates": None,
+    }
+    snapshot = {"teams": [{"roster": [player]}], "free_agents": [], "data_gaps": [], "fetched_at": "stamp"}
+    row = {field: 1 for field in nba.FIELDS} | {
+        "PLAYER_ID": 123,
+        "PLAYER_NAME": "Sample Player",
+        "TEAM_ABBREVIATION": "ATL",
+        "GP": 4,
+        bad_field: bad_value,
+    }
+    nba.enrich_players(snapshot, {"rates": [row], "rates_status": "fresh"})
+    assert player["current_rates"] == current
+    assert player["season_rates"] == current
+    assert player["rate_provenance"]["source"] == "espn_actual_season"
+    assert player["nba_rates_usable"] is False
 
 
 def test_cache_failure_backoff_stale_preservation_and_expiry(monkeypatch):
@@ -154,8 +186,10 @@ def test_stats_request_one_batch_explicit_current_season_and_timeout(monkeypatch
                 "resultSets": [
                     {
                         "name": "LeagueDashPlayerStats",
-                        "headers": ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "GP", "MIN", "PTS"],
-                        "rowSet": [[123, "Example", 1610612737, 4, 30, 20]],
+                        "headers": ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "GP", *nba.FIELDS],
+                        "rowSet": [
+                            [123, "Example", 1610612737, 4, *[20 if field == "PTS" else 1 for field in nba.FIELDS]]
+                        ],
                     }
                 ]
             }
@@ -205,7 +239,7 @@ def test_upstream_failure_does_not_erase_espn_rates_or_schedule():
     )
     assert player["current_rates"] == {"pts": 20}
     assert player["schedule"] == [{"date": "2026-10-31"}]
-    assert len(snapshot["data_gaps"]) == 2
+    assert len(snapshot["data_gaps"]) + len(snapshot["modeling_notes"]) == 2
 
 
 def test_empty_stats_and_schema_drift_are_failures(monkeypatch):

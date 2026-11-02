@@ -117,7 +117,8 @@ def test_scoped_fallback_seven_used_six_and_unknown_usage():
     user["weekly_usage_complete"] = False
     result = plan_snapshot_waivers(data, settings, NOW)
     assert not result["plan"] and result["remaining_adds"] is None
-    assert "matchup_add_limit" not in result["provenance"]
+    assert result["provenance"]["matchup_add_limit"]["value"] == 7
+    assert result["acquisition_budget"]["used"] is None
     assert plan_snapshot_waivers(data, prefs(), NOW)["remaining_adds"] is None
 
 

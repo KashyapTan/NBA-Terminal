@@ -383,6 +383,7 @@ async def waiver_plan(request: Request, response: Response) -> dict:
     allowed = {
         "context",
         "user_confirmed_counts",
+        "counts_snapshot_at",
         "user_confirmed_eligibility",
         "candidate_ids",
         "droppable_ids",

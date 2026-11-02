@@ -1,0 +1,63 @@
+# Empty ordered waiver plan diagnosis
+
+Starting revision: `6edc9be237d2627a72e4ead50d7cc5dbb50b9087` (human-merged PR13).
+
+## Actual user evidence
+
+On 2026-11-01 the user supplied the current localhost text: 26 beneficial conditional alternatives; 12/12 legal drops evaluated; 804 evaluations; 398 candidates; acquisition limits or usage unverified. The market contained 800 observed players, with unknown provider total and partial coverage, fetched at `2026-11-01T17:20:41.074455+00:00`. The user confirmed a matchup cap of 7 and that 6 used was accurate **yesterday**. No current used/remaining count was supplied.
+
+This establishes conditional opportunities, not evaluated-no-benefit and not known-zero-budget. The conditional state is emitted only after required roster, banked totals, rate, schedule and category-comparison checks pass. Acquisition verification withholds the ordered sequence. Partial market coverage separately limits the scope of the result; it does not cause the unknown-budget state. These observations do not verify a particular pickup's present ownership, transaction legality or availability.
+
+## Live inspection and limits
+
+- `127.0.0.1:5173/src/LeagueFantasy.tsx` served an inline source map whose `sourcesContent` exactly matched that file at PR13. The generic empty-sequence sentence is present there.
+- Read-only process working-directory checks located the existing frontend and backend in the user's primary checkout. That checkout remained clean at PR13. This does not prove the Python process reloaded every module at that revision.
+- Native `cua.getApp("org.mozilla.firefox")` timed out after approximately 6 seconds (`timeoutReached`); browser inventory reported Firefox running but `browsers=[]`. No Firefox inputs, login changes or session extraction were performed.
+- Cookie-free localhost `/api/fantasy/espn/status` returned `connected:false`, which describes only that unauthenticated request, not the user's browser session.
+- A bounded, redirect-disabled, unauthenticated read of the [ESPN league settings/team endpoint](https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/2027/segments/0/leagues/604550749?view=mSettings&view=mTeam) returned HTTP 401. No upstream body, credentials, cookies or private session payload was retained.
+
+Consequently, the exact private source field rejected in the user's evaluation cannot be verified here. It may be current usage, the limit-period flag, missing/inconsistent remaining counts, or another acquisition-rule check. Do not present any one of these as an observed private field. The confirmed cap alone does not establish current remaining budget. Six used yesterday would imply one remaining only if no further acquisitions occurred and all relevant rules agree.
+
+Original user text and clarification are retained by the parent at `/Users/kash/.local/share/multplx/home/data/NBA_WAIVER_PLAN_DIAG/user-current-status.md`. This document retains only safe counts, state and reason metadata.
+
+## Data flow and guards
+
+`espn_fantasy.py` requests `mSettings`/`mTeam`, then normalizes `settings.acquisitionSettings.matchupAcquisitionLimit`, `matchupLimitPerScoringPeriod`, and each team's `transactionCounter.matchupAcquisitionTotals[str(status.currentMatchupPeriod)]`. Missing/invalid current-period usage remains unknown; season acquisitions and single-day transaction rows are not substitutes. The cap7 fallback is restricted to the user-authorized league/season; it does not provide usage or verify a daily rule. A targeted same-context mTeam refresh retries a missing current matchup counter once.
+
+`fantasy_planner_adapter.py` accepts verified matchup counts or explicitly user-confirmed counts. A scoped user matchup cap can combine with complete current ESPN matchup usage independently of an omitted optional daily-rule flag; omission is retained rather than converted to False. Explicit daily limits still require a daily ledger. A daily limit still needs a daily ledger. Invalid, incomplete or conflicting counts become unknown budget. Candidate ownership, free-agent eligibility, player schedules/rates and both full rosters remain guarded.
+
+`fantasy_optimizer.py` scores the whole roster before and after each move, retaining banked actuals and adding only remaining usable starts. Net totals include pickup production minus lost drop production plus lineup spillover; shooting percentages use made/attempt totals. Search considers selected-five improvements, cushion/viability guards and season-value cost. Unknown budget allows competing one-move conditional comparisons while confirming no ordered moves. Known zero budget is distinct. Only complete inputs and positive budget can produce a confirmed sequence; bounded search never proves global optimality.
+
+The UI previously displayed the same generic sentence whenever `recommended_plan.moves` was absent/empty. That obscured all distinct evaluation states even though precise status existed elsewhere.
+
+## Change and proof
+
+The empty ordered-plan section now names the state, displays the actual conditional alternative count, shows distinct provider/input reasons inline with additional reasons expandable, and offers the next action in the same section. Its recovery button opens the existing advanced controls. Backend diagnostics now identify missing cap, current usage, rule period, remaining count, invalid manual counts and conflicting totals separately. No acquisition, legality, data or scoring guard was relaxed; no current usage was hardcoded. N navigation and PR13 features are unchanged.
+
+`desktop.png` (1440×1000 viewport) and `mobile.png` (390×844 viewport) are full-page screenshots of an isolated **synthetic** browser regression at port 4194. They prove rendering and recovery controls, not private ESPN state. The fixture deliberately models one conditional alternative and missing usage; it is not a reproduction of the user's 26 private alternatives.
+
+Validation includes the complete Python suite and coverage, Ruff, frontend lint/format/typecheck/Vitest/build, and focused Playwright diagnosis/strategy/browser-setup checks. Exact final counts and commit are in the task delivery evidence and PR. The primary server, checkout and Firefox session were retained untouched; no fantasy transaction occurred.
+
+## Revision2 provider recovery
+
+The expanded scope adds a researcher-led audit and recovery of all recoverable provider gaps. The original inline fix is retained. The parent-validated final research report has been integrated; see [all gap dispositions](gap-disposition.md) and [original research](research-report.md). PR14 remains subject to human review and merge.
+
+Independent code inspection found that historical NBA games with any log row skipped box-score recovery even when another required active starter lacked a row. Recovery now uses verified daily active lineups to identify required player/game keys, fetches only relevant incomplete games within the existing 16-game bound, and accepts explicit DNP zeros only from the box score. Complete fresh required log coverage avoids another fetch. Unknown identities and absent box-score rows remain unknown. This is a code-path defect reproduced with synthetic source-shape tests, not a claim that it caused the user's budget blocker.
+
+## Combined validation at3b3f751
+
+- `uv run ruff check .`: passed.
+- `uv run coverage run -m pytest`:394passed; one pre-existing BoxScoreTraditionalV2 deprecation warning.
+- `uv run coverage report`:97%total; separate93%gates passed at96%game_center and100%webapp.
+- Bun lint, format check, typecheck and build:passed. `bun run coverage`:111tests passed;93.70%line coverage exceeds93%gate.
+- `E2E_PORT=4194 bun run e2e e2e/waiver-plan-diagnosis.spec.ts e2e/league-strategy-ui.spec.ts e2e/game-center-polish.spec.ts`:5passed, including N keyboard/aria navigation and desktop/mobile layouts.
+- `bun run e2e:fantasy`:12passed across Vite proxy and production build, with real backend normalization/planner routes and explicitly synthetic provider transports.
+- Final primary checkout observation remained clean at6edc9be; existing user server listeners remained PIDs59996(:5173) and60007(:8000). No restart or private session action occurred.
+
+Original full command outputs are retained under the worker's `data/evidence/revision2-python.txt` and `revision2-web.txt`; canonical task evidence binds them to the final commit. Screenshots were regenerated from the final tested UI. Current private usage and loaded Python module revision remain unverified; these checks do not claim a live private-account recommendation.
+
+## Ordinary review corrections and production proof
+
+The independent review of3b3f751 found twoP2 anomalous-response cases, now covered by oversized-page and cache-level invalidGP regressions. See the updated gap matrix/review note. The original394/111/17 results above remain exact3b3f751 evidence; current correction check counts are retained in canonical delivery evidence. Frontend source is unchanged by the corrections.
+
+A separate production-proof set uses the real HTTP session/normalizer/planner with the existing synthetic-provider backend: complete9category forecast, cap7, fixture-current usage6, one ordered move, and legible full-roster before/add/drop/spillover/after/net arithmetic. Desktop/mobile/budget and mobile horizontal table positions are retained in the worker `data/evidence/production-fixture/` directory, with safe metadata and a standalone capture script. The original `desktop.png`/`mobile.png` here remain minimal blocker-rendering fixtures; they do not prove recovered production forecasts or private account results.
