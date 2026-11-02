@@ -8,6 +8,7 @@ import requests
 
 from nba_terminal.services import espn_fantasy as espn
 from nba_terminal.services import fantasy_nba as nba
+from tests.fantasy_v7_fixture import full_nba_schedule
 
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
 
@@ -62,7 +63,7 @@ def test_schedule_year_timezone_actual_games_and_no_games():
     assert nba.schedule_games(schedule(), 2026, NOW) == {}
 
 
-def test_normalization_missing_espn_schedule_uses_nba_calendar():
+def test_normalization_missing_espn_schedule_refuses_partial_nba_calendar():
     import json
     from pathlib import Path
 
@@ -71,10 +72,9 @@ def test_normalization_missing_espn_schedule_uses_nba_calendar():
     bundle = {"rates": [], "schedule": schedule(), "rates_status": "unavailable", "schedule_status": "fresh"}
     result = espn.normalize(data["league"], {}, data["pool"], data["cards"], {}, 1, now=NOW, nba=bundle)
     player = result["teams"][0]["roster"][0]
-    assert result["period"]["remaining_dates"] == ["2026-10-31", "2026-11-01"]
-    assert player["schedule_source"] == "nba_schedule"
-    assert player["remaining_games"] == 2
-    assert player["today"] is True
+    assert player["schedule"] is None
+    assert player["remaining_games"] is None
+    assert result["period"]["schedule_coverage"]["complete"] is False
 
 
 def test_identity_requires_unique_full_name_and_team(monkeypatch):
@@ -222,7 +222,7 @@ def test_cdn_failure_uses_explicit_season_schedule_endpoint(monkeypatch):
 
     def endpoint(**kwargs):
         calls.append(kwargs)
-        return SimpleNamespace(get_dict=schedule)
+        return SimpleNamespace(get_dict=full_nba_schedule)
 
     monkeypatch.setattr(nba.scheduleleaguev2, "ScheduleLeagueV2", endpoint)
     assert nba.fetch_schedule(2027)["leagueSchedule"]["seasonYear"] == "2026-27"
@@ -289,7 +289,7 @@ def test_cdn_success_is_bounded_and_no_redirects(monkeypatch):
             pass
 
         def iter_content(self, size):
-            yield json.dumps(schedule()).encode()
+            yield json.dumps(full_nba_schedule()).encode()
 
     def get(*args, **kwargs):
         calls.append((args, kwargs))

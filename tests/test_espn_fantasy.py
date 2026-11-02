@@ -53,7 +53,7 @@ def test_nine_cat_totals_schedule_and_sample_rates(data):
     assert player["today"] is True and player["remaining_games"] == 2
     assert player["locked"] is None
     assert len(result["matchup_history"]) == 7
-    assert result["period"]["dates"] == ["2026-10-31", "2026-11-01"]
+    assert result["period"]["dates"] == ["2026-10-31", "2026-11-01", "2026-11-02"]
     assert result["fetched_at"] == NOW.isoformat()
     assert result["optimizer"]["status"] == "requires_inputs"
     assert result["optimizer"]["endpoint"] == "/api/fantasy/espn/plan"
@@ -105,7 +105,8 @@ def test_daily_unlimited_missing_cap_not_weekly(data, value, per_day):
     data["league"]["settings"]["acquisitionSettings"].update(
         matchupAcquisitionLimit=value, matchupLimitPerScoringPeriod=per_day
     )
-    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    expected = 14 if value == 7 and per_day is True else None
+    assert normalized(data)["league"]["acquisition_settings"]["weekly_add_limit"] == expected
 
 
 @pytest.mark.parametrize("scoring_type", ["ROTO", "H2H_POINTS", None])
@@ -292,7 +293,8 @@ def test_real_weekly_shape_maps_weeks_to_daily_calendar(data):
     assert result["period"]["scoring_period_ids"] == list(range(7, 14))
     assert result["period"]["dates"] == [f"2026-10-{day}" for day in range(26, 32)] + ["2026-11-01"]
     assert result["period"]["remaining_dates"] == ["2026-10-31", "2026-11-01"]
-    assert result["teams"][0]["roster"][0]["remaining_games"] == 2
+    assert result["teams"][0]["roster"][0]["remaining_games"] is None
+    assert result["period"]["schedule_coverage"]["complete"] is False
     assert result["period"]["source"] == "espn_weekly_calendar"
 
 
@@ -319,8 +321,8 @@ def test_float_caps_verified_weekly_counters_and_unknown_are_distinct(data):
     data["league"]["settings"]["acquisitionSettings"]["matchupLimitPerScoringPeriod"] = True
     daily = normalized(data)
     assert daily["league"]["acquisition_settings"]["daily_add_limit"] is None
-    assert daily["league"]["acquisition_settings"]["weekly_add_limit"] is None
-    assert daily["teams"][0]["remaining_adds"] is None
+    assert daily["league"]["acquisition_settings"]["weekly_add_limit"] == 14
+    assert daily["teams"][0]["remaining_adds"] == 12
     team["transactionCounter"]["matchupAcquisitionTotals"]["2"] = 0
     assert normalized(data)["teams"][0]["weekly_used_adds"] == 0
 

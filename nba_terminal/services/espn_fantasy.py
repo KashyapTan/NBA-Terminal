@@ -295,7 +295,16 @@ class EspnClient:
                 raw = raw | {"schedule": merge_history(raw.get("schedule", []), replacements)}
         bundle = fantasy_nba.load(self.season_id)
         result = normalize(
-            raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps, nba=bundle
+            raw,
+            schedule,
+            pool,
+            cards,
+            transactions,
+            selected,
+            comparison,
+            self.swid,
+            gaps=gaps,
+            nba=bundle,
         )
         if result["period"].get("context_verified") is False and not _context_retry:
             return self.snapshot(self.league(), selected, comparison, _context_retry=True)
@@ -489,20 +498,36 @@ def matchup_acquisition_days(schedule: dict, periods: list[int]) -> int | None:
 
 def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=False) -> dict[int, list[dict]]:
     result = {}
-    for team in raw.get("settings", {}).get("proTeams", []):
-        if "proGamesByScoringPeriod" not in team:
+    settings = raw.get("settings") if isinstance(raw, dict) else None
+    teams = settings.get("proTeams") if isinstance(settings, dict) else None
+    if not isinstance(teams, list):
+        return result
+    for team in teams:
+        if not isinstance(team, dict):
             continue
-        games, unknown = [], False
+        try:
+            team_id = int(team.get("id"))
+        except (ValueError, TypeError):
+            continue
+        if team_id not in range(1, 31) or not isinstance(team.get("proGamesByScoringPeriod"), dict):
+            continue
+        games, unknown, seen = [], False, {}
         for period, entries in team["proGamesByScoringPeriod"].items():
             try:
                 scoring_id = int(period)
             except (ValueError, TypeError):
                 unknown = True
                 continue
+            if not isinstance(entries, list):
+                unknown = True
+                continue
             if periods is not None and scoring_id not in periods:
                 unknown |= any(count(g.get("scoringPeriodId")) in periods for g in entries)
                 continue
             for game in entries:
+                if not isinstance(game, dict):
+                    unknown = True
+                    continue
                 if "scoringPeriodId" in game and count(game["scoringPeriodId"]) != scoring_id:
                     unknown = True
                     continue
@@ -521,6 +546,16 @@ def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=F
                 if game.get("startTimeTBD"):
                     unknown = True
                     continue
+                identity = (
+                    str(game.get("id"))
+                    if game.get("id") is not None
+                    else (start.isoformat(), game.get("homeProTeamId"), game.get("awayProTeamId"))
+                )
+                observation = (start.isoformat(), game.get("homeProTeamId"), game.get("awayProTeamId"))
+                if identity in seen:
+                    unknown |= seen[identity] != observation
+                    continue
+                seen[identity] = observation
                 games.append(
                     {
                         "game_id": game.get("id"),
@@ -530,12 +565,12 @@ def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=F
                         "start_at": start.isoformat(),
                         "started": start <= now,
                         "opponent_pro_team_id": game.get("awayProTeamId")
-                        if game.get("homeProTeamId") == team["id"]
+                        if game.get("homeProTeamId") == team_id
                         else game.get("homeProTeamId"),
                     }
                 )
         if not unknown or anchors_only:
-            result[team["id"]] = sorted(games, key=lambda game: game["start_at"])
+            result[team_id] = sorted(games, key=lambda game: game["start_at"])
     return result
 
 
@@ -546,17 +581,28 @@ def completed_team_games(raw: dict, year: int, now: datetime) -> dict[int, int]:
     reciprocal official final observations must be present. Missing official flags
     or malformed past records make that team's denominator unknown.
     """
-    teams = {t.get("id"): t for t in raw.get("settings", {}).get("proTeams", []) if t.get("id") in range(1, 31)}
+    settings = raw.get("settings") if isinstance(raw, dict) else None
+    inventory = settings.get("proTeams") if isinstance(settings, dict) else None
+    if not isinstance(inventory, list):
+        return {}
+    teams = {t.get("id"): t for t in inventory if isinstance(t, dict) and t.get("id") in range(1, 31)}
     if set(teams) != set(range(1, 31)):
         return {}
-    records, unknown = {}, set()
+    inventory = fantasy_nba.coverage(normalize_schedule(raw, now), year)
+    records, unknown = {}, set(teams) - set(inventory["verified_team_ids"])
     for tid, team in teams.items():
         mapping = team.get("proGamesByScoringPeriod")
         if not isinstance(mapping, dict) or not mapping:
             unknown.add(tid)
             continue
         for period, games in mapping.items():
+            if not isinstance(games, list):
+                unknown.add(tid)
+                continue
             for game in games:
+                if not isinstance(game, dict):
+                    unknown.add(tid)
+                    continue
                 try:
                     start = datetime.fromtimestamp(game["date"] / 1000, timezone.utc)
                     # Only this regular-season fantasy calendar; refuse other years.
@@ -619,7 +665,11 @@ def normalize_player(
     player["stats"] = list(splits.values())
     current, games = samples(player, year)
     prior, prior_games = samples(player, year - 1)
-    schedule = schedules.get(player.get("proTeamId")) if periods else None
+    try:
+        pro_team = int(player.get("proTeamId"))
+    except (ValueError, TypeError):
+        pro_team = None
+    schedule = schedules.get(pro_team) if periods else None
     schedule = [game for game in schedule if game["scoring_period_id"] in periods] if schedule is not None else None
     availability = "ONTEAM" if rostered else pool.get("status", "UNKNOWN")
     positions = [SLOTS.get(slot, f"UNKNOWN_{slot}") for slot in player.get("eligibleSlots", [])]
@@ -637,7 +687,7 @@ def normalize_player(
     return {
         "id": str(player.get("id", original.get("id"))),
         "name": player.get("fullName"),
-        "pro_team_id": player.get("proTeamId"),
+        "pro_team_id": pro_team,
         "positions": positions,
         "lineup_slot": SLOTS.get(entry.get("lineupSlotId")),
         "active": entry.get("lineupSlotId") not in (13, 14),
@@ -813,10 +863,11 @@ def normalize(
     matchup = raw.get("status", {}).get("currentMatchupPeriod")
     anchor_schedules = normalize_schedule(schedule, now, anchors_only=True)
     scoped_periods, scoped_source = matchup_scoring_periods(raw, anchor_schedules)
-    schedules = normalize_schedule(schedule, now, periods=set(scoped_periods) if scoped_periods else None)
+    schedules = normalize_schedule(schedule, now)
     espn_schedules = schedules
     schedule_sources = {team: "espn_schedule" for team in schedules}
     calendar_verified = len(scoring_date_anchors(anchor_schedules)) == 1
+    espn_calendar_verified = calendar_verified
     nba_schedules = {}
     schedule_sources_consistent = True
     if nba is not None:
@@ -828,11 +879,6 @@ def normalize(
                 for game in games:
                     game["scoring_period_id"] = (date.fromisoformat(game["date"]) - anchor).days
 
-        # A successful/30-key NBA parser result is not evidence that its payload
-        # covers the whole matchup. Preserve validated ESPN team coverage; NBA
-        # fills missing teams and separately contributes all credible started
-        # evidence to the banked proof below. Never union team dictionaries to
-        # establish a union of game observations.
         def observations(games):
             return {
                 (g["scoring_period_id"], g.get("opponent_pro_team_id"), g["start_at"], g["started"])
@@ -845,22 +891,67 @@ def normalize(
             for team, games in espn_schedules.items()
             if team in nba_schedules
         )
-        for team, games in nba_schedules.items():
-            if team not in schedules:
-                schedules = schedules | {team: games}
-                schedule_sources[team] = "nba_schedule"
+        # Only a verified full inventory may replace another provider's team map.
+        # In particular, don't preserve a cropped ESPN team when NBA has its later games.
+        nba_periods, _ = matchup_scoring_periods(raw, nba_schedules)
+        nba_anchors = scoring_date_anchors(nba_schedules)
+        nba_dates = (
+            [(next(iter(nba_anchors)) + timedelta(days=p)).isoformat() for p in nba_periods]
+            if len(nba_anchors) == 1
+            else []
+        )
+        nba_proof = fantasy_nba.coverage(nba_schedules, raw["seasonId"], nba_dates)
+        if nba_proof["complete"] and nba.get("schedule_status") in ("fresh", "cached"):
+            schedules = nba_schedules
+            schedule_sources = {team: "nba_schedule" for team in schedules}
+            if not calendar_verified:
+                nba_anchors = scoring_date_anchors(nba_schedules)
+                calendar_verified = (
+                    len(nba_anchors) == 1
+                    and raw.get("scoringPeriodId") == (now.astimezone(NY).date() - next(iter(nba_anchors))).days
+                )
     periods, period_source = (
-        (scoped_periods, scoped_source) if calendar_verified else matchup_scoring_periods(raw, schedules)
+        (scoped_periods, scoped_source) if espn_calendar_verified else matchup_scoring_periods(raw, schedules)
     )
     context_verified = count(raw.get("scoringPeriodId")) in periods if periods else None
     dates = sorted(
         {game["date"] for games in schedules.values() for game in games if game["scoring_period_id"] in periods}
     )
-    if period_source == "espn_weekly_calendar" and periods:
-        anchors = scoring_date_anchors(anchor_schedules) if calendar_verified else scoring_date_anchors(schedules)
+    if calendar_verified and periods:
+        anchors = scoring_date_anchors(anchor_schedules) if espn_calendar_verified else scoring_date_anchors(schedules)
         if len(anchors) == 1:
             anchor = next(iter(anchors))
             dates = [(anchor + timedelta(days=period)).isoformat() for period in periods]
+    schedule_coverage = fantasy_nba.coverage(schedules, raw["seasonId"], dates)
+    nba_status = (nba or {}).get("schedule_status", "unavailable")
+    selected_source = (
+        "nba_schedule" if schedule_sources and set(schedule_sources.values()) == {"nba_schedule"} else "espn_schedule"
+    )
+    schedule_coverage.update(
+        source=selected_source,
+        status="verified" if schedule_coverage["complete"] else "partial",
+        nba_status=nba_status,
+        fallback=selected_source != "nba_schedule",
+        fallback_reason=(
+            "NBA schedule unavailable or stale"
+            if nba_status not in ("fresh", "cached")
+            else nba_proof["reason"]
+            if nba is not None
+            else "NBA schedule unavailable"
+        )
+        if selected_source != "nba_schedule"
+        else None,
+        nba_coverage=nba_proof if nba is not None else None,
+        source_request=(nba or {}).get("schedule_request")
+        if selected_source == "nba_schedule"
+        else f"https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/{raw['seasonId']}?view=proTeamSchedules_wl",
+        fetched_at=(nba or {}).get("schedule_fetched_at") if selected_source == "nba_schedule" else now.isoformat(),
+    )
+    if not schedule_coverage["complete"]:
+        # Retain dates/anchors for diagnosis, but never turn a cropped response into zero games.
+        schedules = {team: games for team, games in schedules.items() if team in schedule_coverage["verified_team_ids"]}
+        gaps.append("Full league schedule is unverified: " + schedule_coverage["reason"])
+    authoritative_schedule = schedule_coverage["complete"] and bool(schedules)
     remaining = sorted(
         {
             game["date"]
@@ -880,8 +971,8 @@ def normalize(
     raw_cap = raw_limit if raw_limit is not None and raw_limit >= 0 else None
     scaled = acquisition.get("matchupLimitPerScoringPeriod")  # ESPN scaling flag, NOT a daily limit.
     game_days = (
-        matchup_acquisition_days(schedule, periods)
-        if calendar_verified and not period_source.endswith("partial")
+        len({g["date"] for games in schedules.values() for g in games if g["scoring_period_id"] in periods})
+        if authoritative_schedule and calendar_verified and not period_source.endswith("partial")
         else None
     )
     cap = None
@@ -986,6 +1077,13 @@ def normalize(
         player["schedule_source"] = (
             schedule_sources.get(player["pro_team_id"]) if player["schedule"] is not None else None
         )
+    required_pro_teams = {p["pro_team_id"] for p in required_players if p["active"] and p["health_status"] != "out"}
+    selected_schedule_proof = schedule_coverage | {
+        "complete": required_pro_teams.issubset(schedule_coverage["verified_team_ids"]),
+        "reason": "Selected roster schedules verified"
+        if required_pro_teams.issubset(schedule_coverage["verified_team_ids"])
+        else schedule_coverage["reason"],
+    }
     if any(p["schedule"] is None and p["active"] and p["health_status"] != "out" for p in required_players):
         gaps.append("Selected-roster professional schedules are unavailable; missing schedules are not zero games.")
     if not swid:
@@ -1025,6 +1123,7 @@ def normalize(
             },
         },
         "period": {
+            "schedule_coverage": schedule_coverage,
             "matchup_period_id": matchup,
             "scoring_period_id": raw.get("scoringPeriodId"),
             "scoring_period_ids": periods,
@@ -1035,13 +1134,12 @@ def normalize(
             "context_verified": context_verified,
             "bankable_periods_verified": calendar_verified
             and context_verified is True
-            and len(espn_schedules) == 30
-            and schedule_sources_consistent
+            and authoritative_schedule
             and not period_source.endswith("partial"),
             "bankable_scoring_period_ids": sorted(
                 {
                     g["scoring_period_id"]
-                    for source in (espn_schedules, nba_schedules)
+                    for source in ((schedules,) if authoritative_schedule else (espn_schedules, nba_schedules))
                     for games in source.values()
                     for g in games
                     if g["started"] and g["scoring_period_id"] in periods
@@ -1050,14 +1148,12 @@ def normalize(
             "schedule_sources_consistent": schedule_sources_consistent,
             "no_started_games_verified": calendar_verified
             and context_verified is True
-            and len(espn_schedules) == 30
-            and len(schedules) == 30
-            and schedule_sources_consistent
+            and authoritative_schedule
             and bool(periods)
             and not period_source.endswith("partial")
             and not any(
                 g["started"]
-                for source in (espn_schedules, nba_schedules)
+                for source in ((schedules,) if authoritative_schedule else (espn_schedules, nba_schedules))
                 for games in source.values()
                 for g in games
                 if g["scoring_period_id"] in periods
@@ -1066,15 +1162,16 @@ def normalize(
             "end_date": dates[-1] if dates else None,
         },
         "projection_metadata": {
+            "schedule_coverage": selected_schedule_proof,
             "matchup_calendar": {
                 "complete": calendar_verified and context_verified is True,
-                "source": "espn_scoring_date_anchors",
+                "source": "espn_scoring_date_anchors" if espn_calendar_verified else "nba_season_calendar",
                 "reason": (
-                    "Verified ESPN scoring-date anchor"
+                    "Verified scoring-date anchor from " + ("ESPN" if espn_calendar_verified else "NBA")
                     if calendar_verified and context_verified is True
                     else "ESPN scoring-date anchor or current matchup/day context is unavailable or conflicting"
                 ),
-            }
+            },
         },
         "selected_team_id": selected,
         "opponent_team_id": opponent,

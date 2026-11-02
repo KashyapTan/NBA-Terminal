@@ -111,11 +111,11 @@ def test_missing_current_counter_gets_one_scoped_refresh_and_large_cards_are_bat
     assert data["league"]["teams"][0]["transactionCounter"].get("matchupAcquisitionTotals") is None
 
 
-def test_irrelevant_future_schedule_row_does_not_erase_current_matchup(data):
+def test_malformed_future_schedule_inventory_remains_unknown(data):
     team = data["schedule"]["settings"]["proTeams"][0]
     team["proGamesByScoringPeriod"]["150"] = [{"date": None, "startTimeTBD": True}]
     result = normalize(data)
-    assert result["teams"][0]["roster"][0]["schedule"] is not None
+    assert result["teams"][0]["roster"][0]["schedule"] is None
     current = next(iter(team["proGamesByScoringPeriod"]))
     team["proGamesByScoringPeriod"][current][0]["scoringPeriodId"] = 999
     assert normalize(data)["teams"][0]["roster"][0]["schedule"] is None

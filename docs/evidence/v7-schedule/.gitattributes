@@ -1,0 +1,2 @@
+# Raw public response bytes are evidence, including upstream trailing whitespace.
+*.response -whitespace

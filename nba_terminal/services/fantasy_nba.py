@@ -17,6 +17,8 @@ import requests
 from nba_api.stats.endpoints import commonallplayers, leaguedashplayerstats, leaguedashteamstats, scheduleleaguev2
 from nba_api.stats.static import players, teams
 
+from nba_terminal.services.fantasy_schedule import coverage
+
 NY = ZoneInfo("America/New_York")
 SCHEDULE_URL = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
 # ESPN IDs are not NBA IDs. ESPN aliases PHL/PHO normalize to NBA PHI/PHX.
@@ -211,6 +213,11 @@ def fetch_identities(year: int) -> list[dict]:
     return [dict(zip(table["headers"], row, strict=True)) for row in table["rowSet"]]
 
 
+def _schedule_league(data):
+    league = data.get("leagueSchedule") if isinstance(data, dict) else None
+    return league if isinstance(league, dict) else {}
+
+
 def fetch_schedule(year: int) -> dict:
     try:
         with requests.get(SCHEDULE_URL, timeout=(3.05, 6), allow_redirects=False, stream=True) as response:
@@ -222,19 +229,28 @@ def fetch_schedule(year: int) -> dict:
                     raise ValueError("NBA schedule too large")
                 chunks.append(chunk)
             data = json.loads(b"".join(chunks))
-            if data.get("leagueSchedule", {}).get("seasonYear") != season_name(year) or not data.get(
-                "leagueSchedule", {}
-            ).get("gameDates"):
+            if _schedule_league(data).get("seasonYear") != season_name(year) or not _schedule_league(data).get(
+                "gameDates"
+            ):
                 raise ValueError("NBA schedule season mismatch")
+            validate_schedule(data, year)
+            data["_schedule_source"] = SCHEDULE_URL
             return data
     except (requests.RequestException, ValueError, KeyError):
         # Stats endpoint accepts an explicit season; the CDN only serves its current season.
         data = scheduleleaguev2.ScheduleLeagueV2(season=season_name(year), timeout=6).get_dict()
-        if data.get("leagueSchedule", {}).get("seasonYear") != season_name(year) or not data.get(
-            "leagueSchedule", {}
-        ).get("gameDates"):
+        if _schedule_league(data).get("seasonYear") != season_name(year) or not _schedule_league(data).get("gameDates"):
             raise ValueError("NBA schedule season mismatch")
+        validate_schedule(data, year)
+        data["_schedule_source"] = "https://stats.nba.com/stats/scheduleleaguev2"
         return data
+
+
+def validate_schedule(data, year):
+    proof = coverage(schedule_games(data, year, datetime.now(timezone.utc)), year)
+    if not proof["complete"]:
+        raise ValueError("NBA full-season schedule incomplete: " + proof["reason"])
+    return proof
 
 
 def load(year: int, *, need_schedule: bool = True) -> dict:
@@ -248,9 +264,9 @@ def load(year: int, *, need_schedule: bool = True) -> dict:
     identities, identity_status = cached(("identities", year), lambda: fetch_identities(year), 3600)
     schedule, schedule_status = (
         cached(
-            ("schedule", year),
+            ("schedule_v7", year),
             lambda: {"data": fetch_schedule(year), "fetched_at": datetime.now(timezone.utc).isoformat()},
-            3600,
+            300,
         )
         if need_schedule
         else (None, "not_needed")
@@ -268,6 +284,7 @@ def load(year: int, *, need_schedule: bool = True) -> dict:
         "rates_status": rate_status,
         "schedule_status": schedule_status,
         "schedule_scope": "full_season_endpoint" if schedule else None,
+        "schedule_request": schedule["data"].get("_schedule_source") if schedule else None,
         "team_games_scope": "regular_season_through_current_ny_date",
         "team_games_request": "https://stats.nba.com/stats/leaguedashteamstats",
         "season": season_name(year),
@@ -287,12 +304,19 @@ def load_prior_rates(year: int) -> dict:
 
 
 def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, list[dict]]:
-    league = (data or {}).get("leagueSchedule", {})
+    league = _schedule_league(data)
     if league.get("seasonYear") != season_name(year):
         return {}
-    parsed, unknown_teams = [], set()
-    for day in league.get("gameDates", []):
-        for game in day.get("games", []):
+    parsed, unknown_teams, seen = [], set(), {}
+    dates = league.get("gameDates")
+    if not isinstance(dates, list):
+        return {}
+    for day in dates:
+        if not isinstance(day, dict) or not isinstance(day.get("games"), list):
+            return {}
+        for game in day["games"]:
+            if not isinstance(game, dict):
+                return {}
             # Regular-season NBA/Cup games only; cup final, exhibitions and playoffs excluded.
             if not str(game.get("gameId", "")).startswith("002"):
                 continue
@@ -307,13 +331,28 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
                 start = datetime.fromisoformat(game["gameDateTimeUTC"].replace("Z", "+00:00"))
                 if start.tzinfo is None:
                     start = start.replace(tzinfo=timezone.utc)
-                home, away = (NBA_TO_ESPN[game[key]["teamId"]] for key in ("homeTeam", "awayTeam"))
+                home, away = (NBA_TO_ESPN[int(game[key]["teamId"])] for key in ("homeTeam", "awayTeam"))
+                if home == away or int(game.get("gameStatus", 0)) not in (1, 2, 3):
+                    raise ValueError("Unknown game status or identical teams")
             except (ValueError, KeyError, TypeError):
-                affected = [NBA_TO_ESPN.get(game.get(key, {}).get("teamId")) for key in ("homeTeam", "awayTeam")]
+                affected = []
+                for key in ("homeTeam", "awayTeam"):
+                    value = game.get(key)
+                    try:
+                        affected.append(NBA_TO_ESPN.get(int(value["teamId"])))
+                    except (KeyError, TypeError, ValueError):
+                        affected.append(None)
                 if None in affected:
                     return {}  # Unknown affected team: cannot certify any team's empty schedule.
                 unknown_teams.update(affected)
                 continue
+            gid = str(game["gameId"])
+            identity = (start, home, away)
+            if gid in seen:
+                if seen[gid] != identity:
+                    unknown_teams.update((home, away, seen[gid][1], seen[gid][2]))
+                continue
+            seen[gid] = identity
             parsed.append((game, start, home, away))
     if not parsed:
         return {}
@@ -328,8 +367,8 @@ def schedule_games(data: dict | None, year: int, now: datetime) -> dict[int, lis
                     "scoring_period_id": (date - first).days + 1,
                     "date": date.isoformat(),
                     "start_at": start.isoformat(),
-                    "started": start <= now or game.get("gameStatus") in (2, 3),
-                    "final": game.get("gameStatus") == 3,
+                    "started": start <= now or int(game.get("gameStatus")) in (2, 3),
+                    "final": int(game.get("gameStatus")) == 3,
                     "opponent_pro_team_id": opponent,
                     "source": "nba_schedule",
                 }
@@ -436,6 +475,7 @@ def enrich_players(snapshot: dict, bundle: dict) -> None:
     except (ValueError, TypeError, AttributeError):
         sample_time = None
     completed = schedule_games(bundle.get("schedule"), ending_year, sample_time) if ending_year and sample_time else {}
+    completed_verified = bool(completed) and coverage(completed, ending_year)["complete"]
     team_counts = (
         {
             NBA_TO_ESPN[r["TEAM_ID"]]: r["GP"]
@@ -528,6 +568,7 @@ def enrich_players(snapshot: dict, bundle: dict) -> None:
             and all(completed.values())
             and bundle.get("schedule_scope") == "full_season_endpoint"
             and bundle.get("schedule_status") in {"fresh", "cached"}
+            and completed_verified
         ):
             # Unique final regular-season IDs only: started/in-progress games are not completed.
             denominator = len(

@@ -266,13 +266,13 @@ def test_full_schedule_fallback_counts_unique_completed_regular_season_games_onl
     }
     nba.enrich_players(snapshot, bundle)
     sample = snapshot["free_agents"][0]["pickup_sample"]
-    assert sample["team_games"] == 2
-    assert sample["denominator_source"] == "nba_completed_regular_season_schedule"
+    assert sample["team_games"] == 0  # Verified ESPN full-season sample survives the partial NBA subset.
+    assert sample["denominator_source"] == "espn_official_completed_season_schedule"
     result = adapter.plan_snapshot_waivers(snapshot, preferences(snapshot), NOW)
-    assert result["pickup_filter_summary"]["qualified"] == 1
+    assert result["pickup_filter_summary"]["qualified"] == 0
     bundle.pop("schedule_scope")  # An arbitrary/trimmed schedule is not a completed-season denominator.
     nba.enrich_players(snapshot, bundle)
-    assert snapshot["free_agents"][0]["pickup_sample"]["team_games"] is None
+    assert snapshot["free_agents"][0]["pickup_sample"]["team_games"] == 0
 
 
 def test_genuine_one_move_with_unused_budget_has_honest_selected_stop():
@@ -287,7 +287,9 @@ def test_genuine_one_move_with_unused_budget_has_honest_selected_stop():
 def test_observed_public_espn_completed_schedule_fallback_and_coverage():
     observed = json.loads((Path(__file__).parent / "fixtures/fantasy_v6_completed_schedule_observed.json").read_text())
     now = datetime.fromisoformat(observed["observed_at"])
-    schedule = observed["schedule"]
+    assert espn.completed_team_games(observed["schedule"], observed["season_id"], now) == {}
+    # The older retained observation is a completed-only extract; use the new full public season response.
+    schedule = json.loads((Path(__file__).parents[1] / "docs/evidence/v7-schedule/espn-season.response").read_text())
     counts = espn.completed_team_games(schedule, observed["season_id"], now)
     assert {str(k): v for k, v in counts.items()} == observed["completed_counts"]
     assert counts[2] == 6  # BOS actual official completed games in retained public response.

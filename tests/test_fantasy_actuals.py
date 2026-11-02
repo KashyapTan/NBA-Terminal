@@ -537,7 +537,7 @@ def test_unknown_start_is_missing_schedule_not_empty():
     }
     parsed = nba.schedule_games(nba_schedule, 2027, now)
     assert 1 not in parsed and 2 not in parsed
-    assert parsed[3] == []
+    assert 3 not in parsed  # No valid inventory can attest another team has zero games.
 
 
 def test_complete_enrichment_uses_verified_daily_side_and_preserves_metadata(monkeypatch):

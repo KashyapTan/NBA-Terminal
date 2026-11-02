@@ -126,23 +126,7 @@ def nba_rates_payload():
 
 
 def nba_schedule_payload():
-    """Actual-shape regular-season schedule with a deterministic daily anchor."""
-    return {
-        "leagueSchedule": {
-            "seasonYear": "2026-27",
-            "gameDates": [
-                {
-                    "games": [
-                        {
-                            "gameId": f"00226000{index}",
-                            "gameDateTimeUTC": date,
-                            "homeTeam": {"teamId": 1610612737},
-                            "awayTeam": {"teamId": 1610612738},
-                            "gameStatus": 1,
-                        }
-                    ]
-                }
-                for index, date in enumerate(["2026-10-22T23:00:00Z", "2026-10-31T23:00:00Z", "2026-11-01T23:00:00Z"])
-            ],
-        }
-    }
+    """Full synthetic regular-season inventory, matching the ESPN fixture anchor."""
+    from tests.fantasy_v7_fixture import full_nba_schedule
+
+    return full_nba_schedule()

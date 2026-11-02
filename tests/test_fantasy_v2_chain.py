@@ -129,9 +129,8 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
                     return response.json()
 
                 unverified = await plan()
-                assert unverified["status"] == "incomplete"
-                assert unverified["recommended_plan"] is None
-                assert all(row["classification"] == "unknown" for row in unverified["strategy"].values())
+                assert unverified["status"] == "ready"  # Full NBA season now verifies the daily calendar.
+                assert unverified["baseline"]["games"] > 0
                 # NBA rates and missing-schedule fallback remain; verified ESPN schedule coverage is preserved.
                 raw["schedule"] = anchored_schedule
                 verified = (await browser.get("/api/fantasy/espn/snapshot?refresh=true")).json()
