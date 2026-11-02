@@ -190,7 +190,7 @@ class EspnClient:
             raise EspnError("schema_changed", "ESPN league identity or required fields were missing.")
         return raw
 
-    def snapshot(self, raw: dict, selected: int, comparison: int | None = None) -> dict:
+    def snapshot(self, raw: dict, selected: int, comparison: int | None = None, *, _context_retry=False) -> dict:
         gaps = []
 
         def optional(label: str, function: Any) -> dict:
@@ -203,8 +203,7 @@ class EspnClient:
         period = raw.get("scoringPeriodId")
         matchup = raw.get("status", {}).get("currentMatchupPeriod")
         selected_team = next((team for team in raw["teams"] if team["id"] == selected), {})
-        ledger = selected_team.get("transactionCounter", {}).get("matchupAcquisitionTotals")
-        used = count(ledger.get(str(matchup))) if isinstance(ledger, dict) else None
+        used, _ = matchup_usage(selected_team, matchup)
         if used is None:
             refreshed = optional("Current matchup acquisition ledger", lambda: self.get(["mTeam"]))
             if (
@@ -214,8 +213,7 @@ class EspnClient:
             ):
                 fresh_team = next((team for team in refreshed.get("teams", []) if team.get("id") == selected), {})
                 counter = fresh_team.get("transactionCounter", {})
-                values = counter.get("matchupAcquisitionTotals")
-                if isinstance(values, dict) and count(values.get(str(matchup))) is not None:
+                if matchup_usage(fresh_team, matchup)[0] is not None:
                     raw = raw | {
                         "teams": [
                             team | {"transactionCounter": counter} if team["id"] == selected else team
@@ -224,6 +222,14 @@ class EspnClient:
                         "_matchup_counter_refreshed": selected,
                     }
             elif refreshed:
+                if (
+                    not _context_retry
+                    and refreshed.get("id") == raw["id"]
+                    and refreshed.get("seasonId") == raw["seasonId"]
+                    and count(refreshed.get("status", {}).get("currentMatchupPeriod")) is not None
+                    and refreshed["status"]["currentMatchupPeriod"] != matchup
+                ):
+                    return self.snapshot(self.league(), selected, comparison, _context_retry=True)
                 gaps.append("Current matchup acquisition refresh rejected: league, season or matchup context mismatch.")
         schedule = optional("Professional schedule", lambda: self.get(["proTeamSchedules_wl"], season=True))
         pool = optional("Free agents", lambda: self.market(period))
@@ -291,6 +297,8 @@ class EspnClient:
         result = normalize(
             raw, schedule, pool, cards, transactions, selected, comparison, self.swid, gaps=gaps, nba=bundle
         )
+        if result["period"].get("context_verified") is False and not _context_retry:
+            return self.snapshot(self.league(), selected, comparison, _context_retry=True)
         if any(
             p.get("season_rates") is None
             for team in result["teams"]
@@ -426,6 +434,57 @@ def samples(player: dict, year: int) -> tuple[dict | None, float | None]:
         supplied = stats(split.get("averageStats")) or {}
         averages = {key: value if value is not None else supplied.get(key) for key, value in averages.items()}
     return averages, games
+
+
+def matchup_usage(team: dict, matchup) -> tuple[int | None, str | None]:
+    """Mirror ESPN team's sparse-map zero only for a validated present map.
+
+    Unlike ESPN's UI `get(...) || 0`, reject corrupt/fractional/negative values,
+    null/missing maps and invalid matchup scope. Season totals are never usage.
+    """
+    counter = team.get("transactionCounter")
+    values = counter.get("matchupAcquisitionTotals") if isinstance(counter, dict) else None
+    matchup = count(matchup)
+    if matchup is None or matchup == 0 or not isinstance(values, dict):
+        return None, None
+    if any(
+        not isinstance(key, str)
+        or not key.isascii()
+        or not key.isdecimal()
+        or str(int(key)) != key
+        or int(key) > matchup
+        or count(value) is None
+        for key, value in values.items()
+    ):
+        return None, "invalid_matchup_acquisition_map"
+    key = str(matchup)
+    if key in values:
+        return count(values[key]), "espn_matchup_acquisition_totals"
+    return 0, "espn_sparse_matchup_map_zero"
+
+
+def matchup_acquisition_days(schedule: dict, periods: list[int]) -> int | None:
+    """ESPN-owned module310: count matchup scoring days with any pro-game key.
+
+    Empty arrays are truthy in JavaScript; key presence, rather than roster games
+    or calendar length, follows that helper. Require the complete NBA team
+    inventory and valid maps so a partial schedule cannot certify a smaller cap.
+    """
+    teams = schedule.get("settings", {}).get("proTeams")
+    if not periods or not isinstance(teams, list):
+        return None
+    active = [team for team in teams if team.get("id") != 0]
+    if len({team.get("id") for team in active}) != 30 or any(
+        not isinstance(team.get("proGamesByScoringPeriod"), dict) for team in active
+    ):
+        return None
+    days = 0
+    for period in periods:
+        values = [team["proGamesByScoringPeriod"].get(str(period)) for team in active]
+        if any(value is not None and not isinstance(value, list) for value in values):
+            return None
+        days += any(isinstance(value, list) for value in values)
+    return days or len(periods)
 
 
 def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=False) -> dict[int, list[dict]]:
@@ -682,6 +741,7 @@ def normalize(
     anchor_schedules = normalize_schedule(schedule, now, anchors_only=True)
     scoped_periods, scoped_source = matchup_scoring_periods(raw, anchor_schedules)
     schedules = normalize_schedule(schedule, now, periods=set(scoped_periods) if scoped_periods else None)
+    espn_schedules = schedules
     schedule_sources = {team: "espn_schedule" for team in schedules}
     calendar_verified = len(scoring_date_anchors(anchor_schedules)) == 1
     if nba is not None:
@@ -692,6 +752,13 @@ def normalize(
             for games in fallback.values():
                 for game in games:
                     game["scoring_period_id"] = (date.fromisoformat(game["date"]) - anchor).days
+        # A partial NBA response with no current-matchup rows must not erase a
+        # complete ESPN week while retaining NBA priority for covered periods.
+        fallback = {
+            team: games
+            for team, games in fallback.items()
+            if team not in schedules or any(g["scoring_period_id"] in scoped_periods for g in games)
+        }
         for team in fallback:
             if nba.get("schedule_status") in ("fresh", "cached") or team not in schedules:
                 schedule_sources[team] = "nba_schedule"
@@ -702,6 +769,7 @@ def normalize(
     periods, period_source = (
         (scoped_periods, scoped_source) if calendar_verified else matchup_scoring_periods(raw, schedules)
     )
+    context_verified = count(raw.get("scoringPeriodId")) in periods if periods else None
     dates = sorted(
         {game["date"] for games in schedules.values() for game in games if game["scoring_period_id"] in periods}
     )
@@ -725,16 +793,20 @@ def normalize(
     card_map = {player_id(entry): player_body(entry) for entry in cards.get("players", [])}
     draft = {pick.get("playerId"): pick for pick in raw.get("draftDetail", {}).get("picks", [])}
     acquisition = settings.get("acquisitionSettings", {})
-    raw_cap = count(acquisition.get("matchupAcquisitionLimit"))
-    per_day = acquisition.get("matchupLimitPerScoringPeriod")
-    absent_cap = "matchupAcquisitionLimit" not in acquisition or acquisition["matchupAcquisitionLimit"] is None
-    fallback_cap = (
-        raw["id"] == 604550749
-        and raw["seasonId"] == 2027
-        and acquisition.get("matchupAcquisitionLimit") != -1
-        and (absent_cap or per_day is not False)
+    raw_limit = number(acquisition.get("matchupAcquisitionLimit"))
+    raw_cap = raw_limit if raw_limit is not None and raw_limit >= 0 else None
+    scaled = acquisition.get("matchupLimitPerScoringPeriod")  # ESPN scaling flag, NOT a daily limit.
+    game_days = (
+        matchup_acquisition_days(schedule, periods)
+        if calendar_verified and not period_source.endswith("partial")
+        else None
     )
-    cap = 7 if fallback_cap else raw_cap if per_day is False else None
+    cap = None
+    if raw_cap is not None and raw_cap > 0:
+        if scaled is False:
+            cap = count(raw_cap)
+        elif scaled is True and game_days is not None:
+            cap = math.floor(raw_cap * game_days + 0.5)  # JavaScript Math.round for nonnegative values.
     totals, opponent, history = {}, None, []
     for match in raw.get("schedule", []):
         home, away = match.get("home", {}), match.get("away", {})
@@ -776,9 +848,11 @@ def normalize(
             player["draft_source"] = "espn_draft_detail" if pick else None
             if team.get("isTransactionLocked") is True:
                 player["locked"], player["lock_source"] = True, "espn_team_transaction_lock"
-        counter = team.get("transactionCounter", {})
-        matchup_counts = counter.get("matchupAcquisitionTotals")
-        used = count(matchup_counts.get(str(matchup))) if isinstance(matchup_counts, dict) else None
+        used, usage_source = matchup_usage(team, matchup)
+        if context_verified is False:
+            used, usage_source = None, "matchup_scoring_period_context_mismatch"
+        counter = team.get("transactionCounter")
+        counter = counter if isinstance(counter, dict) else {}
         roster_ids.update(player["id"] for player in roster)
         teams.append(
             {
@@ -790,14 +864,15 @@ def normalize(
                 "actuals": fantasy_actuals.reconstruct(
                     team["id"], {}, {}, {}, {}, totals.get(team["id"]), now.isoformat()
                 ),
-                "season_acquisitions": team.get("transactionCounter", {}).get("acquisitions"),
+                "season_acquisitions": counter.get("acquisitions"),
+                "season_counted_acquisitions": sum(team["transactionCounter"]["matchupAcquisitionTotals"].values())
+                if used is not None
+                else None,
                 "weekly_used_adds": used,
                 "weekly_usage_source": (
-                    "espn_matchup_acquisition_totals_targeted_refresh"
-                    if raw.get("_matchup_counter_refreshed") == team["id"]
-                    else "espn_matchup_acquisition_totals"
-                    if used is not None
-                    else None
+                    f"{usage_source}_targeted_refresh"
+                    if raw.get("_matchup_counter_refreshed") == team["id"] and used is not None
+                    else usage_source
                 ),
                 "weekly_usage_complete": used is not None,
                 "remaining_adds": max(0, cap - used) if cap is not None and used is not None else None,
@@ -851,17 +926,18 @@ def normalize(
             "lineup_slots": lineup,
             "acquisition_settings": {
                 "weekly_add_limit": cap,
-                "limit_per_scoring_period": per_day,
+                "limit_per_scoring_period": scaled,
                 "matchup_add_limit": cap,
                 "reported_add_limit": raw_cap,
-                "reported_limit_scope": "day" if per_day is True else "matchup" if per_day is False else "unknown",
-                "daily_add_limit": raw_cap if per_day is True else None,
-                "cap_source": "league_fallback_7"
-                if fallback_cap
-                else "espn_acquisition_settings"
-                if raw_cap is not None
-                else None,
-                "unlimited": acquisition.get("matchupAcquisitionLimit") == -1,
+                "reported_limit_scope": "matchup_game_day_rate"
+                if scaled is True
+                else "matchup"
+                if scaled is False
+                else "unknown",
+                "matchup_game_days": game_days,
+                "daily_add_limit": None,
+                "cap_source": "espn_acquisition_settings" if raw_cap is not None else None,
+                "unlimited": raw_limit in (0, -1),
                 "season_add_limit": acquisition.get("acquisitionLimit"),
             },
         },
@@ -872,18 +948,40 @@ def normalize(
             "dates": dates,
             "remaining_dates": remaining,
             "source": period_source,
-            "calendar_verified": calendar_verified,
+            "calendar_verified": calendar_verified and context_verified is True,
+            "context_verified": context_verified,
+            "bankable_periods_verified": calendar_verified
+            and context_verified is True
+            and len(espn_schedules) == 30
+            and not period_source.endswith("partial"),
+            "bankable_scoring_period_ids": sorted(
+                {
+                    g["scoring_period_id"]
+                    for games in (espn_schedules | schedules).values()
+                    for g in games
+                    if g["started"] and g["scoring_period_id"] in periods
+                }
+            ),
+            "no_started_games_verified": calendar_verified
+            and context_verified is True
+            and len(espn_schedules) == 30
+            and len(schedules) == 30
+            and bool(periods)
+            and not period_source.endswith("partial")
+            and not any(
+                g["started"] for games in schedules.values() for g in games if g["scoring_period_id"] in periods
+            ),
             "start_date": dates[0] if dates else None,
             "end_date": dates[-1] if dates else None,
         },
         "projection_metadata": {
             "matchup_calendar": {
-                "complete": calendar_verified,
+                "complete": calendar_verified and context_verified is True,
                 "source": "espn_scoring_date_anchors",
                 "reason": (
                     "Verified ESPN scoring-date anchor"
-                    if calendar_verified
-                    else "ESPN scoring-date anchor unavailable or conflicting; NBA dates alone cannot verify matchup"
+                    if calendar_verified and context_verified is True
+                    else "ESPN scoring-date anchor or current matchup/day context is unavailable or conflicting"
                 ),
             }
         },

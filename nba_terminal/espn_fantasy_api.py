@@ -105,6 +105,7 @@ class Connection:
     expires: float
     cached: dict | None = None
     cached_until: float = 0
+    refresh_failed: bool = False
     active: bool = True
     lock: Any = field(default_factory=threading.Lock)
 
@@ -112,6 +113,7 @@ class Connection:
         choices = team_choices(self.raw, self.client.swid)
         return {
             "connected": True,
+            "refresh_failed": self.refresh_failed,
             "league_id": self.client.league_id,
             "season_id": self.client.season_id,
             "team_id": self.team_id,
@@ -343,11 +345,12 @@ def snapshot_sync(conn: Connection, refresh: bool, compare_team_id: int | None) 
         if conn.team_id is None:
             raise EspnError("team_required", "Select your team before fetching a matchup.", 409)
         # Cache full normalized data once; changing comparison is pure and does not refetch.
-        if refresh or conn.cached is None or conn.cached_until <= time.monotonic():
+        if refresh or conn.refresh_failed or conn.cached is None or conn.cached_until <= time.monotonic():
             raw = conn.client.league()
             result = conn.client.snapshot(raw, conn.team_id)
             ensure_active(conn)
             conn.raw, conn.cached = raw, result
+            conn.refresh_failed = False
             conn.cached_until = time.monotonic() + CACHE_TTL
         result = copy.deepcopy(conn.cached)
         if compare_team_id is not None:
@@ -384,6 +387,7 @@ async def waiver_plan(request: Request, response: Response) -> dict:
         "context",
         "user_confirmed_counts",
         "counts_snapshot_at",
+        "usage_declaration",
         "user_confirmed_eligibility",
         "candidate_ids",
         "droppable_ids",
@@ -415,6 +419,12 @@ def plan_sync(conn: Connection, preferences: dict) -> dict:
         if conn.team_id != current["selected_team_id"] or conn.cached != current:
             raise EspnError("snapshot_changed", "League data changed. Refresh and reconfirm planner inputs.", 409)
         result = plan_snapshot_waivers(current, preferences)
+        if conn.refresh_failed:
+            raise EspnError(
+                "source_refresh_failed",
+                "ESPN refresh failed during analysis; refresh before using recommendations.",
+                409,
+            )
         ensure_active(conn)
         return result
 
@@ -514,7 +524,13 @@ async def bridge_refresh(request: Request, response: Response) -> dict:
             raise fail("bridge_account_changed", "ESPN account changed. Disconnect and pair again.", 409)
         if data["league_id"] != pair.league_id or data["season_id"] != pair.season_id:
             raise fail("bridge_mismatch", "Pairing league and season cannot change during refresh.", 409)
-        if state in {"no_espn_session", "permission_denied", "account_changed", "error"}:
+        if state == "error":
+            pair.state = state
+            previous = store(request).get(pair.session)
+            if previous is not None:
+                previous.refresh_failed = True
+            return pair.status()
+        if state in {"no_espn_session", "permission_denied", "account_changed"}:
             pair.state = state
             conn = store(request).remove(pair.session)
             if conn and conn.lock.acquire(blocking=False):
@@ -552,6 +568,10 @@ async def bridge_refresh(request: Request, response: Response) -> dict:
         # Definite auth rejection revokes; transient upstream/worker failure may
         # keep the still-valid prior connection until its normal expiry.
         status = exc.status_code if isinstance(exc, HTTPException) else exc.status
+        if status >= 500:
+            previous = store(request).get(pair.session)
+            if previous is not None:
+                previous.refresh_failed = True
         if status < 500:
             old = store(request).remove(pair.session)
             if old and old.lock.acquire(blocking=False):

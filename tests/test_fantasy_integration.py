@@ -39,6 +39,7 @@ def preferences(snapshot):
     return {
         "context": {
             "league_id": snapshot["league"]["id"],
+            "season_id": snapshot["league"]["season_id"],
             "team_id": snapshot["selected_team_id"],
             "matchup_period_id": snapshot["period"]["matchup_period_id"],
             "fetched_at": snapshot["fetched_at"],
@@ -90,7 +91,7 @@ def test_budget_diagnostics_identify_the_rejected_field_without_inventing_usage(
         user.update(weekly_used_adds=None, remaining_adds=None, weekly_usage_complete=False)
         prefs["matchup_add_limit_fallback"] = 7
     elif missing == "period":
-        settings["limit_per_scoring_period"] = None
+        settings.update(limit_per_scoring_period=None, weekly_add_limit=None)
     elif missing == "cap":
         settings["weekly_add_limit"] = None
     else:
@@ -140,15 +141,11 @@ def test_scoped_matchup_cap_and_current_counter_survive_missing_or_daily_flag(sn
     assert result["acquisition_budget"]["matchup_cap"] == 7
     assert result["acquisition_budget"]["used"] == 6
     assert result["acquisition_budget"]["remaining"] == 1
+    assert result["evaluation_state"] == "confirmed_ordered_plan"
+    assert result["recommended_plan"]["budget_before"] == 1
+    assert len(result["plan"]) == 1
     if per_day is None:
-        assert result["evaluation_state"] == "confirmed_ordered_plan"
-        assert result["recommended_plan"]["budget_before"] == 1
-        assert len(result["plan"]) == 1
-        assert any("daily acquisition applicability" in limitation for limitation in result["limitations"])
-    else:
-        assert result["evaluation_state"] == "conditional_opportunities"
-        assert not result["plan"]
-        assert any("daily ledger" in gap for gap in result["data_gaps"])
+        assert any("matchup allowance scaling" in limitation for limitation in result["limitations"])
     user.update(weekly_used_adds=None, weekly_usage_complete=False)
     missing = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert missing["acquisition_budget"]["used"] is None
@@ -426,11 +423,11 @@ def test_ir_and_reported_out_do_not_create_impossible_active_games(snapshot):
 
 def test_daily_caps_and_inactive_only_eligibility_never_become_weekly_plans(snapshot):
     prefs = preferences(snapshot)
-    snapshot["league"]["acquisition_settings"]["limit_per_scoring_period"] = True
+    snapshot["league"]["acquisition_settings"]["daily_add_limit"] = 1
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert result["status"] == "incomplete" and not result["actions"]
     assert any("per-day acquisition" in gap.lower() for gap in result["data_gaps"])
-    snapshot["league"]["acquisition_settings"]["limit_per_scoring_period"] = False
+    snapshot["league"]["acquisition_settings"]["daily_add_limit"] = None
     snapshot["teams"][0]["roster"][0]["positions"] = ["BENCH", "IR"]
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
     assert result["status"] == "incomplete" and not result["actions"]

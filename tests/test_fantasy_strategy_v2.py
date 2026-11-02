@@ -57,6 +57,7 @@ def snapshot():
     return {
         "league": {
             "id": "synthetic",
+            "season_id": 2027,
             "supported": True,
             "lineup_slots": ["UTIL"],
             "acquisition_settings": {"limit_per_scoring_period": False, "weekly_add_limit": 3},
@@ -82,7 +83,15 @@ def snapshot():
 
 
 def prefs():
-    return {"context": {"league_id": "synthetic", "team_id": 1, "matchup_period_id": 4, "fetched_at": "fixture-v1"}}
+    return {
+        "context": {
+            "league_id": "synthetic",
+            "season_id": 2027,
+            "team_id": 1,
+            "matchup_period_id": 4,
+            "fetched_at": "fixture-v1",
+        }
+    }
 
 
 def test_all_positive_pairs_are_alternatives_not_budgeted_moves():

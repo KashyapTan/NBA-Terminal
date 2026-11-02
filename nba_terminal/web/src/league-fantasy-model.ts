@@ -95,6 +95,8 @@ export interface LeagueTeam {
   ownership_verified: boolean;
   roster: LeaguePlayer[];
   totals: Stats | null;
+  season_acquisitions?: number | null;
+  season_counted_acquisitions?: number | null;
   weekly_used_adds: number | null;
   remaining_adds: number | null;
   weekly_usage_complete?: boolean;
@@ -102,6 +104,7 @@ export interface LeagueTeam {
 }
 export interface LeagueStatus {
   connected: boolean;
+  refresh_failed?: boolean;
   league_id?: number;
   season_id?: number;
   team_id?: number;
@@ -126,7 +129,13 @@ export interface LeagueSnapshot {
       weekly_add_limit: number | null;
       matchup_add_limit?: number | null;
       cap_source?: string | null;
+      /** ESPN scales the matchup allowance by NBA game days; this is not a daily cap. */
       limit_per_scoring_period: boolean | null;
+      reported_add_limit?: number | null;
+      reported_limit_scope?: "matchup_game_day_rate" | "matchup" | "unknown";
+      matchup_game_days?: number | null;
+      unlimited?: boolean;
+      daily_add_limit?: number | null;
       season_add_limit: number | null;
     };
   };
@@ -135,6 +144,10 @@ export interface LeagueSnapshot {
     scoring_period_id: number;
     dates: string[];
     remaining_dates: string[];
+    context_verified?: boolean | null;
+    no_started_games_verified?: boolean;
+    bankable_periods_verified?: boolean;
+    bankable_scoring_period_ids?: number[];
     start_date?: string | null;
     end_date?: string | null;
   };
@@ -177,7 +190,13 @@ export interface ConnectLeague {
   espn_s2?: string;
 }
 export interface PlannerPreferences {
-  context?: { league_id: number; team_id: number; matchup_period_id: number; fetched_at: string };
+  context?: {
+    league_id: number;
+    season_id: number;
+    team_id: number;
+    matchup_period_id: number;
+    fetched_at: string;
+  };
   user_confirmed_eligibility?: boolean;
   candidate_ids?: string[];
   droppable_ids?: string[];
@@ -187,6 +206,19 @@ export interface PlannerPreferences {
   available_adds?: number | null;
   user_confirmed_counts?: boolean;
   counts_snapshot_at?: string;
+  usage_declaration?: {
+    league_id: number;
+    season_id: number;
+    team_id: number;
+    matchup_period_id: number;
+    used: number;
+    confirmed_at: string;
+    expires_at: string;
+    snapshot_at: string;
+    roster_ids: string[];
+    season_acquisitions: number | null;
+    source: string;
+  };
   protected_ids?: string[];
   uncertainty_mode?: "history" | "sensitivity";
   margin_sd?: Partial<Record<Category, number>>;

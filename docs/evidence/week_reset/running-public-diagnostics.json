@@ -1,0 +1,13 @@
+{
+  "frontend_module_url": "http://127.0.0.1:5173/src/LeagueFantasy.tsx",
+  "http_status": 200,
+  "sha256": "533b6cce59d85d68a86e22191a69d27d6acb5ff8459a773140147a93deeae663",
+  "has_new_usage_declaration": false,
+  "has_old_snapshot_confirmation_revocation": true,
+  "primary_checkout_head": "53e7ac1f4030d555a957124098e893496690b92e",
+  "backend_pid": 65401,
+  "frontend_pid": 65387,
+  "private_payload_observed": false,
+  "firefox_access": "getApp Firefox bounded retry returned timeoutReached",
+  "backend_loaded_revision": "Not provable from cwd/HEAD; no process restart or credential-bearing request made"
+}

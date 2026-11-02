@@ -84,7 +84,7 @@ def test_existing_login_renewal_selection_rotation_and_replay():
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("state", ["permission_denied", "no_espn_session", "account_changed", "error"])
+@pytest.mark.parametrize("state", ["permission_denied", "no_espn_session", "account_changed"])
 def test_missing_permission_logout_or_missing_cookie_revokes(state):
     async def run():
         async with browser() as b:
@@ -258,5 +258,25 @@ def test_bridge_malformed_state_and_unicode_nonce_are_safe_errors():
                 )
                 assert response.status_code in (400, 409)
                 assert PRIVATE["espn_s2"] not in response.text
+
+    asyncio.run(run())
+
+
+def test_generic_extension_refresh_error_retains_valid_context_and_recovers(monkeypatch):
+    async def run():
+        async with browser() as b:
+            await pair(b)
+            assert (await refresh(b)).status_code == 200
+            before = await b.get(P + "/snapshot")
+            assert before.status_code == 200
+            data = {"league_id": 123, "season_id": 2027, "nonce": await ticket(b), "state": "error"}
+            assert (await b.post(P + "/bridge/refresh", json=data, headers=H)).status_code == 200
+            status = (await b.get(P + "/status")).json()
+            assert status["connected"] and status["refresh_failed"]
+            # Recovery uses existing server-owned auth/team; no new browser login.
+            recovered = await b.get(P + "/snapshot")
+            assert recovered.status_code == 200
+            assert recovered.json()["selected_team_id"] == before.json()["selected_team_id"]
+            assert not (await b.get(P + "/status")).json()["refresh_failed"]
 
     asyncio.run(run())

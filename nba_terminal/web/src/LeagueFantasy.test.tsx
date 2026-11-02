@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -554,4 +554,69 @@ it("revokes an old manual budget confirmation when new league data arrives", asy
   expect(
     screen.getByRole("checkbox", { name: "Use my verified matchup counts" }),
   ).not.toBeChecked();
+});
+
+it("withholds stale recommendations after refresh failure and recovers on fresh data", async () => {
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  const snapshot = testSnapshot();
+  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  view.rerender(<WaiverWire snapshot={snapshot} onPlan={onPlan} error="ESPN refresh failed" />);
+  await screen.findByRole("alert");
+  expect(onPlan).toHaveBeenCalledOnce();
+  expect(screen.queryByText("Newest analysis")).not.toBeInTheDocument();
+  view.rerender(
+    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:10:00Z" }} onPlan={onPlan} />,
+  );
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
+});
+
+it("keeps a scoped explicit zero confirmation across a same-matchup refresh without changing evidence time", async () => {
+  const snapshot = testSnapshot();
+  const onPlan = vi.fn().mockResolvedValue(readyPlan);
+  const view = render(<WaiverWire snapshot={snapshot} onPlan={onPlan} />);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledOnce());
+  await userEvent.click(screen.getByText("Advanced inputs & data notes", { exact: true }));
+  await userEvent.type(screen.getByLabelText("Matchup acquisitions used", { exact: true }), "0");
+  await userEvent.click(screen.getByRole("checkbox", { name: "Use my verified matchup counts" }));
+  await waitFor(() => expect(onPlan.mock.lastCall?.[0].usage_declaration?.used).toBe(0));
+  const evidence = onPlan.mock.lastCall?.[0].usage_declaration;
+  view.rerender(
+    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:20:00Z" }} onPlan={onPlan} />,
+  );
+  await waitFor(() =>
+    expect(onPlan.mock.lastCall?.[0].context.fetched_at).toBe("2026-11-02T17:20:00Z"),
+  );
+  expect(onPlan.mock.lastCall?.[0].usage_declaration).toEqual(evidence);
+  expect(onPlan.mock.lastCall?.[0].context.season_id).toBe(snapshot.league.season_id);
+  expect(screen.getByRole("checkbox", { name: "Use my verified matchup counts" })).toBeChecked();
+});
+
+it("status polling does not cancel a slow snapshot or discard retained context on auth refresh failure", async () => {
+  let resolveSnapshot!: (snapshot: ReturnType<typeof testSnapshot>) => void;
+  const api: LeagueFantasyApi = {
+    status: vi.fn().mockResolvedValue({ connected: true, team_id: 1 }),
+    snapshot: vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSnapshot = resolve;
+        }),
+    ),
+    connect: vi.fn(),
+    selectTeam: vi.fn(),
+    disconnect: vi.fn(),
+  };
+  const { result } = renderHook(() => useLeagueFantasy(api));
+  await waitFor(() => expect(api.snapshot).toHaveBeenCalledOnce());
+  act(() => window.dispatchEvent(new Event("nba-espn-bridge")));
+  await waitFor(() => expect(api.status).toHaveBeenCalledTimes(2));
+  expect(api.snapshot).toHaveBeenCalledOnce();
+  const snapshot = testSnapshot();
+  await act(async () => resolveSnapshot(snapshot));
+  expect(result.current.snapshot).toEqual(snapshot);
+  vi.mocked(api.status).mockResolvedValue({ connected: false });
+  act(() => window.dispatchEvent(new Event("nba-espn-bridge")));
+  await waitFor(() => expect(result.current.status.connected).toBe(false));
+  expect(result.current.snapshot).toEqual(snapshot);
+  expect(result.current.error).toMatch(/retained/);
 });

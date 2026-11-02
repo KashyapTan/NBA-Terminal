@@ -445,16 +445,17 @@ def test_cap_zero_absent_seven_and_usage_unknown():
         str(league["status"]["currentMatchupPeriod"]): 0
     }
     result = espn.normalize(league, fixture["schedule"], fixture["pool"], {}, {}, 1)
-    assert result["league"]["acquisition_settings"]["weekly_add_limit"] == 0
-    assert result["teams"][0]["remaining_adds"] == 0
+    assert result["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert result["league"]["acquisition_settings"]["unlimited"] is True
+    assert result["teams"][0]["remaining_adds"] is None
     assert result["league"]["acquisition_settings"]["cap_source"] == "espn_acquisition_settings"
     del acquisition["matchupAcquisitionLimit"]
     league["id"] = 604550749  # Authorized context-bound user fallback, not a generic league default.
     for team in league["teams"]:
         team["transactionCounter"] = {"acquisitions": 99}
     result = espn.normalize(league, fixture["schedule"], fixture["pool"], {}, {}, 1)
-    assert result["league"]["acquisition_settings"]["weekly_add_limit"] == 7
-    assert result["league"]["acquisition_settings"]["cap_source"] == "league_fallback_7"
+    assert result["league"]["acquisition_settings"]["weekly_add_limit"] is None
+    assert result["league"]["acquisition_settings"]["cap_source"] is None
     assert result["teams"][0]["weekly_used_adds"] is None
     assert result["teams"][0]["remaining_adds"] is None
 
