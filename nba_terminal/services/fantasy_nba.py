@@ -14,7 +14,7 @@ from typing import Callable
 from zoneinfo import ZoneInfo
 
 import requests
-from nba_api.stats.endpoints import commonallplayers, leaguedashplayerstats, scheduleleaguev2
+from nba_api.stats.endpoints import commonallplayers, leaguedashplayerstats, leaguedashteamstats, scheduleleaguev2
 from nba_api.stats.static import players, teams
 
 NY = ZoneInfo("America/New_York")
@@ -153,6 +153,7 @@ def fetch_rates(year: int) -> list[dict]:
     data = leaguedashplayerstats.LeagueDashPlayerStats(
         season=season_name(year),
         per_mode_detailed="PerGame",
+        date_to_nullable=datetime.now(NY).strftime("%m/%d/%Y"),
         season_type_all_star="Regular Season",
         timeout=6,
     ).get_dict()
@@ -171,6 +172,34 @@ def fetch_rates(year: int) -> list[dict]:
             raise ValueError("NBA game count or primitive rate sample invalid")
         if games == 0 and any(value != 0 for key, value in rates.items() if key not in {"fg_pct", "ft_pct"}):
             raise ValueError("NBA zero-game sample has nonzero production")
+    return rows
+
+
+def fetch_team_games(year: int) -> list[dict]:
+    """One regular-season batch, aligned to the player batch's current NY date."""
+    data = leaguedashteamstats.LeagueDashTeamStats(
+        season=season_name(year),
+        season_type_all_star="Regular Season",
+        per_mode_detailed="PerGame",
+        date_to_nullable=datetime.now(NY).strftime("%m/%d/%Y"),
+        timeout=6,
+    ).get_dict()
+    table = next(t for t in data.get("resultSets", []) if t.get("name") == "LeagueDashTeamStats")
+    if not {"TEAM_ID", "GP"}.issubset(table["headers"]):
+        raise ValueError("NBA team game-count schema changed")
+    rows = [dict(zip(table["headers"], row, strict=True)) for row in table["rowSet"]]
+    if (
+        len(rows) != 30
+        or len({r["TEAM_ID"] for r in rows}) != 30
+        or any(
+            r["TEAM_ID"] not in NBA_TO_ESPN
+            or finite(r.get("GP")) is None
+            or not float(r["GP"]).is_integer()
+            or not 0 <= r["GP"] <= 82
+            for r in rows
+        )
+    ):
+        raise ValueError("NBA complete regular-season team game counts unavailable")
     return rows
 
 
@@ -212,6 +241,10 @@ def load(year: int, *, need_schedule: bool = True) -> dict:
     rates, rate_status = cached(
         ("rates", year), lambda: {"rows": fetch_rates(year), "fetched_at": datetime.now(timezone.utc).isoformat()}
     )
+    team_games, team_games_status = cached(
+        ("team_games", year),
+        lambda: {"rows": fetch_team_games(year), "fetched_at": datetime.now(timezone.utc).isoformat()},
+    )
     identities, identity_status = cached(("identities", year), lambda: fetch_identities(year), 3600)
     schedule, schedule_status = (
         cached(
@@ -223,6 +256,9 @@ def load(year: int, *, need_schedule: bool = True) -> dict:
         else (None, "not_needed")
     )
     return {
+        "team_games": team_games["rows"] if team_games else [],
+        "team_games_status": team_games_status,
+        "team_games_fetched_at": team_games["fetched_at"] if team_games else None,
         "rates": rates["rows"] if rates else [],
         "identities": identities or [],
         "identities_status": identity_status,
@@ -231,6 +267,9 @@ def load(year: int, *, need_schedule: bool = True) -> dict:
         "schedule_fetched_at": schedule["fetched_at"] if schedule else None,
         "rates_status": rate_status,
         "schedule_status": schedule_status,
+        "schedule_scope": "full_season_endpoint" if schedule else None,
+        "team_games_scope": "regular_season_through_current_ny_date",
+        "team_games_request": "https://stats.nba.com/stats/leaguedashteamstats",
         "season": season_name(year),
     }
 
@@ -391,6 +430,24 @@ def enrich_players(snapshot: dict, bundle: dict) -> None:
     current_rows = by_name(bundle.get("rates", []), "PLAYER_NAME")
     prior_rows = by_name(bundle.get("prior_rates", []), "PLAYER_NAME")
     identity_rows = by_name(bundle.get("identities", []), "DISPLAY_FIRST_LAST")
+    as_of = snapshot.get("fetched_at")
+    try:
+        sample_time = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+    except (ValueError, TypeError, AttributeError):
+        sample_time = None
+    completed = schedule_games(bundle.get("schedule"), ending_year, sample_time) if ending_year and sample_time else {}
+    team_counts = (
+        {
+            NBA_TO_ESPN[r["TEAM_ID"]]: r["GP"]
+            for r in bundle.get("team_games", [])
+            if r.get("TEAM_ID") in NBA_TO_ESPN
+            and finite(r.get("GP")) is not None
+            and float(r["GP"]).is_integer()
+            and 0 <= r["GP"] <= 82
+        }
+        if bundle.get("team_games_status") in {"fresh", "cached"}
+        else {}
+    )
     for player in all_players:
         key = name_key(player.get("name"))
         row, identity = match_player(player, current_rows.get(key, []), identity_rows.get(key, []))
@@ -460,8 +517,63 @@ def enrich_players(snapshot: dict, bundle: dict) -> None:
             else snapshot.get("fetched_at"),
         }
         player["season_rates"] = copy.deepcopy(chosen)
+        team = player.get("pro_team_id")
+        denominator = team_counts.get(team)
+        denominator_source = "nba_team_stats_regular_season" if denominator is not None else None
+        denominator_at = bundle.get("team_games_fetched_at")
+        if (
+            denominator is None
+            and team in completed
+            and len(completed) == 30
+            and all(completed.values())
+            and bundle.get("schedule_scope") == "full_season_endpoint"
+            and bundle.get("schedule_status") in {"fresh", "cached"}
+        ):
+            # Unique final regular-season IDs only: started/in-progress games are not completed.
+            denominator = len(
+                {
+                    g["game_id"]
+                    for g in completed[team]
+                    if g["final"] and datetime.fromisoformat(g["start_at"]) <= sample_time
+                }
+            )
+            denominator_source = "nba_completed_regular_season_schedule"
+            denominator_at = bundle.get("schedule_fetched_at")
+        existing_sample = player.get("pickup_sample") or {}
+        if (
+            denominator is None
+            and existing_sample.get("denominator_source") == "espn_official_completed_season_schedule"
+            and existing_sample.get("as_of") == as_of
+        ):
+            denominator = existing_sample.get("team_games")
+            denominator_source = existing_sample["denominator_source"]
+            denominator_at = existing_sample["as_of"]
+        observed = player.get("current_rates") or {}
+        aggregate = bool(
+            row
+            and (
+                row.get("TEAM_ID") == 0
+                or row.get("TEAM_ABBREVIATION") in {"TOT", "TOTAL"}
+                or NBA_TO_ESPN.get(row.get("TEAM_ID")) != team
+            )
+        )
+        player["pickup_sample"] = {
+            "minutes": observed.get("minutes"),
+            "games": player.get("current_games"),
+            "team_games": denominator,
+            "season_id": ending_year,
+            "source": player.get("current_rates_source"),
+            "denominator_source": denominator_source,
+            "as_of": denominator_at,
+            "aggregate": aggregate,
+            "sample_as_of": bundle.get("rates_fetched_at")
+            if player.get("current_rates_source") == "nba_stats"
+            else as_of,
+            "status": bundle.get("rates_status") if player.get("current_rates_source") == "nba_stats" else "fresh",
+        }
+
     snapshot["enrichment"] = {
-        k: v for k, v in bundle.items() if k not in ("rates", "schedule", "identities", "prior_rates")
+        k: v for k, v in bundle.items() if k not in ("rates", "schedule", "identities", "prior_rates", "team_games")
     }
     required_teams = {snapshot.get("selected_team_id"), snapshot.get("opponent_team_id")}
     for team in snapshot["teams"]:

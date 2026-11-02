@@ -15,6 +15,7 @@ from nba_terminal import webapp
 from nba_terminal.services import espn_fantasy as espn
 from nba_terminal.services import fantasy_planner_adapter as adapter
 from nba_terminal.services.fantasy_optimizer import CATEGORIES
+from tests.fantasy_v6_fixture import enrich
 
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
 PREFIX = "/api/fantasy/espn"
@@ -32,7 +33,7 @@ def snapshot(raw):
     for key in ("current_rates", "prior_rates"):
         result["free_agents"][0][key]["ast"] += 10
         result["free_agents"][0][key]["stl"] += 2
-    return result
+    return enrich(result)
 
 
 def preferences(snapshot):
@@ -317,7 +318,11 @@ def test_authenticated_production_chain_and_guards(monkeypatch, raw):
                 await browser.post(PREFIX + "/plan", headers=HEADERS | {"Origin": "http://evil.test"}, json=prefs)
             ).status_code == 403
             assert (
-                await browser.post(PREFIX + "/plan", headers=HEADERS, json=prefs | {"snapshot": snap})
+                await browser.post(
+                    PREFIX + "/plan",
+                    headers=HEADERS,
+                    json=prefs | {"snapshot": {"selected_team_id": snap["selected_team_id"]}},
+                )
             ).status_code == 400
             assert (await browser.post(PREFIX + "/plan", headers=HEADERS, json=[])).status_code == 400
             assert (await browser.post(PREFIX + "/plan", headers=HEADERS, content="{")).status_code == 415

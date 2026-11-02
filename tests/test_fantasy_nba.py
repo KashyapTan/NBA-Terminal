@@ -15,6 +15,7 @@ NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
 @pytest.fixture(autouse=True)
 def offline_identity_batch(monkeypatch):
     monkeypatch.setattr(nba, "fetch_identities", lambda year: [])
+    monkeypatch.setattr(nba, "fetch_team_games", lambda year: [])
 
 
 def schedule():
@@ -198,7 +199,13 @@ def test_stats_request_one_batch_explicit_current_season_and_timeout(monkeypatch
     monkeypatch.setattr(nba.leaguedashplayerstats, "LeagueDashPlayerStats", endpoint)
     assert nba.fetch_rates(2027)[0]["PTS"] == 20
     assert calls == [
-        {"season": "2026-27", "per_mode_detailed": "PerGame", "season_type_all_star": "Regular Season", "timeout": 6}
+        {
+            "season": "2026-27",
+            "per_mode_detailed": "PerGame",
+            "season_type_all_star": "Regular Season",
+            "date_to_nullable": datetime.now(nba.NY).strftime("%m/%d/%Y"),
+            "timeout": 6,
+        }
     ]
     monkeypatch.setattr(nba, "_CACHE", {})
     result = nba.load(2027, need_schedule=False)

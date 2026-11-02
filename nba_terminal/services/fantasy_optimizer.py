@@ -651,6 +651,8 @@ def _describe_move(context, before, after, action, selected):
 
     gain = _focus(after, selected) - _focus(before, selected)
     move.update(
+        pickup_sample=add.get("pickup_sample"),
+        drop_sample=drop.get("pickup_sample"),
         calculation=calculation,
         arithmetic={"primitives": primitives, "categories": _category_arithmetic(before, after, primitives)},
         add_starts=added_starts,
@@ -720,7 +722,7 @@ def _invalidate(result):
 
 
 def _eligible_pickups(context, day, ownership, acquired):
-    return [
+    eligible = [
         pid
         for pid, p in sorted(context["players"].items())
         if p["owner"] == "free"
@@ -736,14 +738,16 @@ def _eligible_pickups(context, day, ownership, acquired):
             for d in p["schedule"]
         )
     ]
+    return sorted(eligible, key=lambda pid: (context.get("pickup_priority", {}).get((day, pid), 0), pid))
 
 
 def plan_waivers(payload):
     """Return one best explored legal ordered plan; all calculations are pure.
 
-    Shared deterministic nine-category lineups make full-roster projections reusable
-    across all 126 focus sets. Beam expansion permits non-improving intermediate
-    moves. Exact global lineup/plan optimization is deliberately not claimed.
+    Automatic selection shares deterministic nine-category lineups across all 126
+    focus sets; explicit selected-five requests use that lineup objective. Beam
+    Expansion permits non-improving intermediate moves.
+    Exact global lineup/plan optimization is deliberately not claimed.
     """
     result = {
         "status": "unavailable",
@@ -765,7 +769,7 @@ def plan_waivers(payload):
         "data_gaps": list(payload.get("data_gaps", []))
         if isinstance(payload, dict) and isinstance(payload.get("data_gaps", []), list)
         else [],
-        "search": {"evaluations": 0, "evaluation_limit_reached": False},
+        "search": {"evaluations": 0, "evaluation_limit_reached": False, "stop_reason": "required_inputs_unknown"},
     }
     try:
         if (
@@ -791,6 +795,8 @@ def plan_waivers(payload):
             or any(k not in CATEGORIES for k in requested)
         ):
             raise ValueError("Select exactly five unique supported category keys")
+        if requested:
+            context["scored_categories"] = requested
         baseline = _forecast(context, [])
         context["opponent_starts"] = [s for s in baseline["starts"] if s["owner"] == "opponent"]
     except (KeyError, ValueError, TypeError, AttributeError, OverflowError) as error:
@@ -834,6 +840,24 @@ def plan_waivers(payload):
     subsets = [tuple(requested)] if requested else [s for s in combinations(CATEGORIES, 5) if cushions <= set(s)]
     # Compute all 126 consistently, then apply the cushion inclusion policy.
     all_sets = [tuple(requested)] if requested else list(combinations(CATEGORIES, 5))
+    # Cheap candidate ordering keeps an ID prefix from dominating bounded layers.
+    # This ignores slot contention deliberately; every admitted state is fully reforecast.
+    context["pickup_priority"] = {}
+    for day in context["dates"]:
+        for pid, player in context["players"].items():
+            if player["owner"] != "free":
+                continue
+            starts = sum(
+                d >= max(day, player.get("available_from", day))
+                and d in context["dates"]
+                and d not in player["unavailable"]
+                for d in player["schedule"]
+            )
+            totals = {k: baseline["user_totals"][k] + player["rates"][k] * starts for k in TOTALS}
+            categories, _ = _assessment(totals, baseline["opponent_totals"], context["sd"])
+            context["pickup_priority"][(day, pid)] = -max(
+                sum(categories[k]["win_probability"] for k in selected) / 5 for selected in subsets
+            )
     initial = {pid: pid for pid in sorted(context["roster"])}
     # State: forecast, ordered bare ledger, current ownership/ancestry, ever acquired, streamed roots.
     empty = (baseline, [], initial, frozenset(), frozenset())
@@ -882,9 +906,19 @@ def plan_waivers(payload):
         if budget and context["stream_slots"]
         else 0
     )
+    layer_counts, layer_limited = [], False
+    depth_reached, stop_reason = 0, "acquisition_budget"
     for depth in range(budget):
-        expanded = []
+        expanded, seen_equivalent = [], set()
+        layer_start = evaluations
+        # Reserve evaluations for legal continuations instead of spending everything
+        # on date × pickup × drop alternatives at depth one. Share across beam states.
+        layer_allowance = max(1, (context["evaluation_limit"] - evaluations) // (budget - depth))
+        state_allowance = max(1, layer_allowance // len(beam))
+        layer_cut = False
         for forecast, actions, ownership, acquired, roots in beam:
+            state_start = evaluations
+            state_cut = False
             for day in context["dates"]:
                 if actions and day < actions[-1]["date"]:
                     continue
@@ -906,6 +940,9 @@ def plan_waivers(payload):
                             continue
                         if root not in roots and len(roots) >= context["stream_slots"]:
                             continue
+                        if evaluations - state_start >= state_allowance and depth < budget - 1:
+                            state_cut = layer_cut = layer_limited = True
+                            break
                         if evaluations >= context["evaluation_limit"]:
                             result["search"]["evaluation_limit_reached"] = True
                             break
@@ -917,6 +954,12 @@ def plan_waivers(payload):
                             "season_cost": _season_cost(drop, context["players"][add_id]),
                         }
                         ledger = [*actions, action]
+                        # Same-day independent exchanges commute. Retain one full
+                        # ledger/ancestry, rather than filling the beam with permutations.
+                        equivalent = tuple(sorted((a["date"], a["add_id"], a["drop_id"]) for a in ledger))
+                        if equivalent in seen_equivalent:
+                            continue
+                        seen_equivalent.add(equivalent)
                         projected = _forecast(context, ledger)
                         evaluations += 1
                         if depth == 0:
@@ -930,18 +973,25 @@ def plan_waivers(payload):
                         state = (projected, ledger, next_ownership, acquired | {add_id}, roots | {root})
                         library.append(state)
                         expanded.append(state)
-                    if result["search"]["evaluation_limit_reached"]:
+                    if state_cut or result["search"]["evaluation_limit_reached"]:
                         break
-                if result["search"]["evaluation_limit_reached"]:
+                if state_cut or result["search"]["evaluation_limit_reached"]:
                     break
             if result["search"]["evaluation_limit_reached"]:
                 break
+        depth_reached = depth + 1
+        layer_counts.append(evaluations - layer_start)
         if depth == 0:
-            first_layer_complete = not result["search"]["evaluation_limit_reached"] and not candidate_truncated
+            first_layer_complete = (
+                not result["search"]["evaluation_limit_reached"] and not candidate_truncated and not layer_cut
+            )
         if not expanded or result["search"]["evaluation_limit_reached"]:
+            stop_reason = (
+                "evaluation_limit" if result["search"]["evaluation_limit_reached"] else "no_legal_continuation"
+            )
             break
         expanded.sort(key=rank)
-        pruned |= len(expanded) > context["beam"]
+        pruned |= depth < budget - 1 and len(expanded) > context["beam"]
         beam = expanded[: context["beam"]]
     # Every full projection is reused across the same focus subsets.
     choices = []
@@ -974,10 +1024,38 @@ def plan_waivers(payload):
     cost = sum(m["season_cost"] for m in moves)
     search = result["search"]
     search.update(
+        stop_reason=(
+            "unknown_budget"
+            if context["budget"] is None
+            else "no_remaining_dates"
+            if not context["dates"]
+            else "evaluation_limit"
+            if result["search"]["evaluation_limit_reached"]
+            else "layer_limit"
+            if layer_limited
+            else stop_reason
+        ),
+        selected_plan_stop_reason=(
+            "unknown_budget"
+            if context["budget"] is None
+            else "acquisition_budget_used"
+            if len(moves) == context["budget"]
+            else "best_beneficial_explored_continuation"
+            if moves
+            else "no_beneficial_explored_plan"
+        ),
+        depth_reached=depth_reached,
+        acquisition_budget=context["budget"],
+        layer_evaluations=layer_counts,
+        layer_pruned=layer_limited,
+        lineup_policy="selected-five greedy" if requested else "shared nine-category greedy",
+        objective_saturation="bounded category edges; .005 net and .01 non-cushion gain materiality threshold",
         evaluations=evaluations,
         evaluation_limit=context["evaluation_limit"],
         beam_width=context["beam"],
         beam_pruned=pruned,
+        candidate_order="optimistic remaining selected-category contribution; full lineup reforecast after admission",
+        candidate_priority_evaluations=len(context["pickup_priority"]),
         candidate_limit=context["candidate_limit"],
         candidate_pool=sum(p["owner"] == "free" for p in context["players"].values()),
         evaluated_drop_ids=sorted(evaluated_drops),
@@ -990,7 +1068,7 @@ def plan_waivers(payload):
         candidate_truncated=candidate_truncated,
         budget_zero=budget_zero,
         upstream_market_complete=payload.get("market_complete"),
-        plan_search="best explored; bounded beam and shared greedy nine-category lineup policy",
+        plan_search="best explored; bounded beam and greedy daily lineup policy",
         alternatives_complete=first_layer_complete,
     )
     alternatives = []
@@ -1018,6 +1096,8 @@ def plan_waivers(payload):
             if context["budget"] == 0
             else "confirmed_ordered_plan"
             if moves
+            else "search_incomplete"
+            if result["search"]["evaluation_limit_reached"] or layer_limited or candidate_truncated or pruned
             else "evaluated_no_material_benefit"
         ),
         selected_categories=list(selected),
@@ -1083,14 +1163,17 @@ def plan_waivers(payload):
         "basis": "same final totals and chosen five; wider heuristic scale, not reranked alternatives",
     }
     if not moves and context["budget"] is not None and context["budget"] > 0:
-        result["reasons"].append("No materially beneficial legal ordered plan passed the selected-category guards.")
+        result["reasons"].append(
+            "No materially beneficial legal ordered plan was found among explored states "
+            "under the selected-category guards."
+        )
     if context["budget"] == 0:
         result["reasons"].append("Confirmed acquisition allowance is zero; pickup benefit was not evaluated.")
     if context["budget"] is None:
         result["reasons"].append(
             "Acquisition budget unknown; alternatives are conditional and no ordered moves are confirmed."
         )
-    if search["evaluation_limit_reached"] or pruned:
+    if search["evaluation_limit_reached"] or pruned or layer_limited or candidate_truncated:
         result["limitations"].append(
             "Search bounds pruned exploration; result is best found, not a proven global optimum."
         )

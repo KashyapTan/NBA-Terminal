@@ -1,0 +1,25 @@
+[
+  {
+    "name": "nba_schedule",
+    "url": "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json",
+    "params": null,
+    "observed_at": "2026-11-02T20:03:14.611761+00:00",
+    "status": 403,
+    "content_type": "text/html",
+    "bytes": 425
+  },
+  {
+    "name": "nba_team_stats",
+    "url": "https://stats.nba.com/stats/leaguedashteamstats",
+    "params": {
+      "Season": "2026-27",
+      "SeasonType": "Regular Season",
+      "PerMode": "PerGame",
+      "MeasureType": "Base",
+      "DateTo": "11/02/2026"
+    },
+    "observed_at": "2026-11-02T20:03:14.612035+00:00",
+    "error": "ReadTimeout",
+    "message": "HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=6)"
+  }
+]

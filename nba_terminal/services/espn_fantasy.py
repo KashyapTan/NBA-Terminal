@@ -539,6 +539,67 @@ def normalize_schedule(raw: dict, now: datetime, *, periods=None, anchors_only=F
     return result
 
 
+def completed_team_games(raw: dict, year: int, now: datetime) -> dict[int, int]:
+    """Verified unfiltered ESPN season-schedule fallback, never started-game counts.
+
+    proTeamSchedules_wl is requested from /seasons/{year}. All 30 team maps and
+    reciprocal official final observations must be present. Missing official flags
+    or malformed past records make that team's denominator unknown.
+    """
+    teams = {t.get("id"): t for t in raw.get("settings", {}).get("proTeams", []) if t.get("id") in range(1, 31)}
+    if set(teams) != set(range(1, 31)):
+        return {}
+    records, unknown = {}, set()
+    for tid, team in teams.items():
+        mapping = team.get("proGamesByScoringPeriod")
+        if not isinstance(mapping, dict) or not mapping:
+            unknown.add(tid)
+            continue
+        for period, games in mapping.items():
+            for game in games:
+                try:
+                    start = datetime.fromtimestamp(game["date"] / 1000, timezone.utc)
+                    # Only this regular-season fantasy calendar; refuse other years.
+                    if (
+                        not datetime(year - 1, 7, 1, tzinfo=timezone.utc)
+                        <= start
+                        < datetime(year, 7, 1, tzinfo=timezone.utc)
+                        or not 1 <= int(period) <= 366
+                    ):
+                        raise ValueError
+                    if start > now:
+                        continue
+                    if (
+                        game.get("startTimeTBD") is not False
+                        or game.get("validForLocking") is not True
+                        or not isinstance(game.get("statsOfficial"), bool)
+                        or game.get("scoringPeriodId") != int(period)
+                    ):
+                        raise ValueError
+                    home, away = game["homeProTeamId"], game["awayProTeamId"]
+                    if tid not in (home, away) or home not in teams or away not in teams or home == away:
+                        raise ValueError
+                    if game["statsOfficial"]:
+                        key = (str(game["id"]), start.isoformat(), home, away)
+                        records.setdefault(key, set()).add(tid)
+                except (ValueError, TypeError, KeyError, OverflowError, OSError):
+                    unknown.add(tid)
+    by_id = {}
+    for key in records:
+        gid, _, home, away = key
+        previous = by_id.setdefault(gid, key)
+        if previous != key:
+            unknown.update((home, away, previous[2], previous[3]))
+    counts = dict.fromkeys(teams, 0)
+    for (_, _, home, away), observed in records.items():
+        if observed != {home, away}:
+            unknown.update((home, away))
+        else:
+            counts[home] += 1
+            counts[away] += 1
+    return {tid: count for tid, count in counts.items() if tid not in unknown and count <= 82}
+
+
 def normalize_player(
     entry: dict, cards: dict, schedules: dict, year: int, periods: list[int], now: datetime, *, rostered: bool = False
 ) -> dict:
@@ -603,6 +664,18 @@ def normalize_player(
         "eligible": availability == "FREEAGENT"
         and pool.get("onTeamId") in (None, 0)
         and any(position in set(SLOTS.values()) - {"BENCH", "IR", "IR+", "Rookie"} for position in positions),
+        "pickup_sample": {
+            "minutes": (current or {}).get("minutes"),
+            "games": games,
+            "team_games": None,
+            "season_id": year,
+            "source": "espn_actual_season" if current is not None else None,
+            "denominator_source": None,
+            "as_of": now.isoformat(),
+            "sample_as_of": now.isoformat(),
+            "status": "fresh",
+            "aggregate": False,
+        },
         "current_rates": current,
         "current_rates_source": "espn_actual_season" if current is not None else None,
         "schedule_source": schedule[0].get("source") if schedule else None,
@@ -1055,6 +1128,17 @@ def normalize(
 
     if nba is not None:
         fantasy_nba.enrich_players(result, nba)
+    espn_completed = completed_team_games(schedule, raw["seasonId"], now)
+    for player in [p for team in result["teams"] for p in team["roster"]] + result["free_agents"]:
+        sample = player.get("pickup_sample") or {}
+        denominator = espn_completed.get(player.get("pro_team_id"))
+        if sample.get("team_games") is None and denominator is not None:
+            sample.update(
+                team_games=denominator,
+                denominator_source="espn_official_completed_season_schedule",
+                as_of=now.isoformat(),
+            )
+            player["pickup_sample"] = sample
     update_rate_coverage(result)
     return result
 

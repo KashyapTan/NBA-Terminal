@@ -67,6 +67,9 @@ def test_nba_fallback_and_failure_through_real_http_session(monkeypatch, failed)
 
     monkeypatch.setattr(nba, "load", NBA_LOAD)
     monkeypatch.setattr(nba, "_CACHE", {})
+    monkeypatch.setattr(nba, "datetime", Clock)
+    monkeypatch.setattr(nba, "fetch_team_games", lambda year: [
+        {"TEAM_ID": tid, "GP": 10} for tid in nba.NBA_TO_ESPN])
     monkeypatch.setattr(nba.leaguedashplayerstats, "LeagueDashPlayerStats", rates)
     monkeypatch.setattr(nba.scheduleleaguev2, "ScheduleLeagueV2", schedule)
     monkeypatch.setattr(nba.requests, "get", blocked_cdn)

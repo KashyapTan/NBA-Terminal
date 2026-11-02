@@ -8,6 +8,7 @@ import pytest
 from nba_terminal.services import espn_fantasy as espn
 from nba_terminal.services import fantasy_actuals as actuals
 from nba_terminal.services import fantasy_planner_adapter as adapter
+from tests.fantasy_v6_fixture import enrich
 from tests.test_fantasy_integration import preferences
 from tests.week_reset_fixture import NOW, new_week_payload
 
@@ -26,7 +27,7 @@ def normalized():
             result["fetched_at"],
             no_started_games=result["period"]["no_started_games_verified"],
         )
-    return result
+    return enrich(result)
 
 
 def declaration(snapshot):
@@ -244,7 +245,7 @@ def test_independent_daily_constraint_needs_explicit_subset_evidence():
 def test_corrupt_counter_is_unknown_not_zero_or_normalizer_crash(counter):
     data = new_week_payload()
     data["league"]["teams"][0]["transactionCounter"] = counter
-    snapshot = espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW)
+    snapshot = enrich(espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW))
     assert snapshot["teams"][0]["weekly_used_adds"] is None
     assert snapshot["teams"][0]["season_counted_acquisitions"] is None
 
@@ -279,7 +280,7 @@ def test_stale_previous_week_daily_context_cannot_confirm_current_counter():
     data = new_week_payload()
     data["league"]["scoringPeriodId"] = 10
     data["league"]["teams"][0]["transactionCounter"] = {"matchupAcquisitionTotals": {"3": 0}}
-    snapshot = espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW)
+    snapshot = enrich(espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW))
     assert snapshot["period"]["context_verified"] is False
     assert snapshot["period"]["calendar_verified"] is False
     assert snapshot["teams"][0]["weekly_used_adds"] is None
@@ -302,7 +303,7 @@ def test_optional_nba_history_failure_keeps_complete_official_basis_and_full_pla
 def test_incomplete_league_game_day_coverage_uses_explicit_cap_without_inventing_api_cap():
     data = new_week_payload()
     data["schedule"]["settings"]["proTeams"].pop()
-    snapshot = espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW)
+    snapshot = enrich(espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW))
     assert snapshot["league"]["acquisition_settings"]["weekly_add_limit"] is None
     assert not snapshot["period"]["no_started_games_verified"]
     result = adapter.plan_snapshot_waivers(snapshot, prefs(snapshot), NOW)

@@ -1,0 +1,9 @@
+{
+  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+  "params": {
+    "dates": "20261001-20261102",
+    "limit": 1000
+  },
+  "status": 400,
+  "bytes": 55
+}
