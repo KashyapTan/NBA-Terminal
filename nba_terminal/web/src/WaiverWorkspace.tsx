@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { InfoTooltip } from "./InfoTooltip";
+import { MatchupForecast, type MatchupForecastProps } from "./MatchupForecast";
 import {
   type Category,
   type CategoryStrategy,
@@ -49,9 +50,12 @@ export interface WaiverWorkspaceProps {
   filters: PickupFilters;
   onFiltersChange: (filters: PickupFilters) => void;
   moves: PickupRecommendation[];
+  /** Backend source counts in the same ordered sequence; never inferred from starts. */
+  scheduleCounts?: { addRemainingGames: number | null; dropRemainingGames: number | null }[];
   players: Record<string, LeaguePlayer>;
   samples: Record<string, QualifiedSample>;
   stop?: WorkspaceStop;
+  forecast?: Pick<MatchupForecastProps, "baseline" | "projected">;
   rosterControls?: ReactNode;
   analysis: ReactNode;
   technicalControls?: ReactNode;
@@ -255,11 +259,18 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
               players={props.players}
               sample={props.samples[move.add_id]}
               targets={props.targets}
+              scheduleCounts={props.scheduleCounts?.[index]}
             />
           ))}
         </ol>
         {props.stop && <p className="ww-stop">{STOP_LABELS[props.stop]}</p>}
       </section>
+      <MatchupForecast
+        {...props.forecast}
+        targets={props.targets}
+        hasMoves={props.moves.length > 0}
+        readOnly={props.readOnly}
+      />
       <details className="ww-analysis">
         <summary>Full analysis & data</summary>
         {props.moves.map((move, index) => (
@@ -284,12 +295,14 @@ function CompactMove({
   players,
   sample,
   targets,
+  scheduleCounts,
 }: {
   move: PickupRecommendation;
   index: number;
   players: Record<string, LeaguePlayer>;
   sample?: QualifiedSample;
   targets: Category[];
+  scheduleCounts?: NonNullable<WaiverWorkspaceProps["scheduleCounts"]>[number];
 }) {
   // Show selected targets and every harmful spillover; detailed nine-category math stays below.
   const categories = LEAGUE_CATEGORIES.filter(({ key }) => {
@@ -312,8 +325,22 @@ function CompactMove({
         </div>
         <div className="ww-timing">
           <b>{move.date}</b>
-          <span>{number(move.add_starts)} usable starts</span>
         </div>
+      </div>
+      <div className="ww-schedule">
+        <span>
+          <b className="ww-add-label">ADD</b> {number(scheduleCounts?.addRemainingGames)} games left
+          · {number(move.add_starts)} usable starts
+        </span>
+        <span>
+          <b className="ww-drop-label">DROP</b> {number(scheduleCounts?.dropRemainingGames)} games
+          left · {number(move.drop_starts)} usable starts
+        </span>
+        <InfoTooltip label={`Games and usable starts for move ${index + 1}`}>
+          Games left counts remaining scheduled games. Usable starts counts games this plan can put
+          in your lineup, after the move date, game locks, availability and slot limits. Drop starts
+          are the lineup starts lost by this move. Unknown counts show ?.
+        </InfoTooltip>
       </div>
       <p className="ww-sample">
         Current sample · {number(sample?.minutes)} MPG · {number(sample?.games)} GP /{" "}

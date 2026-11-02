@@ -1,0 +1,11 @@
+# V7 forecast self-review — independent preparation
+
+Review scope is the frontend at the original V6 base. Combined source review and HTTP verification are still required after the explicit canonical source handoff. The repository references CODE_REVIEW_GUIDE.md, but that file is absent at the accepted base; reviewed against AGENTS.md correctness, responsiveness, data honesty and structure criteria.
+
+Resolved during preparation: percentage rendering requires weighted makes/attempts rather than trusting precomputed percentages; non-finite and absent numbers stay unknown; a recorded-only result is not shown as a forecast; lower TO controls both delta color and projected edge; complete baseline forecasting is independent of whether an add is recommended. The overall comparison uses final projected team totals, not sums of per-move percentage deltas. Tests cover these boundaries, all nine rows/five focus markers, missing opponent input and saved read-only state.
+
+No changes were made to session hooks, result identity, refresh keys, target/filter/usage/protection logic, extension flow, backend services or schedule-owned files. Comparison stays mounted beside saved cards and inherits the existing read-only lifecycle. Existing controls/details remain stateful; no key or conditional loading remount was added. Integration will verify this with actual route refreshes and changing schedules.
+
+Schedule source fields are not yet finalized. Card presentation accepts separate explicit counts and shows unknown instead of frontend inference; live metadata binding remains pending. Unknown schedule is never evidence for zero starts. Final integration must confirm the exact source scope of add/drop remaining_games versus eligible_games and usable_starts, plus failure completeness semantics.
+
+Preparation checks: 143 Vitest tests/94.27% lines, frontend lint/format/types/build, 17 browser regressions; desktop/mobile320/mobile390 visuals inspected, no forecast-cell overflow, keyboard/Escape and touch help verified. These browser fixtures do not establish real backend correctness or private-account access. Required final gates and production/proxy HTTP evidence are listed in docs/evidence/v7-forecast-prep/README.md. Only humans merge.

@@ -690,6 +690,7 @@ function WaiverStrategy({
       moves={moves}
       players={players}
       samples={samples}
+      forecast={{ baseline: plan?.baseline, projected: plan?.projected }}
       stop={stop}
       rosterControls={
         <details className="ww-control">
