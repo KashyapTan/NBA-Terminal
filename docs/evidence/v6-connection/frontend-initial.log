@@ -1,0 +1,722 @@
+$ vitest run
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/3fd15c8d29c41e1813628236b78d47341c7dbf2b4878a05939b209a382aec15a/nba_terminal/web
+
+ ❯ src/league-fantasy-api.test.ts (4 tests | 1 failed) 9ms
+   × does not expose backend or proxy error bodies 5ms
+ ❯ src/LeagueFantasy.test.tsx (21 tests | 2 failed) 2740ms
+   × keeps a scoped explicit zero confirmation across a same-matchup refresh without changing evidence time 1066ms
+   × status polling does not cancel a slow snapshot or discard retained context on auth refresh failure 107ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/LeagueFantasy.test.tsx > keeps a scoped explicit zero confirmation across a same-matchup refresh without changing evidence time
+AssertionError: expected '2026-10-31T12:00:00Z' to be '2026-11-02T17:20:00Z' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"league-panel league-waiver"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"league-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"league-eyebrow"[39m
+            [36m>[39m
+              [0mTest-only league[0m
+              [0m · [0m
+              [0m14[0m
+              [0m teams[0m
+            [36m</span>[39m
+            [36m<p>[39m
+              [0mMatchup period [0m
+              [0m1[0m
+              [0m ·[0m
+              [0m [0m
+              [0m2026-10-31[0m
+              [0m –[0m
+              [0m [0m
+              [0m2026-11-01[0m
+            [36m</p>[39m
+            [36m<small>[39m
+              [0mESPN unofficial · Updated[0m
+              [0m [0m
+              [36m<time[39m
+                [33mdatetime[39m=[32m"2026-11-02T17:20:00Z"[39m
+              [36m>[39m
+                [0mNov 2, 12:20 PM[0m
+              [36m</time>[39m
+            [36m</small>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"waiver-verdict"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"league-kicker"[39m
+            [36m>[39m
+              [0mYOUR PATH TO FIVE CATEGORIES[0m
+            [36m</span>[39m
+            [36m<h2>[39m
+              [0mYour matchup strategy[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mAgainst [0m
+              [0mTest opponent[0m
+              [0m. Compare the net benefit of a pickup after the player you drop. Only future playable starts count; recorded stats stay banked.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"matchup-horizon"[39m
+            [36m>[39m
+              [0m1[0m
+              [0m remaining matchup dates · through[0m
+              [0m [0m
+              [0m2026-11-01[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"waiver-budget"[39m
+          [36m>[39m
+            [36m<b>[39m
+              [0m6[0m
+            [36m</b>[39m
+            [36m<span>[39m
+              [0mmatchup acquisitions left[0m
+            [36m</span>[39m
+            [36m<small>[39m
+              [0m7[0m
+              [0m [0m
+              [0mcap ·[0m
+              [0m [0m
+              [0mUnknown[0m
+              [0m [0m
+              [0mused[0m
+            [36m</small>[39m
+            [36m<small>[39m
+              [0mESPN matchup cap[0m
+            [36m</small>[39m
+            [36m<small>[39m
+              [0mUsage source unavailable[0m
+            [36m</small>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<section[39m
+          [33maria-label[39m=[32m"Waiver evaluation status"[39m
+          [33mclass[39m=[32m"waiver-status waiver-status-evaluated_no_material_benefit"[39m
+        [36m>[39m
+          [36m<h3>[39m
+            [0mNo supported beneficial sequence[0m
+          [36m</h3>[39m
+          [36m<p[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mNo materially beneficial sequence passed the guards within the explored market and search bounds. This is a remaining-matchup comparison, not proof that every free agent is unhelpful today.[0m
+          [36m</p>[39m
+        [36m</section>[39m
+        [36m<details[39m
+          [33mclass[39m=[32m"source-coverage-details"[39m
+        [36m>[39m
+          [36m<summary>[39m
+            [0mScoring sources ·[0m
+            [0m [0m
+            [0mreview scoring coverage[0m
+          [36m</summary>[39m
+          [36m<section[39m
+            [33maria-label[39m=[32m"Actual scoring sources"[39m
+            [33mclass[39m=[32m"actual-sources"[39m
+          [36m>[39m
+            [36m<h3>[39m
+              [0mActual scoring & source coverage[0m
+            [36m</h3>[39m
+            [36m<p>[39m
+              [0mESPN is authoritative for league scoring, ownership and historical active lineups. NBA-derived production is a separate reconstruction. Historical active scoring lineups are required; today’s roster cannot establish past scoring eligibility.[0m
+            [36m</p>[39m
+            [36m<article>[39m
+              [36m<h4>[39m
+                [0mTest user[0m
+              [36m</h4>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"league-tied"[39m
+              [36m>[39m
+                [0mESPN official totals are displayed. NBA reconstruction and historical scoring-lineup coverage are unverified; source freshness is unavailable.[0m
+              [36m</p>[39m
+            [36m</article>[39m
+            [36m<article>[39m
+              [36m<h4>[39m
+                [0mTest opponent[0m
+              [36m</h4>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"league-tied"[39m
+              [36m>[39m
+                [0mESPN official totals are displayed. NBA reconstruction and historical scoring-lineup coverage are unverified; source freshness is unavailable.[0m
+              [36m</p>[39m
+            [36m</article>[39m
+            [36m<small>[39m
+              [0mLive and postgame totals can change with corrections. Started games are banked only; remaining live-game production is not projected. NBA endpoint availability and freshness are not guaranteed.[0m
+            [36m</small>[39m
+          [36m</section>[39m
+        [36m</details>[39m
+        [36m<section[39m
+          [33maria-label[39m=[32m"Five-category strategy"[39m
+          [33mclass[39m=[32m"five-selection"[39m
+        [36m>[39m
+          [36m<p>[39m
+            [36m<b>[39m
+              [0mSelected five:[0m
+            [36m</b>[39m
+            [0m [0m
+            [0mAwaiting strategy analysis[0m
+          [36m</p>[39m
+          [36m<p>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"league-winning"[39m
+            [36m>[39m
+              [0mModeled cushions: [0m
+              [0mNone established[0m
+            [36m</span>[39m
+            [0m [0m
+            [0m· Improvement priorities: [0m
+            [0mNone supported[0m
+          [36m</p>[39m
+          [36m<small>[39m
+            [0mModeled cushions count toward five; they are not guaranteed wins. Focus scores are heuristics on a 0–100 scale, never matchup win probabilities. Weights affect strategy only; raw category totals decide wins.[0m
+          [36m</small>[39m
+          [36m<details>[39m
+            [36m<summary>[39m
+              [0mEdit selected five categories[0m
+            [36m</summary>[39m
+            [3...
+
+Expected: "2026-11-02T17:20:00Z"
+Received: "2026-10-31T12:00:00Z"
+
+ ❯ src/LeagueFantasy.test.tsx:588:58
+    586|   );
+    587|   await waitFor(() =>
+    588|     expect(onPlan.mock.lastCall?.[0].context.fetched_at).toBe("2026-11…
+       |                                                          ^
+    589|   );
+    590|   expect(onPlan.mock.lastCall?.[0].usage_declaration).toEqual(evidence…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/LeagueFantasy.test.tsx > status polling does not cancel a slow snapshot or discard retained context on auth refresh failure
+AssertionError: expected null to deeply equal { schema_version: 1, …(10) }
+
+- Expected:
+{
+  "data_gaps": [
+    "Weekly transaction counts unavailable",
+  ],
+  "fetched_at": "2026-10-31T12:00:00Z",
+  "free_agents": [
+    {
+      "availability": "FREEAGENT",
+      "current_games": 5,
+      "current_rates": {
+        "minutes": 20,
+        "pts": 10,
+      },
+      "eligible": true,
+      "id": "free",
+      "injured": null,
+      "injury_status": null,
+      "lineup_slot": "PG",
+      "locked": false,
+      "name": "Test player free",
+      "positions": [
+        "PG",
+        "UTIL",
+      ],
+      "prior_games": null,
+      "prior_rates": null,
+      "remaining_games": 2,
+      "schedule": [],
+      "today": false,
+    },
+    {
+      "availability": "FREEAGENT",
+      "current_games": 5,
+      "current_rates": {
+        "minutes": 20,
+        "pts": 10,
+      },
+      "eligible": true,
+      "id": "rostered",
+      "injured": null,
+      "injury_status": null,
+      "lineup_slot": "PG",
+      "locked": false,
+      "name": "Test player rostered",
+      "positions": [
+        "PG",
+        "UTIL",
+      ],
+      "prior_games": null,
+      "prior_rates": null,
+      "remaining_games": 2,
+      "schedule": [],
+      "today": false,
+    },
+    {
+      "availability": "WAIVERS",
+      "current_games": 5,
+      "current_rates": {
+        "minutes": 20,
+        "pts": 10,
+      },
+      "eligible": true,
+      "id": "waivers",
+      "injured": null,
+      "injury_status": null,
+      "lineup_slot": "PG",
+      "locked": false,
+      "name": "Test player waivers",
+      "positions": [
+        "PG",
+        "UTIL",
+      ],
+      "prior_games": null,
+      "prior_rates": null,
+      "remaining_games": 2,
+      "schedule": [],
+      "today": false,
+    },
+    {
+      "availability": "FREEAGENT",
+      "current_games": 5,
+      "current_rates": {
+        "minutes": 20,
+        "pts": 10,
+      },
+      "eligible": false,
+      "id": "ineligible",
+      "injured": null,
+      "injury_status": null,
+      "lineup_slot": "PG",
+      "locked": false,
+      "name": "Test player ineligible",
+      "positions": [
+        "PG",
+        "UTIL",
+      ],
+      "prior_games": null,
+      "prior_rates": null,
+      "remaining_games": 2,
+      "schedule": [],
+      "today": false,
+    },
+  ],
+  "free_agents_truncated": true,
+  "league": {
+    "acquisition_settings": {
+      "limit_per_scoring_period": false,
+      "season_add_limit": null,
+      "weekly_add_limit": 7,
+    },
+    "id": 1,
+    "lineup_slots": [
+      "PG",
+      "UTIL",
+    ],
+    "name": "Test-only league",
+    "season_id": 2027,
+    "supported": true,
+    "team_count": 14,
+    "unsupported_reason": null,
+  },
+  "opponent_team_id": 2,
+  "period": {
+    "dates": [
+      "2026-10-31",
+      "2026-11-01",
+    ],
+    "matchup_period_id": 1,
+    "remaining_dates": [
+      "2026-11-01",
+    ],
+    "scoring_period_id": 4,
+  },
+  "schema_version": 1,
+  "selected_team_id": 1,
+  "source": "espn_unofficial",
+  "teams": [
+    {
+      "id": 1,
+      "name": "Test user",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [
+        {
+          "availability": "ONTEAM",
+          "current_games": 5,
+          "current_rates": {
+            "minutes": 20,
+            "pts": 10,
+          },
+          "eligible": true,
+          "id": "rostered",
+          "injured": null,
+          "injury_status": null,
+          "lineup_slot": "PG",
+          "locked": false,
+          "name": "Test player rostered",
+          "positions": [
+            "PG",
+            "UTIL",
+          ],
+          "prior_games": null,
+          "prior_rates": null,
+          "remaining_games": 2,
+          "schedule": [
+            {
+              "date": "2026-10-31",
+              "opponent_pro_team_id": 2,
+              "scoring_period_id": 4,
+              "start_at": "2026-10-31T23:00:00Z",
+              "started": false,
+            },
+          ],
+          "today": true,
+        },
+      ],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 2,
+      "name": "Test opponent",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 90,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 10,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 3,
+      "name": "Test team 3",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 4,
+      "name": "Test team 4",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 5,
+      "name": "Test team 5",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 6,
+      "name": "Test team 6",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 7,
+      "name": "Test team 7",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 8,
+      "name": "Test team 8",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 9,
+      "name": "Test team 9",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 10,
+      "name": "Test team 10",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 11,
+      "name": "Test team 11",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 12,
+      "name": "Test team 12",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 13,
+      "name": "Test team 13",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+    {
+      "id": 14,
+      "name": "Test team 14",
+      "ownership_verified": false,
+      "remaining_adds": null,
+      "roster": [],
+      "totals": {
+        "ast": 20,
+        "blk": 3,
+        "fga": 20,
+        "fgm": 10,
+        "fta": 5,
+        "ftm": 4,
+        "pts": 100,
+        "reb": 20,
+        "stl": 3,
+        "threes": 10,
+        "to": 8,
+      },
+      "weekly_used_adds": null,
+    },
+  ],
+}
+
++ Received:
+null
+
+ ❯ src/LeagueFantasy.test.tsx:620:35
+    618|   act(() => window.dispatchEvent(new Event("nba-espn-bridge")));
+    619|   await waitFor(() => expect(result.current.status.connected).toBe(fal…
+    620|   expect(result.current.snapshot).toEqual(snapshot);
+       |                                   ^
+    621|   expect(result.current.error).toMatch(/retained/);
+    622| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/league-fantasy-api.test.ts > does not expose backend or proxy error bodies
+AssertionError: expected [Function] to throw error including 'League request failed' but got 'Cannot read properties of undefined (…'
+
+Expected: "League request failed"
+Received: "Cannot read properties of undefined (reading 'catch')"
+
+ ❯ src/league-fantasy-api.test.ts:27:42
+     25|   const json = vi.fn();
+     26|   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status…
+     27|   await expect(leagueFantasyApi.status()).rejects.toThrow("League requ…
+       |                                          ^
+     28|   expect(json).not.toHaveBeenCalled();
+     29| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 18 passed (20)
+      Tests  3 failed | 119 passed (122)
+   Start at  15:06:15
+   Duration  4.40s (environment 51%, tests 26%, setup 12%, transform 7%, import 3%)
+
+Environment  jsdom was created 20 times · 16.18s total, 51% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+error: script "test" exited with code 1

@@ -1,0 +1,14 @@
+$ vitest run
+
+ RUN  v5.0.3 /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/3fd15c8d29c41e1813628236b78d47341c7dbf2b4878a05939b209a382aec15a/nba_terminal/web
+
+
+ Test Files  21 passed (21)
+      Tests  131 passed (131)
+   Start at  15:16:23
+   Duration  3.03s (environment 47%, tests 28%, setup 12%, transform 8%, import 4%)
+
+Environment  jsdom was created 21 times · 13.34s total, 47% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

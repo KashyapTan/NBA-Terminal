@@ -77,14 +77,14 @@ test("cookie events filtered and permission revocation notifies local tabs", asy
 });
 function contentHarness({enabled = true, result = {state: "ready", swid: "synthetic-swid", espn_s2: "synthetic-s2", fingerprint: "hash"}} = {}) {
   const calls = [], events = [], timers = [];
-  let listener, connected = false, currentResult = result, fakeNow = 1000;
+  let listener, connected = false, currentResult = result, fakeNow = 1000, pairId = 1;
   const browser = {runtime: {sendMessage: async () => currentResult,
     onMessage: {addListener: fn => {listener = fn;}}}};
   const fetch = async (path, options) => {
     const body = options.body ? JSON.parse(options.body) : undefined;
     calls.push({path, options, body});
     let response;
-    if (path.endsWith("/bridge/status")) response = {enabled, state: "waiting_extension"};
+    if (path.endsWith("/bridge/status")) response = {enabled, pair_id: String(pairId), state: connected ? "connected" : "waiting_extension"};
     else if (path.endsWith("/bridge/challenge")) response = {nonce: "ticket", league_id: 123, season_id: 2027};
     else if (path.endsWith("/bridge/refresh")) {connected = !body.state; response = {state: connected ? "connected" : body.state};}
     else if (path.endsWith("/connection")) {enabled = false; connected = false; response = {};}
@@ -92,9 +92,9 @@ function contentHarness({enabled = true, result = {state: "ready", swid: "synthe
     return {ok: true, json: async () => response};
   };
   vm.runInNewContext(source("content"), {browser, fetch, Date: {now: () => fakeNow},
-    setInterval: (fn, ms) => {timers.push({fn, ms});}, window: {dispatchEvent: e => events.push(e)},
+    setTimeout: (fn, ms) => {timers.push({fn, ms});}, window: {dispatchEvent: e => events.push(e)},
     CustomEvent: function(type, options) {this.type = type; this.detail = options.detail;}});
-  return {calls, events, timers, notify: type => listener({type}), result: value => {currentResult = value;}, advance: ms => {fakeNow += ms;}};
+  return {calls, events, timers, repair: () => {pairId++; connected = false;}, notify: type => listener({type}), result: value => {currentResult = value;}, advance: ms => {fakeNow += ms;}};
 }
 test("isolated relay posts secrets only to same-origin route, no secret events; cookie changes renew", async () => {
   const h = contentHarness(); await tick();
@@ -142,6 +142,7 @@ test("explicit new pairing is detected without waiting behind an old connection 
   const h = contentHarness();
   await tick();
   expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(1);
+  h.repair();
   // Harness status now represents a fresh waiting_extension pair, while the
   // content script retains the previous session fingerprint.
   await h.timers.find(t => t.ms === 2000).fn();
@@ -150,6 +151,35 @@ test("explicit new pairing is detected without waiting behind an old connection 
   h.notify("forget");
   await tick();
   await h.timers.find(t => t.ms === 2000).fn();
+  await tick();
+  expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(2);
+});
+
+test("transient extension error does not become a two-second credential refresh loop", async () => {
+  const h = contentHarness({result: {state: "error"}});
+  await tick();
+  const posts = () => h.calls.filter(x => x.path.endsWith("/bridge/refresh"));
+  expect(posts()).toHaveLength(1);
+  for (let i = 0; i < 20; i++) {
+    h.advance(2000);
+    await h.timers.at(-1).fn();
+    await tick();
+  }
+  expect(posts()).toHaveLength(1);
+  h.result({state: "ready", swid: "synthetic-swid", espn_s2: "recovered", fingerprint: "recovered"});
+  h.notify("cookie_changed");
+  await tick();
+  expect(posts()).toHaveLength(2);
+});
+
+test("cookie changes during an in-flight refresh coalesce into one follow-up", async () => {
+  let finish;
+  const pending = new Promise(resolve => {finish = resolve;});
+  const h = contentHarness({result: pending});
+  await tick();
+  h.notify("cookie_changed"); h.notify("cookie_changed");
+  h.result({state: "ready", swid: "synthetic-swid", espn_s2: "new", fingerprint: "new"});
+  finish({state: "ready", swid: "synthetic-swid", espn_s2: "old", fingerprint: "old"});
   await tick();
   expect(h.calls.filter(x => x.path.endsWith("/bridge/refresh"))).toHaveLength(2);
 });

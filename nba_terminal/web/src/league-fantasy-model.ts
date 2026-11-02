@@ -111,6 +111,7 @@ export interface LeagueStatus {
   auth_mode?: "public" | "private";
   ownership_verified?: boolean;
   expires_at?: string;
+  context_id?: string;
   teams?: { id: number; name: string; selectable: boolean; ownership_verified: boolean }[];
 }
 export interface LeagueSnapshot {
@@ -191,6 +192,7 @@ export interface ConnectLeague {
   espn_s2?: string;
 }
 export interface PlannerPreferences {
+  pickup_filters?: { min_minutes?: number; min_games?: number; min_participation?: number };
   context?: {
     league_id: number;
     season_id: number;

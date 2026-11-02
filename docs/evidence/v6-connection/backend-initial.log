@@ -1,0 +1,74 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+F...................................                                     [100%]
+=================================== FAILURES ===================================
+__________ test_existing_login_renewal_selection_rotation_and_replay ___________
+
+    def test_existing_login_renewal_selection_rotation_and_replay():
+        async def run():
+            async with browser() as b, browser() as other:
+                assert (await b.get(P + "/bridge/status")).json() == {"enabled": False}
+                await pair(b)
+                first = await refresh(b)
+                assert first.status_code == 200
+                assert first.json()["state"] == "connected"
+                token = b.cookies.get(api.COOKIE)
+                conn = webapp.app.state.espn_sessions.get(token)
+                assert (await b.get(P + "/status")).json()["ownership_verified"]
+                assert not (await other.get(P + "/status")).json()["connected"]
+                assert (await other.post(P + "/bridge/challenge", json={}, headers=H)).status_code == 401
+                # Submitted team_id cannot override user's server-owned selection.
+                response = await refresh(b, team_id=2)
+                assert response.status_code == 200 and response.json()["team_id"] == 1
+                assert b.cookies.get(api.COOKIE) != token and not conn.active
+                nonce = await ticket(b)
+                response = await b.post(P + "/bridge/refresh", json={**PRIVATE, "nonce": nonce}, headers=H)
+                assert response.status_code == 200
+                replay = await b.post(P + "/bridge/refresh", json={**PRIVATE, "nonce": nonce}, headers=H)
+                assert replay.status_code == 409
+                text = response.text + (await b.get(P + "/bridge/status")).text
+                assert PRIVATE["swid"] not in text and PRIVATE["espn_s2"] not in text
+                await b.delete(P + "/connection", headers=H)
+                assert (await b.get(P + "/bridge/status")).json() == {"enabled": False}
+                assert (await b.post(P + "/bridge/refresh", json={**PRIVATE, "nonce": nonce}, headers=H)).status_code == 401
+    
+>       asyncio.run(run())
+
+tests/test_espn_bridge.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with browser() as b, browser() as other:
+            assert (await b.get(P + "/bridge/status")).json() == {"enabled": False}
+            await pair(b)
+            first = await refresh(b)
+            assert first.status_code == 200
+            assert first.json()["state"] == "connected"
+            token = b.cookies.get(api.COOKIE)
+            conn = webapp.app.state.espn_sessions.get(token)
+            assert (await b.get(P + "/status")).json()["ownership_verified"]
+            assert not (await other.get(P + "/status")).json()["connected"]
+            assert (await other.post(P + "/bridge/challenge", json={}, headers=H)).status_code == 401
+            # Submitted team_id cannot override user's server-owned selection.
+            response = await refresh(b, team_id=2)
+            assert response.status_code == 200 and response.json()["team_id"] == 1
+>           assert b.cookies.get(api.COOKIE) != token and not conn.active
+E           AssertionError: assert ('i_6RJlAfJfujEI044DkdCZ3KueAG9o0m6kodmunwZfY' != 'i_6RJlAfJfujEI044DkdCZ3KueAG9o0m6kodmunwZfY')
+E            +  where 'i_6RJlAfJfujEI044DkdCZ3KueAG9o0m6kodmunwZfY' = get('nba_espn_session')
+E            +    where get = <Cookies[<Cookie nba_espn_bridge=Fiwz4YoPNkPGeWQWIpUmRf1Dw2n1h7xKjVjcadiHzgY for 127.0.0.1 />, <Cookie nba_espn_session=i_6RJlAfJfujEI044DkdCZ3KueAG9o0m6kodmunwZfY for 127.0.0.1 />]>.get
+E            +      where <Cookies[<Cookie nba_espn_bridge=Fiwz4YoPNkPGeWQWIpUmRf1Dw2n1h7xKjVjcadiHzgY for 127.0.0.1 />, <Cookie nba_espn_session=i_6RJlAfJfujEI044DkdCZ3KueAG9o0m6kodmunwZfY for 127.0.0.1 />]> = <httpx2.AsyncClient object at 0x10f4da510>.cookies
+E            +    and   'nba_espn_session' = api.COOKIE
+
+tests/test_espn_bridge.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_espn_bridge.py::test_existing_login_renewal_selection_rotation_and_replay
+1 failed, 35 passed in 3.00s

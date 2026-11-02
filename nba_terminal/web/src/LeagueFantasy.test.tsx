@@ -140,11 +140,11 @@ it("automatically analyzes and preserves availability across harmless refresh", 
   view.rerender(
     <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-10-31T13:00:00Z" }} onPlan={onPlan} />,
   );
-  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(3));
-  expect(onPlan.mock.calls[2][0].player_overrides.rostered.injured).toBe(true);
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(2));
+  expect(onPlan.mock.calls[1][0].player_overrides.rostered.injured).toBe(true);
   view.rerender(<WaiverWire snapshot={{ ...snapshot, selected_team_id: 2 }} onPlan={onPlan} />);
-  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(4));
-  expect(onPlan.mock.calls[3][0]).not.toHaveProperty("player_overrides");
+  await waitFor(() => expect(onPlan).toHaveBeenCalledTimes(3));
+  expect(onPlan.mock.calls[2][0]).not.toHaveProperty("player_overrides");
 });
 it("explains unavailable optimizer instead of inventing probabilities", () => {
   render(<WaiverWire snapshot={testSnapshot()} />);
@@ -379,6 +379,14 @@ it("shows total arithmetic, selected five and paginates genuine alternatives wit
       "blk",
     ]),
   );
+  view.rerender(<WaiverWire snapshot={snapshot} onPlan={onPlan} loading />);
+  expect(screen.getByLabelText("BLK", { selector: "input" })).toBeChecked();
+  expect(screen.getByLabelText("REB", { selector: "input" })).not.toBeChecked();
+  view.rerender(
+    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-10-31T12:01:00Z" }} onPlan={onPlan} />,
+  );
+  expect(onPlan).toHaveBeenCalledTimes(2);
+  expect(screen.getByLabelText("BLK", { selector: "input" })).toBeChecked();
 });
 
 it("discloses incomplete bounds and reads final weighted percentage calculation fields", async () => {
@@ -582,7 +590,10 @@ it("keeps a scoped explicit zero confirmation across a same-matchup refresh with
   await waitFor(() => expect(onPlan.mock.lastCall?.[0].usage_declaration?.used).toBe(0));
   const evidence = onPlan.mock.lastCall?.[0].usage_declaration;
   view.rerender(
-    <WaiverWire snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:20:00Z" }} onPlan={onPlan} />,
+    <WaiverWire
+      snapshot={{ ...snapshot, fetched_at: "2026-11-02T17:20:00Z", data_gaps: ["New source fact"] }}
+      onPlan={onPlan}
+    />,
   );
   await waitFor(() =>
     expect(onPlan.mock.lastCall?.[0].context.fetched_at).toBe("2026-11-02T17:20:00Z"),
@@ -592,7 +603,7 @@ it("keeps a scoped explicit zero confirmation across a same-matchup refresh with
   expect(screen.getByRole("checkbox", { name: "Use my verified matchup counts" })).toBeChecked();
 });
 
-it("status polling does not cancel a slow snapshot or discard retained context on auth refresh failure", async () => {
+it("status polling does not cancel a slow snapshot and definitive disconnection invalidates context", async () => {
   let resolveSnapshot!: (snapshot: ReturnType<typeof testSnapshot>) => void;
   const api: LeagueFantasyApi = {
     status: vi.fn().mockResolvedValue({ connected: true, team_id: 1 }),
@@ -617,6 +628,6 @@ it("status polling does not cancel a slow snapshot or discard retained context o
   vi.mocked(api.status).mockResolvedValue({ connected: false });
   act(() => window.dispatchEvent(new Event("nba-espn-bridge")));
   await waitFor(() => expect(result.current.status.connected).toBe(false));
-  expect(result.current.snapshot).toEqual(snapshot);
-  expect(result.current.error).toMatch(/retained/);
+  expect(result.current.snapshot).toBeNull();
+  expect(result.current.lifecycle.state).toBe("reconnect-needed");
 });

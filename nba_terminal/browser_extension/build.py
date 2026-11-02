@@ -12,7 +12,7 @@ def build():
     base = {
         "manifest_version": 3,
         "name": "NBA Terminal ESPN Session",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "description": "Consented local-only reuse of your ESPN login. No passwords or roster writes.",
         "permissions": ["storage", "activeTab"],
         "optional_permissions": ["cookies"],

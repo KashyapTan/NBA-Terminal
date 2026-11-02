@@ -1,5 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { type LeagueFantasyApi, leagueFantasyApi } from "./league-fantasy-api";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   type Category,
   type ConnectLeague,
@@ -11,112 +10,26 @@ import {
   formatCategory,
   LEAGUE_CATEGORIES,
   type LeagueSnapshot,
-  type LeagueStatus,
   type LeagueTeam,
   type PlanForecast,
   type PlannerPreferences,
   type WaiverPlan,
 } from "./league-fantasy-model";
 import "./league-fantasy.css";
-import { bindUsage, declaredUsage } from "./usage-declaration";
+import { bindUsage } from "./usage-declaration";
+import { useWaiverPlan } from "./fantasy-lifecycle";
 import { ActualSources } from "./ActualSources";
 import { EspnBrowserConnect } from "./EspnBrowserConnect";
 import { OverallPlanImpact, WaiverArithmetic } from "./WaiverArithmetic";
 import { EmptyOrderedPlan, WaiverStatus } from "./WaiverStatus";
 
-/** Mount once in the integrating app; pass the returned state to the named components. */
-export function useLeagueFantasy(api: LeagueFantasyApi = leagueFantasyApi) {
-  const [status, setStatus] = useState<LeagueStatus>({ connected: false });
-  const [snapshot, setSnapshot] = useState<LeagueSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const revision = useRef(0);
-  const statusRevision = useRef(0);
-  const run = useCallback(
-    async (
-      action: () => Promise<LeagueStatus | LeagueSnapshot>,
-      connection = false,
-      statusOnly = false,
-    ) => {
-      const counter = statusOnly ? statusRevision : revision;
-      const current = ++counter.current;
-      if (connection) statusRevision.current++;
-      if (!statusOnly) {
-        setLoading(true);
-        setError(null);
-      }
-      if (connection) setSnapshot(null);
-      try {
-        const result = await action();
-        if (current !== counter.current) return;
-        if ("connected" in result) {
-          setStatus((previous) =>
-            JSON.stringify(previous) === JSON.stringify(result) ? previous : result,
-          );
-          if (result.refresh_failed)
-            setError(
-              "ESPN session refresh failed; displayed data is retained until a fresh read succeeds.",
-            );
-          if (!result.connected && connection) setSnapshot(null);
-          else if (!result.connected)
-            setError(
-              "ESPN connection could not be refreshed; displayed matchup context is retained. Refresh successfully before using recommendations.",
-            );
-        } else setSnapshot(result);
-      } catch {
-        if (current === counter.current)
-          setError(
-            "League data could not be loaded. Check your connection and retry; displayed totals may be older.",
-          );
-      } finally {
-        if (!statusOnly && current === counter.current) setLoading(false);
-      }
-    },
-    [],
-  );
-  useEffect(() => {
-    void run(() => api.status(), true);
-    return () => {
-      revision.current++;
-      statusRevision.current++;
-    };
-  }, [api, run]);
-  useEffect(() => {
-    if (status.connected && status.team_id) void run(() => api.snapshot());
-  }, [api, status, run]);
-  useEffect(() => {
-    if (!status.connected || !status.team_id) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void run(() => api.snapshot({ refresh: true }));
-    }, 60000);
-    return () => window.clearInterval(timer);
-  }, [api, run, status.connected, status.team_id]);
-  const refreshStatus = useCallback(() => run(() => api.status(), false, true), [api, run]);
-  useEffect(() => {
-    const changed = () => void refreshStatus();
-    window.addEventListener("nba-espn-bridge", changed);
-    const timer = window.setInterval(() => {
-      if (status.connected && status.expires_at && Date.parse(status.expires_at) <= Date.now())
-        void refreshStatus();
-    }, 30000);
-    return () => {
-      window.removeEventListener("nba-espn-bridge", changed);
-      window.clearInterval(timer);
-    };
-  }, [refreshStatus, status.connected, status.expires_at]);
-  return {
-    status,
-    snapshot,
-    loading,
-    error,
-    connect: (input: ConnectLeague) => run(() => api.connect(input), true),
-    selectTeam: (id: number) => run(() => api.selectTeam(id), true),
-    disconnect: () => run(() => api.disconnect(), true),
-    refresh: () => run(() => api.snapshot({ refresh: true })),
-    refreshStatus,
-  };
-}
-export type LeagueFantasyState = Omit<ReturnType<typeof useLeagueFantasy>, "refreshStatus"> & {
+export { useLeagueFantasy } from "./use-league-session";
+import { useLeagueFantasy } from "./use-league-session";
+export type LeagueFantasyState = Omit<
+  ReturnType<typeof useLeagueFantasy>,
+  "refreshStatus" | "lifecycle"
+> & {
+  lifecycle?: import("./fantasy-lifecycle").FantasyLifecycle;
   refreshStatus?: () => Promise<void>;
 };
 
@@ -173,7 +86,6 @@ export function LeagueConnection({ state }: { state: LeagueFantasyState }) {
             Your team
             <select
               aria-label="Your ESPN team"
-              disabled={state.loading}
               value={state.status.team_id ?? ""}
               onChange={(event) => void state.selectTeam(Number(event.target.value))}
             >
@@ -583,58 +495,32 @@ function WaiverStrategy({
   const [categoryDraft, setCategoryDraft] = useState<Category[] | null>(null);
   const availabilityPanel = useRef<HTMLDetailsElement>(null);
   const advancedPanel = useRef<HTMLDetailsElement>(null);
-  const [plan, setPlan] = useState<WaiverPlan | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [dropFilter, setDropFilter] = useState("");
   const [visibleCount, setVisibleCount] = useState(12);
-  const generation = useRef(0);
   useEffect(() => {
-    const current = ++generation.current;
-    setPlan(null);
-    setError(null);
-    if (!onPlan || !snapshot.league.supported || leagueError || loading) {
-      setBusy(false);
-      return;
-    }
+    // Legacy timestamp-only declarations cannot acquire a new lease on refresh.
     if (
       preferences.user_confirmed_counts &&
       !preferences.usage_declaration &&
       preferences.counts_snapshot_at !== snapshot.fetched_at
-    ) {
+    )
       setPreferences((current) => ({ ...current, user_confirmed_counts: false }));
-      return;
-    }
-    setBusy(true);
-    void onPlan({
-      ...preferences,
-      usage_declaration: preferences.usage_declaration ?? declaredUsage(snapshot),
-      context: {
-        league_id: snapshot.league.id,
-        season_id: snapshot.league.season_id,
-        team_id: snapshot.selected_team_id,
-        matchup_period_id: snapshot.period.matchup_period_id,
-        fetched_at: snapshot.fetched_at,
-      },
-    })
-      .then((result) => {
-        if (current === generation.current) setPlan(result);
-      })
-      .catch(() => {
-        if (current === generation.current)
-          setError("Analysis could not be loaded. Retry after checking your league connection.");
-      })
-      .finally(() => {
-        if (current === generation.current) setBusy(false);
-      });
-    return () => {
-      generation.current++;
-    };
-  }, [snapshot, preferences, onPlan, attempt, leagueError, loading]);
+  }, [
+    preferences.user_confirmed_counts,
+    preferences.usage_declaration,
+    preferences.counts_snapshot_at,
+    snapshot.fetched_at,
+  ]);
+  const { plan, busy, error, lifecycle } = useWaiverPlan(
+    snapshot,
+    preferences,
+    onPlan,
+    attempt,
+    !!leagueError,
+    loading,
+  );
   function edit(patch: Partial<PlannerPreferences>) {
-    generation.current++;
-    setPlan(null);
     setPreferences((current) => ({ ...current, ...patch }));
   }
   function override(id: string, patch: { injured?: boolean; protected?: boolean }) {
@@ -821,12 +707,18 @@ function WaiverStrategy({
   }
   return (
     <section className="league-panel league-waiver">
+      {lifecycle.readOnly && (
+        <p role="status" data-result-state={lifecycle.state}>
+          {lifecycle.action}
+          {plan ? " · Previous analysis · read-only" : ""}
+        </p>
+      )}
       <SnapshotHeading snapshot={snapshot} loading={loading} onRefresh={onRefresh} />
       <div className="waiver-verdict">
         <div>
           <span className="league-kicker">YOUR PATH TO FIVE CATEGORIES</span>
           <h2>
-            {busy
+            {busy && !plan
               ? "Finding your matchup edge…"
               : targetKeys.length
                 ? `Focus on ${targetKeys.join(" · ")}`
@@ -882,7 +774,7 @@ function WaiverStrategy({
           )}
         </div>
       </div>
-      {!busy && <WaiverStatus plan={evaluationPlan} onRecover={reviewInputs} />}
+      {(!busy || plan) && <WaiverStatus plan={evaluationPlan} onRecover={reviewInputs} />}
       {leagueError && <p role="alert">{leagueError}</p>}
       {!snapshot.league.supported && (
         <p role="alert">
@@ -992,7 +884,7 @@ function WaiverStrategy({
         <span className="league-losing">↓ Trailing: lower priority</span>
         <span>— Unknown: missing evidence</span>
       </div>
-      {!busy && todayPairs.length > 0 && (
+      {todayPairs.length > 0 && (
         <div className="today-pairs" aria-label="Today’s supported pickup pairs">
           <h3>
             {plan?.evaluation_state === "conditional_opportunities" ? "Conditional" : "Modeled"}{" "}

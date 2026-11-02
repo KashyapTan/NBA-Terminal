@@ -69,7 +69,7 @@ def test_existing_login_renewal_selection_rotation_and_replay():
             # Submitted team_id cannot override user's server-owned selection.
             response = await refresh(b, team_id=2)
             assert response.status_code == 200 and response.json()["team_id"] == 1
-            assert b.cookies.get(api.COOKIE) != token and not conn.active
+            assert b.cookies.get(api.COOKIE) == token and conn.active
             nonce = await ticket(b)
             response = await b.post(P + "/bridge/refresh", json={**PRIVATE, "nonce": nonce}, headers=H)
             assert response.status_code == 200
@@ -278,5 +278,74 @@ def test_generic_extension_refresh_error_retains_valid_context_and_recovers(monk
             assert recovered.status_code == 200
             assert recovered.json()["selected_team_id"] == before.json()["selected_team_id"]
             assert not (await b.get(P + "/status")).json()["refresh_failed"]
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("status", [409, 429, 503, 504])
+def test_transient_refresh_preserves_session_identity_and_prior_cache(monkeypatch, status):
+    async def run():
+        async with browser() as b:
+            await pair(b)
+            assert (await refresh(b)).status_code == 200
+            token = b.cookies.get(api.COOKIE)
+            conn = webapp.app.state.espn_sessions.get(token)
+            cached = {"selected_team_id": 1, "source_fact": "retained"}
+            conn.cached = cached
+            identity = conn.status()["context_id"]
+
+            def failed(data):
+                raise espn.EspnError("transient", "Safe synthetic transient", status)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(api, "bridge_connect_sync", failed)
+                assert (await refresh(b)).status_code == status
+            health = (await b.get(P + "/status")).json()
+            assert health["connected"] and health["refresh_failed"]
+            assert conn.active and conn.cached == cached
+            assert (await refresh(b)).status_code == 200
+            health = (await b.get(P + "/status")).json()
+            assert health["context_id"] == identity
+            assert health["refresh_failed"]
+            monkeypatch.setattr(conn.client, "snapshot", lambda raw, team: cached)
+            assert (await b.get(P + "/snapshot?refresh=true")).status_code == 200
+            assert not (await b.get(P + "/status")).json()["refresh_failed"]
+            assert b.cookies.get(api.COOKIE) == token
+            assert conn.cached == cached
+
+    asyncio.run(run())
+
+
+def test_status_does_not_wait_for_model_lock_or_worker_pool():
+    async def run():
+        async with browser() as b:
+            await pair(b)
+            await refresh(b)
+            conn = webapp.app.state.espn_sessions.get(b.cookies.get(api.COOKIE))
+            conn.lock.acquire()
+            webapp.app.state.espn_slots = asyncio.Semaphore(0)
+            try:
+                result = await asyncio.wait_for(b.get(P + "/status"), timeout=0.2)
+                assert result.status_code == 200 and result.json()["connected"]
+            finally:
+                conn.lock.release()
+
+    asyncio.run(run())
+
+
+def test_bridge_session_cannot_outlive_pairing_lease(monkeypatch):
+    async def run():
+        async with browser() as b:
+            await pair(b)
+            pairing = webapp.app.state.espn_bridges.get(b.cookies.get(api.BRIDGE_COOKIE), "http://127.0.0.1")
+            now = time.time()
+            pairing.expires = now + 60
+            assert (await refresh(b)).status_code == 200
+            conn = webapp.app.state.espn_sessions.get(b.cookies.get(api.COOKIE))
+            assert conn.expires == pairing.expires
+            monkeypatch.setattr(api.time, "time", lambda: now + 61)
+            assert (await b.get(P + "/status")).json() == {"connected": False}
+            assert (await b.get(P + "/bridge/status")).json() == {"enabled": False}
+            assert not conn.active and conn.client.swid is None
 
     asyncio.run(run())

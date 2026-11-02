@@ -20,6 +20,7 @@ class Pair:
     team_id: int | None
     expires: float = field(default_factory=lambda: time.time() + PAIR_TTL)
     state: str = "waiting_extension"
+    pair_id: str = field(default_factory=lambda: secrets.token_urlsafe(16))
     account: str | None = None
     nonce: str | None = None
     nonce_until: float = 0
@@ -30,6 +31,7 @@ class Pair:
     def status(self) -> dict:
         return {
             "enabled": True,
+            "pair_id": self.pair_id,
             "league_id": self.league_id,
             "season_id": self.season_id,
             "team_id": self.team_id,

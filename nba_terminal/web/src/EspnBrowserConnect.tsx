@@ -22,15 +22,26 @@ export function EspnBrowserConnect({ onConnected }: { onConnected?: () => Promis
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
+  const inFlight = useRef(false);
+  const notified = useRef(false);
   const readStatus = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     const current = generation.current;
     try {
       const next = await browserBridgeApi.status();
       if (current !== generation.current) return;
       setBridge(next);
-      if (next.enabled && next.state === "connected") await onConnected?.();
+      if (next.enabled && next.state === "connected") {
+        if (!notified.current) {
+          notified.current = true;
+          await onConnected?.();
+        }
+      } else notified.current = false;
     } catch {
       /* Setup may be unavailable until the local server is updated. Retry remains explicit. */
+    } finally {
+      inFlight.current = false;
     }
   }, [onConnected]);
   useEffect(() => {

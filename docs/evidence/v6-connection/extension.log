@@ -1,0 +1,19 @@
+bun test v1.4.0 (34cbb9a40)
+
+nba_terminal/browser_extension/tests/extension.test.js:
+(pass) existing profile login, only exact cookie reads, metadata contains no credentials [1.02ms]
+(pass) permission denied, unpaired, wrong store, missing session, account switch [0.34ms]
+(pass) forged sender/subframe/remote origin rejected and Chromium store detected [0.25ms]
+(pass) cookie events filtered and permission revocation notifies local tabs [63.72ms]
+(pass) isolated relay posts secrets only to same-origin route, no secret events; cookie changes renew [124.35ms]
+(pass) unpaired page does not request cookies or create challenge [21.14ms]
+(pass) permission denied reaches backend revocation without cookies [21.50ms]
+(pass) serialized popup consent generation and Forget reject content-script impersonation [0.71ms]
+(pass) explicit new pairing is detected without waiting behind an old connection fingerprint [84.60ms]
+(pass) transient extension error does not become a two-second credential refresh loop [459.79ms]
+(pass) cookie changes during an in-flight refresh coalesce into one follow-up [42.62ms]
+
+ 11 pass
+ 0 fail
+ 50 expect() calls
+Ran 11 tests across 1 file. [833.00ms]
