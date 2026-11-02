@@ -1,0 +1,90 @@
+$ playwright test
+[WebServer] (node:69672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 17 tests using 7 workers
+
+(node:69687) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69692) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69689) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69690) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69688) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69691) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:69686) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [chromium] › e2e/game-flow.spec.ts:308:1 › renders an honest API failure state (653ms)
+  ✓   2 [chromium] › e2e/game-flow.spec.ts:259:1 › shows an honest unavailable shot chart while retaining player stats (707ms)
+  ✓   1 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 1440px (992ms)
+  ✓   4 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 390px (998ms)
+  ✓   7 [chromium] › e2e/game-flow.spec.ts:221:1 › fans drill from season feed through box score to a player's real shot chart (1.0s)
+  ✓   9 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 390px (341ms)
+  ✓   8 [chromium] › e2e/game-flow.spec.ts:314:1 › season log keyboard link opens the actual historical box score with phase context (407ms)
+  ✓   3 [chromium] › e2e/game-flow.spec.ts:270:1 › explores player sample comparisons and shot controls (1.2s)
+  ✓  13 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 390px and retains keyboard game links (425ms)
+  ✓  10 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 1440px (505ms)
+  ✓  14 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 1440px and retains keyboard game links (440ms)
+  ✓  12 [chromium] › e2e/league-strategy-ui.spec.ts:145:1 › browser setup and consented pairing states work without exposing cookie inputs (558ms)
+  ✓   5 [chromium] › e2e/fantasy.spec.ts:50:1 › Fantasy supports season stats, sample filters, player comparison and shortlist (1.7s)
+  ✓  16 [chromium] › e2e/waiver-workspace.spec.ts:4:1 › compact workspace has closed analysis, true net and dismissible keyboard help (242ms)
+  ✓  17 [chromium] › e2e/waiver-workspace.spec.ts:23:1 › mobile saved result retains compact cards and touch help (255ms)
+  ✘  15 [chromium] › e2e/waiver-plan-diagnosis.spec.ts:8:1 › empty ordered plan names its budget blocker inline on desktop and mobile (5.2s)
+  ✘  11 [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile (30.0s)
+[WebServer] error: "vite" exited with code 143
+
+
+  1) [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByText(/Optional competing single-move alternatives/)
+
+
+      120 |   await page.screenshot({ path: resolve(evidence, "ui-matchups-desktop.png"), fullPage: true });
+      121 |   await page.getByRole("tab", { name: "Waiver Wire", exact: true }).click();
+    > 122 |   await page.getByText(/Optional competing single-move alternatives/).click();
+          |                                                                       ^
+      123 |   await expect(page.locator(".pickup-list > li")).toHaveCount(12);
+      124 |   await expect(page.getByText(/Conditional alternatives:/)).toBeVisible();
+      125 |   await expect(page.getByText("15 beneficial alternatives")).toBeVisible();
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/nba_terminal/web/e2e/league-strategy-ui.spec.ts:122:71
+
+    Error Context: test-results/league-strategy-ui-strateg-7b9f2-ves-remain-usable-on-mobile-chromium/error-context.md
+
+  2) [chromium] › e2e/waiver-plan-diagnosis.spec.ts:8:1 › empty ordered plan names its budget blocker inline on desktop and mobile
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('region', { name: 'Recommended ordered plan' }).getByText('Ordered plan withheld: acquisition budget unverified')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('region', { name: 'Recommended ordered plan' }).getByText('Ordered plan withheld: acquisition budget unverified') with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Recommended ordered plan' }).getByText('Ordered plan withheld: acquisition budget unverified')
+
+
+      78 |   await expect(
+      79 |     section.getByText("Ordered plan withheld: acquisition budget unverified"),
+    > 80 |   ).toBeVisible();
+         |     ^
+      81 |   await expect(section.getByText(/Current matchup acquisitions used unknown/)).toBeVisible();
+      82 |   await expect(section.getByText(/1 beneficial conditional alternative found/)).toBeVisible();
+      83 |   await expect(section.getByText(/Yesterday’s usage is not current confirmation/)).toBeVisible();
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/nba_terminal/web/e2e/waiver-plan-diagnosis.spec.ts:80:5
+
+    Error Context: test-results/waiver-plan-diagnosis-empt-2991d-nline-on-desktop-and-mobile-chromium/error-context.md
+
+  2 failed
+    [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile
+    [chromium] › e2e/waiver-plan-diagnosis.spec.ts:8:1 › empty ordered plan names its budget blocker inline on desktop and mobile
+  15 passed (31.7s)
+error: script "e2e" exited with code 1

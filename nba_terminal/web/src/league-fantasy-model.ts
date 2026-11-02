@@ -1,3 +1,15 @@
+export interface PickupSample {
+  minutes: number | null;
+  games: number | null;
+  team_games: number | null;
+  season_id?: number;
+  source?: string | null;
+  denominator_source?: string | null;
+  as_of?: string | null;
+  sample_as_of?: string | null;
+  status?: string;
+  aggregate?: boolean;
+}
 export const LEAGUE_CATEGORIES = [
   { key: "pts", label: "PTS" },
   { key: "reb", label: "REB" },
@@ -15,6 +27,7 @@ export type Stats = Partial<
 >;
 export type CategoryState = "winning" | "tied" | "losing" | "unknown";
 export interface LeaguePlayer {
+  pickup_sample?: PickupSample;
   id: string;
   name: string;
   positions: string[];
@@ -111,6 +124,7 @@ export interface LeagueStatus {
   auth_mode?: "public" | "private";
   ownership_verified?: boolean;
   expires_at?: string;
+  context_id?: string;
   teams?: { id: number; name: string; selectable: boolean; ownership_verified: boolean }[];
 }
 export interface LeagueSnapshot {
@@ -191,6 +205,7 @@ export interface ConnectLeague {
   espn_s2?: string;
 }
 export interface PlannerPreferences {
+  pickup_filters?: { min_minutes?: number; min_games?: number; min_participation?: number };
   context?: {
     league_id: number;
     season_id: number;
@@ -291,6 +306,8 @@ export interface PlanArithmetic {
   categories: Record<Category, CategoryArithmetic>;
 }
 export interface PickupRecommendation {
+  pickup_sample?: PickupSample;
+  drop_sample?: PickupSample;
   arithmetic?: PlanArithmetic;
   score_before?: number;
   score_after?: number;
@@ -375,6 +392,14 @@ export interface RecommendedPlan {
   optimality: string;
 }
 export interface WaiverPlan {
+  pickup_filter_summary?: {
+    thresholds: { min_minutes: number; min_games: number; min_participation: number };
+    requested: number;
+    qualified: number;
+    exclusions: { player_id: string; name: string; reasons: string[] }[];
+    source_coverage: { current_sample: number; team_games: number };
+    basis: string;
+  };
   candidate_coverage?: {
     requested: number;
     qualified: number;
@@ -394,6 +419,8 @@ export interface WaiverPlan {
     daily_applicability: "daily" | "matchup" | "unreported";
   };
   evaluation_state?:
+    | "no_qualified_pickups"
+    | "search_incomplete"
     | "required_inputs_unknown"
     | "known_zero_acquisitions"
     | "evaluated_no_material_benefit"
@@ -401,6 +428,14 @@ export interface WaiverPlan {
     | "conditional_opportunities";
   recommended_plan?: RecommendedPlan | null;
   search?: {
+    stop_reason?: string;
+    selected_plan_stop_reason?: string;
+    depth_reached?: number;
+    layer_pruned?: boolean;
+    beam_pruned?: boolean;
+    candidate_truncated?: boolean;
+    layer_evaluations?: number[];
+    acquisition_budget?: number | null;
     first_layer_pairs_evaluated?: number;
     first_layer_pairs_total?: number;
     first_layer_complete?: boolean;

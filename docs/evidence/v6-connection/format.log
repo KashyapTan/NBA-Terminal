@@ -1,0 +1,2 @@
+$ biome check --formatter-enabled=true --linter-enabled=false --assist-enabled=false .
+Checked 79 files in 9ms. No fixes applied.

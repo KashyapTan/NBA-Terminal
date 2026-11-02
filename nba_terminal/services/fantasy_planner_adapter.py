@@ -128,6 +128,92 @@ def _remaining_lineup_slots(roster, lineup, remaining, now):
     return daily
 
 
+PICKUP_FILTER_DEFAULTS = {"min_minutes": 15, "min_games": 2, "min_participation": 0.5}
+
+
+def pickup_filters(values):
+    if values is None:
+        values = {}
+    if not isinstance(values, dict) or set(values) - set(PICKUP_FILTER_DEFAULTS):
+        raise ValueError("pickup_filters must contain min_minutes, min_games and min_participation only")
+    thresholds = PICKUP_FILTER_DEFAULTS | values
+    for key, lower, upper in (("min_minutes", 0, 48), ("min_games", 1, 82), ("min_participation", 0, 1)):
+        value = thresholds[key]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not isfinite(value)
+            or not lower <= value <= upper
+            or (key == "min_games" and value != int(value))
+        ):
+            raise ValueError(
+                f"{key} must be finite within {lower}..{upper}" + (" and integral" if key == "min_games" else "")
+            )
+    return thresholds
+
+
+def pickup_exclusions(player, thresholds, season_id, now):
+    sample = player.get("pickup_sample") or {}
+    reasons = []
+
+    def valid(value, lower=0, upper=82):
+        return (
+            not isinstance(value, bool)
+            and isinstance(value, (int, float))
+            and isfinite(value)
+            and lower <= value <= upper
+        )
+
+    def same_day(value):
+        try:
+            stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return stamp.tzinfo is not None and stamp.astimezone(ZoneInfo("America/New_York")).date() == (
+                now.astimezone(ZoneInfo("America/New_York")).date()
+            )
+        except (ValueError, TypeError, AttributeError):
+            return False
+
+    games, minutes, denominator = (
+        player.get("current_games"),
+        (player.get("current_rates") or {}).get("minutes"),
+        sample.get("team_games"),
+    )
+    observed = (
+        sample.get("season_id") == season_id
+        and sample.get("source") in {"nba_stats", "espn_actual_season"}
+        and sample.get("status") in {"fresh", "cached"}
+        and same_day(sample.get("sample_as_of"))
+        and valid(games)
+        and games == int(games)
+        and valid(minutes, 0, 48)
+    )
+    if not observed:
+        reasons.append("current_observed_sample_unknown")
+    else:
+        if minutes < thresholds["min_minutes"]:
+            reasons.append("below_min_minutes")
+        if games < thresholds["min_games"]:
+            reasons.append("below_min_games")
+    denominator_known = (
+        valid(denominator, 1)
+        and denominator == int(denominator)
+        and bool(sample.get("denominator_source"))
+        and same_day(sample.get("as_of"))
+    )
+    if not denominator_known:
+        reasons.append("completed_team_games_unknown")
+    if sample.get("aggregate"):
+        # An aggregate player's GP spans teams; current-team GP is not the same exposure.
+        # Keep rates available for projections/drops; exclude pickups until exposure is verified.
+        reasons.append("traded_sample_exposure_unknown")
+    if observed and denominator_known:
+        if games > denominator:
+            reasons.append("sample_team_games_mismatch")
+        elif games / denominator < thresholds["min_participation"]:
+            reasons.append("below_min_participation")
+    return reasons, observed, denominator_known
+
+
 def plan_snapshot_waivers(snapshot, preferences, now=None):
     """Default to automatic choices; explicit preferences narrow or correct facts."""
     now = now or datetime.now(timezone.utc)
@@ -135,6 +221,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     result = {
         "status": "unavailable",
         "evaluation_state": "required_inputs_unknown",
+        "search": {"evaluations": 0, "evaluation_limit_reached": False, "stop_reason": "required_inputs_unknown"},
         "reasons": [],
         "actions": [],
         "plan": [],
@@ -149,6 +236,20 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "data_gaps": gaps,
         "provenance": provenance,
     }
+    try:
+        thresholds = pickup_filters(preferences.get("pickup_filters"))
+    except ValueError as error:
+        result["reasons"] = [str(error)]
+        return result
+    filter_summary = {
+        "thresholds": thresholds,
+        "requested": 0,
+        "qualified": 0,
+        "exclusions": [],
+        "source_coverage": {"current_sample": 0, "team_games": 0},
+        "basis": "current regular-season observed GP / completed team games; unknown exposure excluded",
+    }
+    result["pickup_filter_summary"] = filter_summary
     user_id, target_id = snapshot["selected_team_id"], snapshot.get("opponent_team_id")
     teams = {team["id"]: team for team in snapshot["teams"]}
     user, target = teams.get(user_id), teams.get(target_id)
@@ -414,6 +515,16 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     assumed = 0
     for player, owner in relevant:
         pid, name = player["id"], player["name"]
+        if owner == "free":
+            filter_summary["requested"] += 1
+            rejection, observed, denominator = pickup_exclusions(player, thresholds, expected["season_id"], now)
+            filter_summary["source_coverage"]["current_sample"] += int(observed)
+            filter_summary["source_coverage"]["team_games"] += int(denominator)
+            if rejection:
+                filter_summary["exclusions"].append({"player_id": pid, "name": name, "reasons": rejection})
+                excluded.append(f"{name}: pickup qualification: {', '.join(rejection)}.")
+                continue
+            filter_summary["qualified"] += 1
         override = overrides.get(pid, {})
         if not isinstance(override, dict):
             override = {}
@@ -519,7 +630,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         forecast_gaps.append(
             "Free-agent market evidence is unavailable or unverified; an empty response is not a no-benefit evaluation."
         )
-    elif candidates and qualified_candidates == 0 and excluded:
+    elif filter_summary["qualified"] and qualified_candidates == 0 and excluded:
         forecast_gaps.append(
             "No selected eligible free agent has a usable rate/schedule sample; pickup benefit could not be evaluated."
         )
@@ -632,6 +743,9 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     ):
         if key in planned:
             result[key] = planned[key]
+    if filter_summary["requested"] and not filter_summary["qualified"] and not forecast_gaps:
+        result["evaluation_state"] = "no_qualified_pickups"
+        result["reasons"] = ["No requested pickup passed the current-season sample filters."]
     if scaled is None:
         result["limitations"].append("ESPN did not report matchup allowance scaling; the supplied matchup cap is used.")
     if qualified_candidates > selected_candidates:
@@ -640,6 +754,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             "raw market enumeration is retained separately."
         )
         result.setdefault("search", {}).update(candidate_truncated=True, alternatives_complete=False)
+        if result["evaluation_state"] == "evaluated_no_material_benefit":
+            result["evaluation_state"] = "search_incomplete"
     result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
     result["projected"] = _forecast_view(planned["projected"])
     provenance["rates"] = planned["provenance"]

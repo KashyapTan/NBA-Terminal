@@ -1,0 +1,15 @@
+$ playwright test waiver-workspace.spec.ts
+[WebServer] (node:27926) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 2 workers
+
+(node:27940) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27941) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › e2e/waiver-workspace.spec.ts:4:1 › compact workspace has closed analysis, true net and dismissible keyboard help (240ms)
+  ✓  2 [chromium] › e2e/waiver-workspace.spec.ts:23:1 › mobile saved result retains compact cards and touch help (264ms)
+[WebServer] error: "vite" exited with code 143
+
+  2 passed (668ms)

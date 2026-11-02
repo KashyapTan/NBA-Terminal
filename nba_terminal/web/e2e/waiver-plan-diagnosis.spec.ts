@@ -74,15 +74,11 @@ test("empty ordered plan names its budget blocker inline on desktop and mobile",
     return route.fulfill({ json });
   });
   await page.goto("/fantasy?fantasyTab=waiver");
-  const section = page.getByRole("region", { name: "Recommended ordered plan" });
-  await expect(
-    section.getByText("Ordered plan withheld: acquisition budget unverified"),
-  ).toBeVisible();
-  await expect(section.getByText(/Current matchup acquisitions used unknown/)).toBeVisible();
-  await expect(section.getByText(/1 beneficial conditional alternative found/)).toBeVisible();
-  await expect(section.getByText(/Yesterday’s usage is not current confirmation/)).toBeVisible();
-  await expect(section.getByText(/See the evaluation status/)).toHaveCount(0);
-  const evidence = resolve(process.cwd(), "../../docs/evidence/waiver_plan_diagnosis");
+  const section = page.getByRole("region", { name: "Waiver workspace" });
+  await expect(section.getByText("Available adds need verification")).toBeVisible();
+  await expect(section.locator(".ww-analysis")).not.toHaveAttribute("open");
+  await expect(section.getByText("Adds unverified", { exact: false })).toBeVisible();
+  const evidence = resolve(process.cwd(), "../../docs/evidence/v6-integrated/regression-diagnosis");
   mkdirSync(evidence, { recursive: true });
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],
@@ -94,9 +90,9 @@ test("empty ordered plan names its budget blocker inline on desktop and mobile",
       .toBe(true);
     await page.screenshot({ fullPage: true, path: resolve(evidence, `${name}.png`) });
   }
-  await section
-    .getByRole("button", { name: "Review acquisition counts & required inputs" })
-    .click();
+  await section.getByText("Full analysis & data", { exact: true }).click();
+  await page.getByText("Advanced inputs & data notes", { exact: true }).click();
+  await section.getByText("Data gaps (1)", { exact: true }).first().click();
+  await expect(section.getByText(/Current matchup acquisitions used unknown/)).toBeVisible();
   await expect(page.getByLabel("Matchup acquisitions used", { exact: true })).toBeVisible();
-  await expect(page.locator("details.waiver-advanced")).toHaveAttribute("open", "");
 });

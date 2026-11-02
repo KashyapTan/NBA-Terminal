@@ -1,0 +1,1 @@
+2026-11-02: One bounded cua.getApp("Firefox") call, timeout_ms=10000. Result after 6.358 seconds: Computer Use server error -10005: timeoutReached. No subsequent Firefox action, credential/cookie read/export, or user-server mutation. Private signed-in plan remains UNKNOWN. Synthetic browser transport evidence does not verify private account data.

@@ -27,3 +27,4 @@ def offline_nba_enrichment(request, monkeypatch):
     )
 
     monkeypatch.setattr(fantasy_nba, "fetch_identities", lambda year: [])
+    monkeypatch.setattr(fantasy_nba, "fetch_team_games", lambda year: [])

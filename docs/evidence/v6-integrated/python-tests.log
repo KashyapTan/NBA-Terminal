@@ -1,0 +1,46 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform darwin -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 477 items
+
+tests/test_analytics.py ......                                           [  1%]
+tests/test_architecture.py .                                             [  1%]
+tests/test_espn_bridge.py ...................                            [  5%]
+tests/test_espn_fantasy.py .........................................     [ 14%]
+tests/test_espn_fantasy_api.py .......................                   [ 18%]
+tests/test_fantasy_actuals.py ................................           [ 25%]
+tests/test_fantasy_api.py .                                              [ 25%]
+tests/test_fantasy_integration.py ...................................... [ 33%]
+.....                                                                    [ 34%]
+tests/test_fantasy_nba.py ...............                                [ 37%]
+tests/test_fantasy_optimizer.py .....................................    [ 45%]
+tests/test_fantasy_optimizer_v4.py .......................               [ 50%]
+tests/test_fantasy_provider_recovery.py .........................        [ 55%]
+tests/test_fantasy_service.py ........                                   [ 57%]
+tests/test_fantasy_strategy_v2.py .................                      [ 61%]
+tests/test_fantasy_strategy_v3.py ..............                         [ 63%]
+tests/test_fantasy_v2_chain.py ..                                        [ 64%]
+tests/test_fantasy_v5_diagnosis.py .........                             [ 66%]
+tests/test_fantasy_v6_engine.py ........................                 [ 71%]
+tests/test_game_center.py .......................                        [ 76%]
+tests/test_game_center_phase.py ..                                       [ 76%]
+tests/test_game_center_schedule_api.py .                                 [ 76%]
+tests/test_legacy_tools.py .................                             [ 80%]
+tests/test_nba_http.py .                                                 [ 80%]
+tests/test_picks_service.py ..                                           [ 80%]
+tests/test_player_analysis.py ...............................            [ 87%]
+tests/test_player_browser_api.py ....                                    [ 88%]
+tests/test_player_data_helpers.py ....                                   [ 89%]
+tests/test_webapp.py ...........                                         [ 91%]
+tests/test_week_reset.py .........................................       [100%]
+
+=============================== warnings summary ===============================
+tests/test_game_center.py::test_real_traditional_provider_to_reaches_player_and_team_tov
+  /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/tests/test_game_center.py:403: DeprecationWarning: BoxScoreTraditionalV2 is deprecated and will be removed in a future version. Please use BoxScoreTraditionalV3 instead. Data is no longer being published for BoxScoreTraditionalV2 as of the 2025-26 NBA season.
+    endpoint = service.boxscoretraditionalv2.BoxScoreTraditionalV2(game_id="0022600152", get_request=False)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 477 passed, 1 warning in 6.54s ========================

@@ -107,12 +107,14 @@ class Connection:
     cached_until: float = 0
     refresh_failed: bool = False
     active: bool = True
+    context_id: str = field(default_factory=lambda: secrets.token_urlsafe(16))
     lock: Any = field(default_factory=threading.Lock)
 
     def status(self) -> dict:
         choices = team_choices(self.raw, self.client.swid)
         return {
             "connected": True,
+            "context_id": self.context_id,
             "refresh_failed": self.refresh_failed,
             "league_id": self.client.league_id,
             "season_id": self.client.season_id,
@@ -150,7 +152,8 @@ class SessionStore:
     def get(self, token: str | None) -> Connection | None:
         with self.lock:
             self._prune()
-            return self.connections.get(token or "")
+            conn = self.connections.get(token or "")
+            return conn if conn and conn.active else None
 
     def add(self, conn: Connection, previous: str | None) -> str:
         with self.lock:
@@ -233,6 +236,12 @@ def session_lock(conn: Connection):
         try:
             ensure_active(conn)
             yield
+        except EspnError as exc:
+            if exc.status >= 500 or exc.status in {401, 429} or (exc.status == 403 and exc.code != "team_not_owned"):
+                conn.refresh_failed = True
+            if exc.status in {401, 403} and exc.code != "team_not_owned":
+                conn.clear()
+            raise
         finally:
             # Revoked/expired secrets are erased even if a pending upstream call failed.
             if not conn.active or conn.expires <= time.time():
@@ -280,7 +289,12 @@ async def status(request: Request, response: Response) -> dict:
     conn = store(request).get(request.cookies.get(COOKIE))
     if conn is None:
         return {"connected": False}
-    return await worker(request, status_sync, conn)
+    # Status is a memory-only atomic read. Never queue behind a long optimizer
+    # or consume the bounded provider pool just to poll session health.
+    result = conn.status()
+    if not conn.active or conn.expires <= time.time():
+        return {"connected": False}
+    return result
 
 
 def status_sync(conn: Connection) -> dict:
@@ -404,6 +418,7 @@ async def waiver_plan(request: Request, response: Response) -> dict:
         "margin_sd",
         "player_overrides",
         "remaining_dates",
+        "pickup_filters",
     }
     if not isinstance(preferences, dict) or set(preferences) - allowed:
         raise fail("invalid_fields", "Send planner preferences only; league facts come from the server.")
@@ -489,6 +504,8 @@ async def pair_bridge(request: Request, response: Response) -> dict:
 async def bridge_status(request: Request, response: Response) -> dict:
     guard(request, response)
     pair = bridges(request).get(request.cookies.get(BRIDGE_COOKIE), str(request.base_url).rstrip("/"))
+    if pair and pair.state == "connected" and store(request).get(pair.session) is None:
+        pair.state = "no_espn_session"
     return pair.status() if pair else {"enabled": False}
 
 
@@ -554,11 +571,18 @@ async def bridge_refresh(request: Request, response: Response) -> dict:
         # Team selection belongs to the server session, never to extension input.
         data["team_id"] = current.team_id if current else pair.team_id
         conn = await worker(request, bridge_connect_sync, data)
+        # A renewed session must not outlive the consent/pairing lease.
+        conn.expires = min(conn.expires, pair.expires)
+        # Renew the same authenticated context without revoking readers. Rotation
+        # used to invalidate snapshots/plans already running on the old session.
+        if current is not None:
+            conn = await worker(request, renew_bridge_sync, current, conn)
         with bridges(request).lock:
             if not pair.active or pair.expires <= time.time():
                 conn.clear()
                 raise fail("bridge_canceled", "Pairing was canceled while ESPN was responding.", 409)
-            pair.session = store(request).add(conn, pair.session or request.cookies.get(COOKIE))
+            if conn is not current:
+                pair.session = store(request).add(conn, pair.session or request.cookies.get(COOKIE))
             pair.account, pair.team_id, pair.state = data["swid"], conn.team_id, "connected"
         local_cookie(request, response, COOKIE, pair.session, SESSION_TTL)
         return pair.status()
@@ -568,11 +592,12 @@ async def bridge_refresh(request: Request, response: Response) -> dict:
         # Definite auth rejection revokes; transient upstream/worker failure may
         # keep the still-valid prior connection until its normal expiry.
         status = exc.status_code if isinstance(exc, HTTPException) else exc.status
-        if status >= 500:
+        definitive = status in {401, 403}
+        if not definitive:
             previous = store(request).get(pair.session)
             if previous is not None:
                 previous.refresh_failed = True
-        if status < 500:
+        if definitive:
             old = store(request).remove(pair.session)
             if old and old.lock.acquire(blocking=False):
                 try:
@@ -604,3 +629,26 @@ def bridge_connect_sync(data: dict) -> Connection:
         conn.clear()
         raise EspnError("account_not_member", "This ESPN account does not own a team in the paired league.", 403)
     return conn
+
+
+def renew_bridge_sync(current: Connection, fresh: Connection) -> Connection:
+    """Same account/league only, serialized with source reads and modeling."""
+    with current.lock:
+        if not current.active or current.expires <= time.time():
+            return fresh
+        try:
+            if current.team_id is not None:
+                validate_team(fresh.raw, current.team_id, fresh.client.swid)
+        except Exception:
+            fresh.clear()
+            raise
+        previous_client = current.client
+        current.client = fresh.client
+        previous_client.clear()
+        current.raw = fresh.raw
+        current.expires = fresh.expires
+        # Keep last normalized source until an ordinary snapshot refresh succeeds.
+        # Do not force an expensive re-normalization for a cookie renewal.
+        # Credential validation is not a successful normalized source refresh.
+        # Preserve a failed-source flag until snapshot_sync actually recovers.
+        return current

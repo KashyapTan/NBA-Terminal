@@ -131,12 +131,12 @@ def test_weighted_shooting_and_turnover_calculations():
     ]
     action = plan_waivers(data)["recommendations"][0]
     fg = action["calculation"]["fg_pct"]
-    assert fg["weighted"]["before_makes"] == 41
+    assert fg["weighted"]["before_makes"] == 40  # Selected-five policy benches the harmful drop.
     assert fg["weighted"]["after_attempts"] == 85
-    assert fg["net_total"] == pytest.approx(44 / 85 - 41 / 90)
-    assert action["calculation"]["to"]["net_total"] == -3
+    assert fg["net_total"] == pytest.approx(44 / 85 - 40 / 80)
+    assert action["calculation"]["to"]["net_total"] == 1
     assert action["calculation"]["to"]["lower_is_better"]
-    assert action["category_probability_gains"]["to"] > 0
+    assert action["category_probability_gains"]["to"] < 0
 
 
 @pytest.mark.parametrize(

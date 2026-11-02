@@ -1,0 +1,64 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:22626) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+(node:22712) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [vite-proxy] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.4s)
+  ✓   2 [vite-proxy] › e2e/v6-integration.spec.ts:146:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (6.0s)
+  ✓   3 [vite-proxy] › e2e/v6-integration.spec.ts:186:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.9s)
+  ✘   4 [vite-proxy] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (1.5m)
+(node:79181) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 [vite-proxy] › e2e/v6-integration.spec.ts:351:1 › qualification boundaries and unknown budget pass through authenticated actual routes (5.1s)
+  ✓   6 [vite-proxy] › e2e/v6-integration.spec.ts:383:1 › actual mobile touch help and concise failure state (1.3s)
+(node:83705) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [production-build] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.3s)
+  ✓   8 [production-build] › e2e/v6-integration.spec.ts:146:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (5.4s)
+  ✓   9 [production-build] › e2e/v6-integration.spec.ts:186:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.5s)
+  ✘  10 [production-build] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (34.3s)
+
+
+  1) [vite-proxy] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses
+
+    Test timeout of 90000ms exceeded.
+
+    Error: page.waitForResponse: Test timeout of 90000ms exceeded.
+
+      261 |   const before = await stats(page);
+      262 |   for (let cycle = 0; cycle < 3; cycle++) {
+    > 263 |     const pending = page.waitForResponse(
+          |                          ^
+      264 |       (r) => r.url().includes(`${root}/snapshot?refresh=true`) && r.ok(),
+      265 |       { timeout: 70000 },
+      266 |     );
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/nba_terminal/web/e2e/v6-integration.spec.ts:263:26
+
+    Error Context: test-results/v6-integration-saved-cards-d6293-slow-out-of-order-responses-vite-proxy/error-context.md
+
+  2) [production-build] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses
+
+    Test was interrupted.
+
+    Error: page.waitForResponse: Test ended.
+
+      261 |   const before = await stats(page);
+      262 |   for (let cycle = 0; cycle < 3; cycle++) {
+    > 263 |     const pending = page.waitForResponse(
+          |                          ^
+      264 |       (r) => r.url().includes(`${root}/snapshot?refresh=true`) && r.ok(),
+      265 |       { timeout: 70000 },
+      266 |     );
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/nba_terminal/web/e2e/v6-integration.spec.ts:263:26
+
+    Error Context: test-results/v6-integration-saved-cards-d6293-slow-out-of-order-responses-production-build/error-context.md
+
+  1 failed
+    [vite-proxy] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses
+  1 interrupted
+    [production-build] › e2e/v6-integration.spec.ts:245:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses
+  2 did not run
+  8 passed (2.5m)

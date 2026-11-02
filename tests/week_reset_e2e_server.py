@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import fantasy_e2e_server as base
 import uvicorn
+from fantasy_v6_fixture import team_bundle
 from week_reset_fixture import NOW, new_week_payload
 
 CLOCK_SHIFT = 0
@@ -48,12 +49,13 @@ def counter(used: int | None = None):
     return {"synthetic": True}
 
 
-base.nba.load = lambda *args, **kwargs: {
-    "rates": [],
-    "schedule": None,
-    "rates_status": "unavailable",
-    "schedule_status": "unavailable",
-}
+base.nba.load = lambda *args, **kwargs: (
+    team_bundle(Clock.now().isoformat(), games=4)
+    | {
+        "schedule": None,
+        "schedule_status": "unavailable",
+    }
+)
 base.nba.load_prior_rates = lambda *args: {"prior_rates": [], "prior_rates_status": "unavailable"}
 base.espn.datetime = Clock
 base.adapter.datetime = Clock

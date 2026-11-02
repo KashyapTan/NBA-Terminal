@@ -1,3 +1,4 @@
+// Historical V5 production harness. The supported e2e:fantasy gate now uses playwright.v6.config.ts.
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",

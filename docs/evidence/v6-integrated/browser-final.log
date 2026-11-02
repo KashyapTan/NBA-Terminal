@@ -1,0 +1,24 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:10605) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+(node:10639) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [vite-proxy] › e2e/v6-integration.spec.ts:70:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.4s)
+  ✓   2 [vite-proxy] › e2e/v6-integration.spec.ts:145:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (6.0s)
+  ✓   3 [vite-proxy] › e2e/v6-integration.spec.ts:185:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.8s)
+  ✓   4 [vite-proxy] › e2e/v6-integration.spec.ts:244:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (3.0m)
+  ✓   5 [vite-proxy] › e2e/v6-integration.spec.ts:351:1 › qualification boundaries and unknown budget pass through authenticated actual routes (5.0s)
+  ✓   6 [vite-proxy] › e2e/v6-integration.spec.ts:383:1 › actual mobile touch help and concise failure state (1.3s)
+(node:32830) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 [production-build] › e2e/v6-integration.spec.ts:70:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.3s)
+  ✓   8 [production-build] › e2e/v6-integration.spec.ts:145:1 › actual HTTP plan scenarios: one, exhausted, empty, unknown denominator, required failure, no benefit (5.4s)
+  ✓   9 [production-build] › e2e/v6-integration.spec.ts:185:1 › filters, availability, protection, opponent/team and manual HTTP refresh are wired (1.5s)
+  ✓  10 [production-build] › e2e/v6-integration.spec.ts:244:1 › saved cards survive sustained refresh, failure recovery and slow/out-of-order responses (3.0m)
+  ✓  11 [production-build] › e2e/v6-integration.spec.ts:351:1 › qualification boundaries and unknown budget pass through authenticated actual routes (4.6s)
+  ✓  12 [production-build] › e2e/v6-integration.spec.ts:383:1 › actual mobile touch help and concise failure state (1.2s)
+
+  12 passed (6.6m)

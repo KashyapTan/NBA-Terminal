@@ -1,0 +1,20 @@
+[
+  {
+    "target": "vite-proxy",
+    "sourceResponses": 4,
+    "distinctObservedSampleTimestamps": 4,
+    "distinctCurrentSemanticIdentities": 1,
+    "extraPlanRequests": 0,
+    "snapshotRefreshes": 3,
+    "lostStrategy": false
+  },
+  {
+    "target": "production-build",
+    "sourceResponses": 4,
+    "distinctObservedSampleTimestamps": 4,
+    "distinctCurrentSemanticIdentities": 1,
+    "extraPlanRequests": 0,
+    "snapshotRefreshes": 3,
+    "lostStrategy": false
+  }
+]

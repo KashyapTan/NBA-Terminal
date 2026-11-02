@@ -2,7 +2,7 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
   const root = "/api/fantasy/espn";
-  let busy = false, lastFingerprint = null, renewedAt = 0, nextAttempt = 0;
+  let busy = false, lastFingerprint = null, renewedAt = 0, nextAttempt = 0, nextSync = 0, lastPair = null, resync = false;
   async function request(path, data) {
     const response = await fetch(root + path, {method: data === undefined ? "GET" : "POST",
       credentials: "same-origin", cache: "no-store", redirect: "error",
@@ -17,12 +17,14 @@
     const detail = typeof cloneInto === "function" ? cloneInto({state}, window) : {state};
     window.dispatchEvent(new CustomEvent("nba-espn-bridge", {detail}));
   }
-  async function sync() {
+  async function sync(knownPair) {
     if (busy || Date.now() < nextAttempt) return;
     busy = true;
     try {
-      const pair = await request("/bridge/status");
+      const pair = knownPair ?? await request("/bridge/status");
       if (!pair.enabled) { lastFingerprint = null; renewedAt = 0; return; }
+      if (pair.state === "account_changed") return;
+      nextSync = Date.now() + 60000;
       const result = await api.runtime.sendMessage({type: "credentials"});
       if (["extension_not_enabled", "wrong_cookie_store"].includes(result.state)) {
         advise(result.state); return;
@@ -44,27 +46,36 @@
       // Static errors only, never serialize network/API exceptions containing secrets.
       nextAttempt = Date.now() + 300000;
       advise("error");
-    } finally { busy = false; }
+    } finally {
+      busy = false;
+      if (resync) { resync = false; void sync(); }
+    }
   }
   api.runtime.onMessage.addListener(message => {
     if (message?.type === "forget") {
       void fetch(root + "/connection", {method: "DELETE", credentials: "same-origin", redirect: "error",
         headers: {"X-Fantasy-Request": "1"}}).then(() => advise("disconnected"), () => advise("error"));
     }
-    if (message?.type === "cookie_changed") { nextAttempt = 0; void sync(); }
+    if (message?.type === "cookie_changed") {
+      nextAttempt = 0;
+      if (busy) resync = true; else void sync();
+    }
   });
-  setInterval(() => { void sync(); }, 60000);
-  // Pairing can occur after content script startup; inexpensive local status only.
-  setInterval(async () => {
-    if (busy) return;
+  // One self-scheduled poll. Status reads and credential refresh cannot overlap.
+  // A new pairing identity bypasses old backoff, but a persistent waiting/error
+  // state does not turn a transient failure into a two-second credential loop.
+  async function poll() {
     try {
+      if (busy) return;
       const pair = await request("/bridge/status");
-      if (!pair.enabled) { lastFingerprint = null; renewedAt = 0; return; }
-      // An explicit new Pair/Retry must not wait behind an old error backoff
-      // or a prior connection's one-minute poll. No page-to-extension command.
-      if (pair.state === "waiting_extension") { nextAttempt = 0; lastFingerprint = null; }
-      if (!lastFingerprint) void sync();
-    } catch { /* Local server may be restarting. Normal sync keeps bounded backoff. */ }
-  }, 2000);
-  void sync();
+      if (!pair.enabled) { lastPair = null; lastFingerprint = null; renewedAt = 0; return; }
+      if (pair.pair_id !== lastPair) {
+        lastPair = pair.pair_id;
+        nextAttempt = 0; nextSync = 0; lastFingerprint = null;
+      }
+      if (Date.now() >= nextSync) await sync(pair);
+    } catch { /* Server unavailable: credential retry still respects backoff. */ }
+    finally { setTimeout(() => void poll(), 2000); }
+  }
+  void poll();
 })();

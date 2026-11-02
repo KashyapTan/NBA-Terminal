@@ -1,0 +1,35 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/3fd15c8d29c41e1813628236b78d47341c7dbf2b4878a05939b209a382aec15a/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:29856) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:29873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation (1.6s)
+(node:30358) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 e2e/connection-lifecycle.spec.ts:35:5 › production › production: real-route sustained renewal, failure recovery and authoritative revocation (2.7s)
+
+
+  1) e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 1
+
+      101 |       );
+      102 |       expect(after[`${root}/snapshot`] - before[`${root}/snapshot`]).toBe(3);
+    > 103 |       expect(after[`${root}/plan`] - before[`${root}/plan`]).toBe(0);
+          |                                                              ^
+      104 |       expect(
+      105 |         await page.evaluate(() => (window as unknown as { lostStrategy: boolean }).lostStrategy),
+      106 |       ).toBe(false);
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/3fd15c8d29c41e1813628236b78d47341c7dbf2b4878a05939b209a382aec15a/nba_terminal/web/e2e/connection-lifecycle.spec.ts:103:62
+
+    Error Context: test-results/connection-lifecycle-proxy-b879a-nd-authoritative-revocation/error-context.md
+
+  1 failed
+    e2e/connection-lifecycle.spec.ts:35:5 › proxy › proxy: real-route sustained renewal, failure recovery and authoritative revocation
+  1 passed (6.0s)

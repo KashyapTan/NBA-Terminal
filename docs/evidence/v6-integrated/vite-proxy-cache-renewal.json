@@ -1,0 +1,43 @@
+{
+  "before": {
+    "/api/fantasy/espn/bridge/status": 37,
+    "/api/fantasy/espn/status": 58,
+    "/api/fantasy/espn/bridge/pair": 18,
+    "/api/fantasy/espn/bridge/challenge": 18,
+    "/api/fantasy/espn/bridge/refresh": 18,
+    "/api/fantasy/espn/snapshot": 23,
+    "/api/fantasy/espn/plan": 56,
+    "/api/fantasy/espn/connection": 13,
+    "/api/fantasy/espn/connect": 1,
+    "/api/fantasy/espn/team": 1
+  },
+  "after": {
+    "/api/fantasy/espn/bridge/status": 37,
+    "/api/fantasy/espn/status": 58,
+    "/api/fantasy/espn/bridge/pair": 18,
+    "/api/fantasy/espn/bridge/challenge": 18,
+    "/api/fantasy/espn/bridge/refresh": 18,
+    "/api/fantasy/espn/snapshot": 26,
+    "/api/fantasy/espn/plan": 56,
+    "/api/fantasy/espn/connection": 13,
+    "/api/fantasy/espn/connect": 1,
+    "/api/fantasy/espn/team": 1
+  },
+  "observations": [
+    {
+      "sample": "2026-10-31T18:01:25.164846+00:00",
+      "denominator": "2026-10-31T18:01:25.164802+00:00",
+      "teamBatch": "2026-10-31T18:01:25.164802+00:00"
+    },
+    {
+      "sample": "2026-10-31T18:01:25.281528+00:00",
+      "denominator": "2026-10-31T18:01:25.281484+00:00",
+      "teamBatch": "2026-10-31T18:01:25.281484+00:00"
+    },
+    {
+      "sample": "2026-10-31T18:01:25.346231+00:00",
+      "denominator": "2026-10-31T18:01:25.346190+00:00",
+      "teamBatch": "2026-10-31T18:01:25.346190+00:00"
+    }
+  ]
+}

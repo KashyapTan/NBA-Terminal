@@ -22,10 +22,12 @@ it("sends private access only in a guarded same-origin POST body", async () => {
   expect(JSON.parse(options.body).espn_s2).toBe("test-only-s2");
 });
 it("does not expose backend or proxy error bodies", async () => {
-  const json = vi.fn();
+  const json = vi
+    .fn()
+    .mockResolvedValue({ detail: { code: "upstream_timeout", message: "secret-do-not-expose" } });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 502, json }));
-  await expect(leagueFantasyApi.status()).rejects.toThrow("League request failed");
-  expect(json).not.toHaveBeenCalled();
+  await expect(leagueFantasyApi.status()).rejects.toThrow("temporarily unavailable");
+  expect(json).toHaveBeenCalledOnce();
 });
 it("uses documented team, disconnect and snapshot routes", async () => {
   const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ connected: false }) });

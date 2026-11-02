@@ -1,0 +1,18 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/606f11ce5c04cc57864f48aa478d421d370aee2a4541401ed795b10ca6b82e08/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:23524) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:23538) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.4s)
+  ✓  2 [vite-proxy] › e2e/v6-integration.spec.ts:409:1 › actual mobile touch help and concise failure state (1.4s)
+  ✓  3 [vite-proxy] › e2e/v6-integration.spec.ts:446:1 › bounded continuation and real active-drop tradeoffs remain honest and visible (7.1s)
+(node:29676) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [production-build] › e2e/v6-integration.spec.ts:71:1 › real provider chain: multi-move, all data displayed, compact desktop/mobile help (1.3s)
+  ✓  5 [production-build] › e2e/v6-integration.spec.ts:409:1 › actual mobile touch help and concise failure state (1.3s)
+  ✓  6 [production-build] › e2e/v6-integration.spec.ts:446:1 › bounded continuation and real active-drop tradeoffs remain honest and visible (4.8s)
+
+  6 passed (18.5s)

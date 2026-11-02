@@ -1,24 +1,24 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getFantasySeason } from "./api";
-import type { FantasyPlayer, Meta } from "./model";
 import {
+  attemptSample,
   CATEGORIES,
   CATEGORY_KEYS,
-  DEFAULT_PREFERENCES,
-  STANDARD_NINE,
-  attemptSample,
   categoryShort,
-  formatStat,
-  isPercentageCategory,
-  rankProfile,
-  sortedRankings,
-  statValue,
-  minutesPerGame,
-  meetsPlayingTime,
+  DEFAULT_PREFERENCES,
   type FantasyCategoryKey,
   type FantasyPreferences,
+  formatStat,
+  isPercentageCategory,
+  meetsPlayingTime,
+  minutesPerGame,
+  rankProfile,
+  STANDARD_NINE,
+  sortedRankings,
+  statValue,
 } from "./fantasy-model";
+import type { FantasyPlayer, Meta } from "./model";
 import "./fantasy.css";
 
 type SortKey = "rank" | "player" | "stat" | "games" | "minutes" | "sample";
@@ -142,7 +142,7 @@ function FantasyPage({ meta, league }: FantasyPageProps) {
   }
   return (
     <section className="fantasy-page">
-      <FantasyHeader season={season} meta={meta} />
+      <FantasyHeader season={season} meta={meta} compact={tab === "waiver"} />
       <div className="fantasy-subtabs" role="tablist" aria-label="Fantasy workspace">
         {FANTASY_TABS.map((item, index) => (
           <button
@@ -1111,20 +1111,36 @@ function FantasyStats({
   );
 }
 
-function FantasyHeader({ season, meta }: { season: string; meta: Meta }) {
+function FantasyHeader({
+  season,
+  meta,
+  compact = false,
+}: {
+  season: string;
+  meta: Meta;
+  compact?: boolean;
+}) {
   const [, setSearchParams] = useSearchParams();
   const seasonOptions = [
     ...meta.seasons,
     ...[season].filter((value) => value && !meta.seasons.includes(value)),
   ];
   return (
-    <header className="fantasy-heading">
+    <header className={`fantasy-heading${compact ? " ww-page-heading" : ""}`}>
       <div>
         <div className="fantasy-kicker">NBA · FANTASY WORKSPACE</div>
         <h1>
-          Find your next <em>edge.</em>
+          {compact ? (
+            "Waivers"
+          ) : (
+            <>
+              Find your next <em>edge.</em>
+            </>
+          )}
         </h1>
-        <p>Compare real season production, build category balance and keep a shortlist.</p>
+        {!compact && (
+          <p>Compare real season production, build category balance and keep a shortlist.</p>
+        )}
       </div>
       <label className="fantasy-season-select">
         <span>SEASON</span>

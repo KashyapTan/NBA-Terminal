@@ -15,6 +15,7 @@ from nba_terminal.services import fantasy_planner_adapter as adapter
 from nba_terminal.services.fantasy_nba import fetch_identities as fetch_identity_batch
 from nba_terminal.services.fantasy_nba import load as load_current_bundle
 from nba_terminal.services.fantasy_nba import load_prior_rates as load_prior_sample
+from tests.fantasy_v6_fixture import enrich
 from tests.test_fantasy_integration import preferences
 
 NOW = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
@@ -27,7 +28,7 @@ def data():
 
 
 def normalize(data):
-    return espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW)
+    return enrich(espn.normalize(data["league"], data["schedule"], data["pool"], data["cards"], {}, 1, now=NOW))
 
 
 def test_public_daily_onteam_shape_and_current_season_shooting_sample():
@@ -179,7 +180,7 @@ def test_absent_opportunity_evidence_is_not_evaluated_no_benefit(data, missing):
     else:
         snapshot["free_agents"][0].update(current_rates=None, prior_rates=None)
     result = adapter.plan_snapshot_waivers(snapshot, prefs, NOW)
-    assert result["evaluation_state"] == "required_inputs_unknown"
+    assert result["evaluation_state"] == ("required_inputs_unknown" if missing == "market" else "no_qualified_pickups")
     assert not result["actions"] and not result["recommendations"]
     assert not any("No materially beneficial legal" in reason for reason in result["reasons"])
 

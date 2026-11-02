@@ -6,17 +6,44 @@ import type {
   WaiverPlan,
 } from "./league-fantasy-model";
 const BASE = "/api/fantasy/espn";
+export class FantasyApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+  ) {
+    super(
+      status === 401 || status === 403
+        ? "Reconnect to ESPN to verify league access."
+        : "League data is temporarily unavailable. Retry shortly.",
+    );
+  }
+  get reconnectNeeded() {
+    return (
+      this.status === 401 ||
+      (this.status === 403 &&
+        !["team_not_owned", "origin_denied", "local_only", "request_header_required"].includes(
+          this.code,
+        ))
+    );
+  }
+  get retryable() {
+    return [408, 429, 502, 503, 504].includes(this.status) || this.status >= 500;
+  }
+}
 async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  const timeout = AbortSignal.timeout(
+    path === "/plan" ? 180000 : path.startsWith("/snapshot") ? 120000 : 15000,
+  );
   const response = await fetch(`${BASE}${path}`, {
     method,
     credentials: "same-origin",
     cache: "no-store",
-    signal,
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: {
       "X-Fantasy-Request": "1",
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -24,16 +51,17 @@ async function request<T>(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   // Never surface upstream bodies or credentials in errors, including malformed proxy responses.
-  if (!response.ok)
-    throw new Error(
-      response.status === 401
-        ? "Connection expired or private access was rejected. Reconnect to ESPN."
-        : response.status === 403
-          ? "League access denied. This connection requires a local, same-origin deployment and valid team ownership."
-          : response.status === 429
-            ? "ESPN is rate limiting requests. Try again shortly."
-            : "League request failed. Check connection details and retry.",
+  if (!response.ok) {
+    // Read only the machine code. Never expose provider messages/bodies.
+    const payload = await Promise.resolve()
+      .then(() => response.json())
+      .catch(() => null);
+    const code = payload?.detail?.code;
+    throw new FantasyApiError(
+      response.status,
+      typeof code === "string" && /^[a-z_]{1,64}$/.test(code) ? code : "request_failed",
     );
+  }
   return response.json() as Promise<T>;
 }
 export const leagueFantasyApi = {
@@ -50,8 +78,8 @@ export const leagueFantasyApi = {
 };
 export type LeagueFantasyApi = typeof leagueFantasyApi;
 
-export const requestWaiverPlan = (preferences: PlannerPreferences) =>
-  request<WaiverPlan>("/plan", "POST", preferences);
+export const requestWaiverPlan = (preferences: PlannerPreferences, signal?: AbortSignal) =>
+  request<WaiverPlan>("/plan", "POST", preferences, signal);
 
 export interface BrowserBridgeStatus {
   enabled: boolean;
