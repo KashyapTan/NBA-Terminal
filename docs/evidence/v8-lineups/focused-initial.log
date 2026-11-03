@@ -1,0 +1,41 @@
+warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+...F.....................................F.............................. [ 68%]
+.................................                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_swing_beats_hopeless_punt_and_minutes __________________
+
+    def test_swing_beats_hopeless_punt_and_minutes():
+        data = fixture()
+        data["current_totals"] = totals(pts=0, ast=9)
+        data["opponent_totals"] = totals(pts=1000)
+        data["players"] += [
+            player("volume", current_rates=rates(pts=50, minutes=40)),
+            player("swing", current_rates=rates(ast=8, minutes=15)),
+        ]
+        data["available_adds"] = 1
+        result = plan_waivers(data)
+>       assert result["actions"][0]["add_id"] == "swing"
+               ^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+tests/test_fantasy_optimizer.py:88: IndexError
+_ test_one_acquisition_yields_one_exact_pair_and_all_legal_drops_are_evaluated _
+
+    def test_one_acquisition_yields_one_exact_pair_and_all_legal_drops_are_evaluated():
+        data = fixture()
+        data.update(available_adds=1, used_adds=6)
+        data["players"] += [player("drop2", "user", []), player("add", current_rates=rates(ast=6))]
+        result = plan_waivers(data)
+        assert len(result["recommended_plan"]["moves"]) == 1
+        assert result["actions"][0]["add_id"] == "add"
+        assert result["actions"][0]["drop_id"] in {"drop", "drop2"}
+        assert result["search"]["evaluated_drop_ids"] == ["drop", "drop2"]
+        assert result["recommended_plan"]["budget_after"] == 0
+>       assert result["search"]["category_sets_evaluated"] == 126
+E       assert 1 == 126
+
+tests/test_fantasy_optimizer_v4.py:118: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_fantasy_optimizer.py::test_swing_beats_hopeless_punt_and_minutes
+FAILED tests/test_fantasy_optimizer_v4.py::test_one_acquisition_yields_one_exact_pair_and_all_legal_drops_are_evaluated
+2 failed, 103 passed in 2.83s

@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { DailyLineup } from "./DailyLineup";
 import { InfoTooltip } from "./InfoTooltip";
 import { MatchupForecast, type MatchupForecastProps } from "./MatchupForecast";
 import {
@@ -8,6 +9,7 @@ import {
   LEAGUE_CATEGORIES,
   type LeaguePlayer,
   type PickupRecommendation,
+  type PlanForecast,
 } from "./league-fantasy-model";
 import { signedChange, WaiverArithmetic } from "./WaiverArithmetic";
 import "./waiver-workspace.css";
@@ -56,6 +58,8 @@ export interface WaiverWorkspaceProps {
   samples: Record<string, QualifiedSample>;
   stop?: WorkspaceStop;
   forecast?: Omit<MatchupForecastProps, "targets" | "hasMoves" | "readOnly">;
+  baseline?: PlanForecast | null;
+  projected?: PlanForecast | null;
   rosterControls?: ReactNode;
   analysis: ReactNode;
   technicalControls?: ReactNode;
@@ -270,6 +274,13 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
         targets={props.targets}
         hasMoves={props.moves.length > 0}
         readOnly={props.readOnly}
+      />
+      <DailyLineup
+        baseline={props.baseline}
+        projected={props.projected}
+        hasMoves={props.moves.length > 0}
+        readOnly={props.readOnly}
+        complete={props.forecast?.complete}
       />
       <details className="ww-analysis">
         <summary>Full analysis & data</summary>

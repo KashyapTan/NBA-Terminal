@@ -1,0 +1,9 @@
+{
+  "ports": [
+    4218,
+    8218
+  ],
+  "listeners": "",
+  "exit_code": 1,
+  "primary_checkout_or_5173_touched": false
+}

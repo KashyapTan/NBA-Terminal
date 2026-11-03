@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 from math import isfinite
 from zoneinfo import ZoneInfo
 
+from nba_terminal.services.fantasy_nba import ESPN_TEAMS
 from nba_terminal.services.fantasy_optimizer import CATEGORIES, TOTALS, _rates, plan_waivers
 
 ACTIVE_SLOTS = {"PG", "SG", "SF", "PF", "C", "G", "F", "SG/SF", "G/F", "PF/C", "F/C", "UTIL"}
@@ -76,6 +77,7 @@ def _forecast_view(forecast):
         "actual_primitives": forecast["actual_primitives"],
         "remaining_primitives": forecast["remaining_primitives"],
         "starts": forecast["starts"],
+        "daily_lineups": forecast.get("daily_lineups", []),
         "schedule_explanations": forecast["schedule_explanations"],
         "games_by_team": forecast["games"],
         "minutes_by_team": forecast["minutes"],
@@ -144,6 +146,40 @@ def _remaining_lineup_slots(roster, lineup, remaining, now):
             except (KeyError, ValueError, TypeError):
                 continue
     return daily
+
+
+def _attach_locked_lineups(forecast, user, opponent, remaining, now):
+    """Show reserved/banked starters without projecting their production again."""
+    if forecast is None:
+        return
+    teams = {"user": user, "opponent": opponent}
+    for day in forecast.get("daily_lineups", []):
+        locked = []
+        for player in teams[day["owner"]]["roster"]:
+            slot = player.get("lineup_slot")
+            if slot not in ACTIVE_SLOTS:
+                continue
+            observations = _schedule_observations(player, now) or []
+            if any(g["date"] == day["date"] and g["started"] for g in observations):
+                locked.append(
+                    {
+                        "player_id": player["id"],
+                        "name": player["name"],
+                        "team": str(player.get("pro_team_id") or ""),
+                        "positions": player.get("positions", []),
+                        "assigned_slot": slot,
+                        "state": "locked",
+                        "playing": True,
+                        "reason": "already_started_or_banked",
+                        "rates": {},
+                    }
+                )
+        for row in day["players"] + locked:
+            if row["team"].isdigit():
+                row["team"] = ESPN_TEAMS.get(int(row["team"]), row["team"])
+        locked_ids = {p["player_id"] for p in locked}
+        day["players"] = locked + [p for p in day["players"] if p["player_id"] not in locked_ids]
+        day["rules_source"] = "ESPN lineupSlotCounts / eligibleSlots; bench and IR excluded"
 
 
 PICKUP_FILTER_DEFAULTS = {"min_minutes": 15, "min_games": 2, "min_participation": 0.5}
@@ -515,8 +551,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     if not remaining:
         gaps.append("No remaining matchup dates; future contributions and pickup timing cannot be projected.")
     lineup = [s for s in snapshot["league"].get("lineup_slots", []) if s not in ("BENCH", "IR", "IR+")]
-    if not lineup or any(slot not in ACTIVE_SLOTS for slot in lineup):
-        gaps.append("Active lineup rules are missing or unsupported.")
+    if not lineup or len(lineup) > 10 or any(slot not in ACTIVE_SLOTS for slot in lineup):
+        gaps.append("Active lineup rules are missing, unsupported, or exceed the confirmed 10-player capacity.")
         result.update(status="incomplete", reasons=list(gaps))
         return result
     overrides = preferences.get("player_overrides", {})
@@ -623,6 +659,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
                 "id": pid,
                 "owner": owner,
                 "positions": positions,
+                "strict_positions": player.get("positions_source") == "espn_eligibleSlots",
                 "eligible": True,
                 "locked": player.get("locked") is True or (owner == "user" and pid not in drops),
                 "undroppable": player.get("undroppable") is True or player.get("droppable") is False,
@@ -797,6 +834,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             result["evaluation_state"] = "search_incomplete"
     result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
     result["projected"] = _forecast_view(planned["projected"])
+    for view in (result["baseline"], result["projected"]):
+        _attach_locked_lineups(view, user, target, remaining, now)
     provenance["rates"] = planned["provenance"]
     provenance["uncertainty"] = (f"{len(history)} complete prior weekly comparisons; " if history else "") + (
         planned.get("uncertainty", {}).get("source", "unavailable") + "; uncalibrated model estimates"

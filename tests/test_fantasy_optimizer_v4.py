@@ -115,7 +115,8 @@ def test_one_acquisition_yields_one_exact_pair_and_all_legal_drops_are_evaluated
     assert result["actions"][0]["drop_id"] in {"drop", "drop2"}
     assert result["search"]["evaluated_drop_ids"] == ["drop", "drop2"]
     assert result["recommended_plan"]["budget_after"] == 0
-    assert result["search"]["category_sets_evaluated"] == 126
+    assert result["search"]["category_sets_evaluated"] == 1
+    assert "frozen before focus-aware search" in result["category_selection_source"]
 
 
 def test_joint_plan_ownership_effective_dates_budget_and_telescoping_arithmetic():

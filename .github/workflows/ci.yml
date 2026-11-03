@@ -85,3 +85,9 @@ jobs:
         env:
           CI: "true"
         run: bunx playwright test --config playwright.v7.config.ts
+
+      - name: Focus-aware daily lineup HTTP integration
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bunx playwright test --config playwright.v8.config.ts

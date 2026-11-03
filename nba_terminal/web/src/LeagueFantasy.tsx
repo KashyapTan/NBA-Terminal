@@ -692,6 +692,8 @@ function WaiverStrategy({
       players={players}
       samples={samples}
       forecast={matchupForecastData(plan)}
+      baseline={plan?.baseline}
+      projected={plan?.projected}
       scheduleCounts={moves.map((move) => ({
         addRemainingGames: move.schedule_explanations?.add.remaining_games ?? null,
         dropRemainingGames: move.schedule_explanations?.drop.remaining_games ?? null,
