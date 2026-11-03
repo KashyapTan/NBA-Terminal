@@ -84,7 +84,8 @@ it("shows ordered compact moves, actual sample, true net and non-target harms wi
   expect(container.querySelectorAll(".ww-target")).toHaveLength(5);
   expect(container.querySelectorAll(".ww-forecast-table tbody tr")).toHaveLength(9);
   expect(container.querySelector(".ww-plan")?.nextElementSibling).toHaveClass("ww-forecast");
-  expect(container.querySelector(".ww-forecast")?.nextElementSibling).toHaveClass("ww-analysis");
+  expect(container.querySelector(".ww-forecast")?.nextElementSibling).toHaveClass("ww-daily");
+  expect(container.querySelector(".ww-daily")?.nextElementSibling).toHaveClass("ww-analysis");
 });
 it("serializes participation as a fraction and preserves other filters", () => {
   const props = fixture();

@@ -54,6 +54,7 @@ export interface ScheduleExplanation {
   exclusions: { date: string; reason: string }[];
 }
 export interface LeaguePlayer {
+  positions_source?: string;
   pickup_sample?: PickupSample;
   id: string;
   name: string;
@@ -509,10 +510,36 @@ export interface WaiverPlan {
   data_gaps: string[];
   provenance?: Record<string, unknown>;
 }
+export interface DailyLineupPlayer {
+  player_id: string;
+  name: string;
+  team: string;
+  positions: string[];
+  assigned_slot: string | null;
+  state: "start" | "bench" | "locked";
+  playing: boolean;
+  reason: string;
+  rates: Stats;
+}
+export interface DailyLineupDay {
+  date: string;
+  owner: "user" | "opponent";
+  capacity: number;
+  available_slots: number;
+  focus: Category[];
+  players: DailyLineupPlayer[];
+  rules_source?: string;
+}
 export interface PlanForecast {
+  daily_lineups?: DailyLineupDay[];
   games_by_team?: { user: number; opponent: number };
   minutes_by_team?: { user: number; opponent: number };
-  starts?: { date: string; owner: "user" | "opponent"; player_id: string }[];
+  starts?: {
+    date: string;
+    owner: "user" | "opponent";
+    player_id: string;
+    assigned_slot?: string;
+  }[];
   schedule_explanations?: Record<string, ScheduleExplanation>;
   basis?: "recorded" | "forecast";
   totals: Stats;

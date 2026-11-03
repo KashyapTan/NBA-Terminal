@@ -1,0 +1,53 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:59100) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:59127) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [vite-proxy] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh (1.6s)
+(node:59367) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [production-build] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh (1.3s)
+
+
+  1) [vite-proxy] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh
+
+    Error: expect(received).not.toBeNull()
+
+    Received: null
+
+      123 |     for (const { key } of LEAGUE_CATEGORIES) {
+      124 |       const value = forecastValue(forecast, "user", key);
+    > 125 |       expect(value).not.toBeNull();
+          |                         ^
+      126 |       if (key === "fg_pct") expect(value).toBeCloseTo(forecast.totals.fgm! / forecast.totals.fga!);
+      127 |       if (key === "ft_pct") expect(value).toBeCloseTo(forecast.totals.ftm! / forecast.totals.fta!);
+      128 |     }
+        at reconcile (/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/nba_terminal/web/e2e/v8-integration.spec.ts:125:25)
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/nba_terminal/web/e2e/v8-integration.spec.ts:140:3
+
+    Error Context: test-results/v8-integration-real-HTTP-d-d4ea8--desktop-mobile-and-refresh-vite-proxy/error-context.md
+
+  2) [production-build] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh
+
+    Error: expect(received).not.toBeNull()
+
+    Received: null
+
+      123 |     for (const { key } of LEAGUE_CATEGORIES) {
+      124 |       const value = forecastValue(forecast, "user", key);
+    > 125 |       expect(value).not.toBeNull();
+          |                         ^
+      126 |       if (key === "fg_pct") expect(value).toBeCloseTo(forecast.totals.fgm! / forecast.totals.fga!);
+      127 |       if (key === "ft_pct") expect(value).toBeCloseTo(forecast.totals.ftm! / forecast.totals.fta!);
+      128 |     }
+        at reconcile (/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/nba_terminal/web/e2e/v8-integration.spec.ts:125:25)
+        at /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/nba_terminal/web/e2e/v8-integration.spec.ts:140:3
+
+    Error Context: test-results/v8-integration-real-HTTP-d-d4ea8--desktop-mobile-and-refresh-production-build/error-context.md
+
+  2 failed
+    [vite-proxy] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh
+    [production-build] › e2e/v8-integration.spec.ts:131:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh

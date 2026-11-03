@@ -1,0 +1,9 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/b3c22e6912b6b64be7e90007c169525f5fe4a1120a20111a62ba6c5fe4971a5d/.venv` and will be ignored; use `--active` to target the active environment instead
+
+Running 1 test using 1 worker
+
+(node:91093) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/week-reset.spec.ts:8:1 › new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan (1.1s)
+
+  1 passed (1.9s)

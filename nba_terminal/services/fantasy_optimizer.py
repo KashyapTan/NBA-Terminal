@@ -5,7 +5,6 @@ All dates are remaining *unstarted* game dates supplied by the caller.
 """
 
 from datetime import date
-from itertools import combinations
 from math import erf, isfinite, sqrt
 from statistics import stdev
 
@@ -144,12 +143,17 @@ def _plus(totals, rates):
     return {k: totals[k] + rates[k] for k in TOTALS}
 
 
-def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=None):
+def _fits_slot(player, slot):
+    # Legacy domain inputs allow generic UTIL; observed ESPN eligibleSlots are exact.
+    return slot in player["positions"] or (slot == "UTIL" and not player.get("strict_positions"))
+
+
+def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=None, decisions=None):
     """Rank marginal five-category value, then find a feasible matching by augmentation."""
 
     def utility(left, right):
         categories, probability = _assessment(left, right, deviations)
-        if selected and not opponent:
+        if selected:
             return sum(categories[k]["win_probability"] or 0 for k in selected) / 5
         return sum(c["win_probability"] or 0 for c in categories.values()) / 9
 
@@ -168,7 +172,7 @@ def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=N
 
     def match(player, seen):
         for index, slot in enumerate(slots):
-            if index in seen or (slot != "UTIL" and slot not in player["positions"]):
+            if index in seen or not _fits_slot(player, slot):
                 continue
             seen.add(index)
             if index not in occupied or match(occupied[index], seen):
@@ -179,8 +183,13 @@ def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=N
     for player in sorted(players, key=priority):
         # Optional benching avoids forced negative TO/shooting contributions.
         if priority(player)[0] <= 0:
-            match(player, set())
-    return list(occupied.values())
+            fitted = match(player, set())
+            reason = "capacity_or_position" if not fitted else "focus_selected"
+        else:
+            reason = "intentional_focus_bench"
+        if decisions is not None:
+            decisions[player["id"]] = reason
+    return [{**player, "assigned_slot": slots[index]} for index, player in sorted(occupied.items())]
 
 
 def _schedule_explanation(context, forecast, pid, effective=None):
@@ -241,6 +250,7 @@ def _forecast(context, actions):
     games = {"user": 0, "opponent": 0}
     minutes = {"user": 0.0, "opponent": 0.0}
     starts = []
+    bench_reasons = {}
     roster_dates = {pid: [] for pid in context["players"]}
     for day in context["dates"]:
         for action in actions:
@@ -259,6 +269,8 @@ def _forecast(context, actions):
             and p.get("lineup_slot") not in ("IR", "IR+")
             and day >= p.get("available_from", day)
         ]
+        decisions = {}
+        bench_reasons[day] = decisions
         slots = context["daily_slots"].get(day, context["slots"])
         user = _lineup(
             [p for p in available if p["id"] in roster],
@@ -267,17 +279,26 @@ def _forecast(context, actions):
             theirs,
             context["sd"],
             selected=context.get("scored_categories"),
-        )
-        opponent = _lineup(
-            [p for p in available if p["owner"] == "opponent"],
-            context["opponent_daily_slots"].get(day, context["slots"]),
-            ours,
-            theirs,
-            context["sd"],
-            True,
+            decisions=decisions,
         )
         if "opponent_starts" in context:
-            opponent = [context["players"][s["player_id"]] for s in context["opponent_starts"] if s["date"] == day]
+            opponent = [
+                {**context["players"][s["player_id"]], "assigned_slot": s["assigned_slot"]}
+                for s in context["opponent_starts"]
+                if s["date"] == day
+            ]
+            decisions.update(context.get("opponent_decisions", {}).get(day, {}))
+        else:
+            opponent = _lineup(
+                [p for p in available if p["owner"] == "opponent"],
+                context["opponent_daily_slots"].get(day, context["slots"]),
+                ours,
+                theirs,
+                context["sd"],
+                True,
+                selected=context.get("scored_categories"),
+                decisions=decisions,
+            )
         for owner, lineup in (("user", user), ("opponent", opponent)):
             for player in lineup:
                 if owner == "user":
@@ -286,7 +307,9 @@ def _forecast(context, actions):
                     theirs = _plus(theirs, player["rates"])
                 games[owner] += 1
                 minutes[owner] += player["rates"]["minutes"]
-                starts.append({"date": day, "owner": owner, "player_id": player["id"]})
+                starts.append(
+                    {"date": day, "owner": owner, "player_id": player["id"], "assigned_slot": player["assigned_slot"]}
+                )
     categories, probability = _assessment(ours, theirs, context["sd"])
     if context.get("finalized") and not context["dates"]:
         for category in categories.values():
@@ -316,10 +339,81 @@ def _forecast(context, actions):
         "games": games,
         "minutes": minutes,
         "starts": starts,
+        "bench_reasons": bench_reasons,
         "roster_dates": roster_dates,
     }
     result["schedule_explanations"] = {pid: _schedule_explanation(context, result, pid) for pid in context["players"]}
     return result
+
+
+def _attach_daily(context, result):
+    """Expose final forecast decisions, never run a second lineup ranking for UI."""
+    for scenario, actions in (("baseline", []), ("projected", result.get("actions", []))):
+        forecast = result.get(scenario)
+        if forecast is None:
+            continue
+        roster = set(context["roster"])
+        days = []
+        for day in context["dates"]:
+            for action in actions:
+                if action["date"] == day:
+                    roster.discard(action["drop_id"])
+                    roster.add(action["add_id"])
+            for owner in ("user", "opponent"):
+                ids = (
+                    roster
+                    if owner == "user"
+                    else {pid for pid, p in context["players"].items() if p["owner"] == "opponent"}
+                )
+                selected = {s["player_id"]: s for s in forecast["starts"] if s["date"] == day and s["owner"] == owner}
+                rows = []
+                for pid in sorted(ids):
+                    player = context["players"][pid]
+                    reason = next(
+                        (e["reason"] for e in forecast["schedule_explanations"][pid]["exclusions"] if e["date"] == day),
+                        None,
+                    )
+                    eligible = (
+                        day in player["schedule"]
+                        and day not in player["unavailable"]
+                        and player.get("active", True)
+                        and player.get("lineup_slot") not in ("IR", "IR+")
+                        and day >= player.get("available_from", day)
+                    )
+                    rows.append(
+                        {
+                            "player_id": pid,
+                            "name": player.get("name", pid),
+                            "team": str(player.get("pro_team_id") or player.get("team") or ""),
+                            "positions": player["positions"],
+                            "rates": player["rates"],
+                            "assigned_slot": selected.get(pid, {}).get("assigned_slot"),
+                            "state": "start" if pid in selected else "bench",
+                            "playing": eligible,
+                            "reason": "focus_selected"
+                            if pid in selected
+                            else (
+                                "unavailable"
+                                if player.get("injury_status") == "out"
+                                else forecast["bench_reasons"].get(day, {}).get(pid) or reason or "no_remaining_game"
+                            ),
+                        }
+                    )
+                days.append(
+                    {
+                        "date": day,
+                        "owner": owner,
+                        "capacity": len(context["slots"]),
+                        "available_slots": len(
+                            context["daily_slots" if owner == "user" else "opponent_daily_slots"].get(
+                                day, context["slots"]
+                            )
+                        ),
+                        "focus": list(context.get("scored_categories") or CATEGORIES),
+                        "players": rows,
+                    }
+                )
+        forecast["daily_lineups"] = days
 
 
 def _context(payload):
@@ -807,8 +901,8 @@ def _eligible_pickups(context, day, ownership, acquired):
 def plan_waivers(payload):
     """Return one best explored legal ordered plan; all calculations are pure.
 
-    Automatic selection shares deterministic nine-category lineups across all 126
-    focus sets; explicit selected-five requests use that lineup objective. Beam
+    Automatic focus uses baseline edges and optimistic pickup potential, then
+    frozen before search. Every forecast uses that selected-five objective. Beam
     Expansion permits non-improving intermediate moves.
     Exact global lineup/plan optimization is deliberately not claimed.
     """
@@ -861,7 +955,42 @@ def plan_waivers(payload):
         if requested:
             context["scored_categories"] = requested
         baseline = _forecast(context, [])
+        if not requested:
+            # Discover focus cheaply using current edges and optimistic pickup potential.
+            # Potential is only a seed: every actual move still gets full roster/slot guards.
+            potential = {k: _edges(baseline)[k] or 0 for k in CATEGORIES}
+            can_add = (
+                context["budget"] != 0
+                and context["stream_slots"] > 0
+                and context["daily_add_limit"] != 0
+                and any(not context["players"][pid]["protection"] for pid in context["roster"])
+            )
+            for player in context["players"].values():
+                if not can_add or player["owner"] != "free" or not player.get("active", True):
+                    continue
+                if not any(_fits_slot(player, slot) for slot in context["slots"]):
+                    continue
+                earliest = max(player.get("available_from", ""), player.get("earliest_add_date", ""))
+                count = sum(
+                    day >= earliest and day not in player["unavailable"]
+                    for day in set(player["schedule"]) & set(context["dates"])
+                )
+                boosted = {k: baseline["user_totals"][k] + player["rates"][k] * count for k in TOTALS}
+                edges, _ = _assessment(boosted, baseline["opponent_totals"], context["sd"])
+                potential = {k: max(potential[k], edges[k]["win_probability"] or 0) for k in CATEGORIES}
+            cushions = sorted(
+                (k for k in CATEGORIES if (_edges(baseline)[k] or 0) >= 0.8),
+                key=lambda k: (-(_edges(baseline)[k] or 0), CATEGORIES.index(k)),
+            )[:5]
+            ranked = sorted(CATEGORIES, key=lambda k: (-potential[k], -(_edges(baseline)[k] or 0), CATEGORIES.index(k)))
+            requested = cushions + [k for k in ranked if k not in cushions][: 5 - len(cushions)]
+            context["scored_categories"] = requested
+            baseline = _forecast(context, [])
         context["opponent_starts"] = [s for s in baseline["starts"] if s["owner"] == "opponent"]
+        context["opponent_decisions"] = {
+            day: {pid: reason for pid, reason in rows.items() if context["players"][pid]["owner"] == "opponent"}
+            for day, rows in baseline["bench_reasons"].items()
+        }
     except (KeyError, ValueError, TypeError, AttributeError, OverflowError) as error:
         result["reasons"] = [f"Incomplete or invalid optimizer inputs: {error}"]
         return result
@@ -891,18 +1020,15 @@ def plan_waivers(payload):
         projection_metadata=metadata,
     )
     if result["data_gaps"] or any(v is None for v in _edges(baseline).values()):
+        _attach_daily(context, result)
         _invalidate(result)
         result.update(
             status="incomplete", reasons=["Required roster, actual, rate, history or schedule evidence is incomplete."]
         )
         return result
     aggressive = payload.get("aggressive_cushion_sacrifice") is True
-    cushions = {k for k, edge in _edges(baseline).items() if edge >= 0.8}
-    if len(cushions) > 5:
-        cushions = set(sorted(cushions, key=lambda k: (-_edges(baseline)[k], CATEGORIES.index(k)))[:5])
-    subsets = [tuple(requested)] if requested else [s for s in combinations(CATEGORIES, 5) if cushions <= set(s)]
-    # Compute all 126 consistently, then apply the cushion inclusion policy.
-    all_sets = [tuple(requested)] if requested else list(combinations(CATEGORIES, 5))
+    # Focus is frozen before the search, so every compared state shares its objective.
+    subsets = all_sets = [tuple(requested)]
     # Cheap candidate ordering keeps an ID prefix from dominating bounded layers.
     # This ignores slot contention deliberately; every admitted state is fully reforecast.
     context["pickup_priority"] = {}
@@ -1056,7 +1182,7 @@ def plan_waivers(payload):
         expanded.sort(key=rank)
         pruned |= depth < budget - 1 and len(expanded) > context["beam"]
         beam = expanded[: context["beam"]]
-    # Every full projection is reused across the same focus subsets.
+    # Rank the explored states under the frozen focus and its prefix guards.
     choices = []
     library_by_key = {state_key(state): state for state in library}
     for state in library:
@@ -1111,7 +1237,7 @@ def plan_waivers(payload):
         acquisition_budget=context["budget"],
         layer_evaluations=layer_counts,
         layer_pruned=layer_limited,
-        lineup_policy="selected-five greedy" if requested else "shared nine-category greedy",
+        lineup_policy="selected-five greedy matching; optional negative-value benching",
         objective_saturation="bounded category edges; .005 net and .01 non-cushion gain materiality threshold",
         evaluations=evaluations,
         evaluation_limit=context["evaluation_limit"],
@@ -1164,7 +1290,9 @@ def plan_waivers(payload):
             else "evaluated_no_material_benefit"
         ),
         selected_categories=list(selected),
-        category_selection_source="user" if requested else "common feasible full-roster plan library; all 126 sets",
+        category_selection_source="user"
+        if payload.get("selected_categories")
+        else "automatic baseline edges and optimistic pickup potential; frozen before focus-aware search",
         safe_categories=safe,
         improvement_categories=[k for k in selected if k not in safe],
         projected=best[0],
@@ -1244,4 +1372,5 @@ def plan_waivers(payload):
         result["limitations"].append("Upstream whole-market coverage is partial or unverified.")
     if not context["dates"]:
         result["reasons"].append("No remaining dates; only banked actuals are compared.")
+    _attach_daily(context, result)
     return result

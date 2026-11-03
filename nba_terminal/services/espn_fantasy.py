@@ -689,6 +689,7 @@ def normalize_player(
         "name": player.get("fullName"),
         "pro_team_id": pro_team,
         "positions": positions,
+        "positions_source": "espn_eligibleSlots",
         "lineup_slot": SLOTS.get(entry.get("lineupSlotId")),
         "active": entry.get("lineupSlotId") not in (13, 14),
         "injury_status": injury,
