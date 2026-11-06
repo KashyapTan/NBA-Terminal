@@ -91,3 +91,9 @@ jobs:
         env:
           CI: "true"
         run: bunx playwright test --config playwright.v8.config.ts
+
+      - name: Acquisition-efficient dated chain HTTP integration
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bunx playwright test --config playwright.v9.config.ts

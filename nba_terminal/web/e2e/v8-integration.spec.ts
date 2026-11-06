@@ -7,13 +7,12 @@ import {
 } from "../src/league-fantasy-model";
 import { forecastValue } from "../src/MatchupForecast";
 
+const provider = `http://127.0.0.1:${process.env.FANTASY_E2E_PORT || "8218"}`;
 const root = "/api/fantasy/espn";
 const headers = { "X-Fantasy-Request": "1" };
-const evidence = "../../docs/evidence/v8-lineups";
+const evidence = process.env.EVIDENCE_DIR || "../../docs/evidence/v8-lineups";
 async function control(page: Page, data: object) {
-  expect(
-    (await page.request.post("http://127.0.0.1:8218/__test__/v7-control", { data })).ok(),
-  ).toBe(true);
+  expect((await page.request.post(`${provider}/__test__/v7-control`, { data })).ok()).toBe(true);
 }
 function save(name: string, data: unknown) {
   mkdirSync(evidence, { recursive: true });
@@ -21,7 +20,7 @@ function save(name: string, data: unknown) {
 }
 async function open(page: Page, league: number) {
   await control(page, { league });
-  await page.request.post("http://127.0.0.1:8218/__test__/connection-control", { data: {} });
+  await page.request.post(`${provider}/__test__/connection-control`, { data: {} });
   await page.goto("/fantasy");
   await page.waitForLoadState("networkidle");
   expect(
@@ -139,7 +138,7 @@ test("real HTTP daily selections reconcile and stay focus-aware across desktop/m
   page.setDefaultTimeout(15000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.request.post("http://127.0.0.1:8218/__test__/v8-control", {
+  await page.request.post(`${provider}/__test__/v8-control`, {
     data: { players: 13, out: false, rate_change: false, pickup_boost: false },
   });
   const plan = await open(page, 801);
@@ -219,7 +218,7 @@ test("real HTTP daily selections reconcile and stay focus-aware across desktop/m
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `${evidence}/${info.project.name}-320.png` });
   // A controlled stronger pickup yields a real ordered plan after explicit core override.
-  await page.request.post("http://127.0.0.1:8218/__test__/v8-control", {
+  await page.request.post(`${provider}/__test__/v8-control`, {
     data: { pickup_boost: true },
   });
   const boostedRefresh = page.waitForResponse((r) => r.url().endsWith(`${root}/plan`) && r.ok());
@@ -232,6 +231,14 @@ test("real HTTP daily selections reconcile and stay focus-aware across desktop/m
   reconcile(withMoves);
   save(`${info.project.name}-ordered-plan`, withMoves);
   expect(withMoves.actions.length).toBeGreaterThan(0);
+  const sequence = page.getByRole("region", { name: "Final plan get lose and net" });
+  await expect(sequence).toBeVisible();
+  for (const { key } of LEAGUE_CATEGORIES) {
+    const row = withMoves.recommended_plan!.realized_impact!.arithmetic.categories[key];
+    expect(row.net).toBeCloseTo(withMoves.recommended_plan!.arithmetic.categories[key].net!, 8);
+    await expect(sequence.locator(`[data-category="${key}"]`)).toContainText("Lose");
+    await expect(sequence.locator(`[data-category="${key}"]`)).toContainText("Net");
+  }
   const addIds = new Set(withMoves.actions.map((m) => m.add_id));
   const previewDay = withMoves.projected!.daily_lineups!.find(
     (d) =>
@@ -256,7 +263,7 @@ test("real HTTP daily selections reconcile and stay focus-aware across desktop/m
   expect(await names()).toEqual(currentNames);
   // Same production chain, different roster sizes, no fake plan routes.
   for (const count of [11, 12]) {
-    await page.request.post("http://127.0.0.1:8218/__test__/v8-control", {
+    await page.request.post(`${provider}/__test__/v8-control`, {
       data: { players: count },
     });
     const snapResponse = await page.request.get(`${root}/snapshot?refresh=true`);

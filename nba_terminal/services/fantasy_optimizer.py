@@ -898,6 +898,37 @@ def _eligible_pickups(context, day, ownership, acquired):
     return sorted(eligible, key=lambda pid: (context.get("pickup_priority", {}).get((day, pid), 0), pid))
 
 
+def _shortcuts(context, actions):
+    """Delete a move or bypass any ancestry segment at every applicable date.
+
+    Replay below supplies ownership, acquisition, lock and prefix guard checks.
+    Same terminal rosters are never assumed to imply equal production.
+    """
+    for i, first in enumerate(actions):
+        yield actions[:i] + actions[i + 1 :]
+        path = [i]
+        for j in range(i + 1, len(actions)):
+            if actions[j]["stream_slot"] != first["stream_slot"]:
+                continue
+            path.append(j)
+            for day in context["dates"]:
+                if not first["date"] <= day <= actions[j]["date"]:
+                    continue
+                replacement = {**actions[j], "date": day, "drop_id": first["drop_id"]}
+                ledger = [a for n, a in enumerate(actions) if n not in path] + [replacement]
+                yield sorted(ledger, key=lambda a: a["date"])
+
+
+def _equivalent_or_better(shorter, longer, selected):
+    """Spend an additional add only for a material selected-five improvement."""
+    left, right = shorter[0], longer[0]
+    short_score = _focus(left, selected) - sum(a["season_cost"] for a in shorter[1])
+    long_score = _focus(right, selected) - sum(a["season_cost"] for a in longer[1])
+    return short_score >= long_score - 0.005 - 1e-12 and all(
+        _edges(left)[k] >= _edges(right)[k] - 0.01 - 1e-12 for k in selected
+    )
+
+
 def plan_waivers(payload):
     """Return one best explored legal ordered plan; all calculations are pure.
 
@@ -1097,12 +1128,14 @@ def plan_waivers(payload):
     )
     layer_counts, layer_limited = [], False
     depth_reached, stop_reason = 0, "acquisition_budget"
+    # Reserve part of the same hard forecast budget for direct-path verification.
+    search_limit = context["evaluation_limit"] - (context["evaluation_limit"] // 3 if budget > 1 else 0)
     for depth in range(budget):
         expanded, seen_equivalent = [], set()
         layer_start = evaluations
         # Reserve evaluations for legal continuations instead of spending everything
         # on date × pickup × drop alternatives at depth one. Share across beam states.
-        layer_allowance = max(1, (context["evaluation_limit"] - evaluations) // (budget - depth))
+        layer_allowance = max(1, (search_limit - evaluations) // (budget - depth))
         state_allowance = max(1, layer_allowance // len(beam))
         layer_cut = False
         for forecast, actions, ownership, acquired, roots in beam:
@@ -1132,7 +1165,7 @@ def plan_waivers(payload):
                         if evaluations - state_start >= state_allowance and depth < budget - 1:
                             state_cut = layer_cut = layer_limited = True
                             break
-                        if evaluations >= context["evaluation_limit"]:
+                        if evaluations >= search_limit:
                             result["search"]["evaluation_limit_reached"] = True
                             break
                         action = {
@@ -1199,6 +1232,95 @@ def plan_waivers(payload):
                 continue
             choices.append((rank(state, selected), tuple(CATEGORIES.index(k) for k in selected), selected, state))
     _, _, selected, best = min(choices)
+    # An extra acquisition must beat materially equivalent explored shorter plans.
+    near = [c[3] for c in choices if len(c[3][1]) < len(best[1]) and _equivalent_or_better(c[3], best, selected)]
+    if near:
+        best = min(near, key=lambda state: (len(state[1]), rank(state, selected)))
+    shortcut_evaluations = 0
+    shortcut_complete = True
+    comparisons = []
+
+    def replay(ledger):
+        nonlocal evaluations, shortcut_evaluations, shortcut_complete
+        ownership, acquired, roots = dict(initial), frozenset(), frozenset()
+        prefix = []
+        state = empty
+        for bare in ledger:
+            day, add_id, drop_id = bare["date"], bare["add_id"], bare["drop_id"]
+            if drop_id not in ownership or add_id not in _eligible_pickups(context, day, ownership, acquired):
+                return None
+            drop = context["players"][drop_id]
+            root = ownership[drop_id]
+            if (
+                drop["protection"]
+                or day < drop.get("earliest_drop_date", day)
+                or day in drop["transaction_locked_dates"]
+                or (root not in roots and len(roots) >= context["stream_slots"])
+                or (
+                    context["daily_add_limit"] is not None
+                    and sum(a["date"] == day for a in prefix) >= context["daily_add_limit"]
+                )
+            ):
+                return None
+            action = {**bare, "stream_slot": root, "season_cost": _season_cost(drop, context["players"][add_id])}
+            prefix.append(action)
+            key = tuple((a["date"], a["add_id"], a["drop_id"]) for a in prefix)
+            if key in library_by_key:
+                forecast = library_by_key[key][0]
+            else:
+                if evaluations >= context["evaluation_limit"]:
+                    shortcut_complete = False
+                    return None
+                forecast = _forecast(context, prefix)
+                evaluations += 1
+                shortcut_evaluations += 1
+            if not _guards(baseline, forecast, selected, aggressive):
+                return None
+            ownership = {pid: ancestry for pid, ancestry in ownership.items() if pid != drop_id}
+            ownership[add_id] = root
+            acquired, roots = acquired | {add_id}, roots | {root}
+            state = (forecast, list(prefix), dict(ownership), acquired, roots)
+            library_by_key[key] = state
+        return state
+
+    while len(best[1]) > 1:
+        alternatives = []
+        comparisons = []
+        for ledger in _shortcuts(context, best[1]):
+            candidate = replay(ledger)
+            if candidate is None:
+                continue
+            comparisons.append(candidate)
+            if _equivalent_or_better(candidate, best, selected) and (
+                not candidate[1]
+                or _material(baseline, candidate[0], selected, sum(a["season_cost"] for a in candidate[1]))
+            ):
+                alternatives.append(candidate)
+        if not shortcut_complete:
+            # Never present an unverified chain as an acquisition-efficient choice.
+            singles = [c[3] for c in choices if len(c[3][1]) <= 1]
+            best = min(singles, key=lambda state: rank(state, selected))
+            comparisons = []
+            break
+        if not alternatives:
+            break
+        best = min(alternatives, key=lambda state: (len(state[1]), rank(state, selected)))
+    result["shortcut_comparisons"] = [
+        {
+            "actions": state[1],
+            "acquisitions": len(state[1]),
+            "extra_acquisitions": len(best[1]) - len(state[1]),
+            "focus_score": _focus(state[0], selected),
+            "season_cost": sum(a["season_cost"] for a in state[1]),
+            "incremental_focus_gain": _focus(best[0], selected) - _focus(state[0], selected),
+            "arithmetic": _category_arithmetic(
+                state[0],
+                best[0],
+                _primitive_arithmetic(state[0], best[0], dict.fromkeys(TOTALS, 0), dict.fromkeys(TOTALS, 0)),
+            ),
+        }
+        for state in comparisons
+    ]
     # With unknown budget only conditional one-move alternatives are returned.
     if context["budget"] is None:
         best = empty
@@ -1207,10 +1329,89 @@ def plan_waivers(payload):
         after = library_by_key[state_key(best)[: index + 1]][0]
         moves.append(_describe_move(context, before, after, action, selected))
         before = after
-    added = {k: sum(m["arithmetic"]["primitives"][k]["add"] for m in moves) for k in TOTALS}
-    lost = {k: sum(m["arithmetic"]["primitives"][k]["drop"] for m in moves) for k in TOTALS}
+    # Cards show actual final-sequence tenure, not the intermediate prefix horizon.
+    for index, move in enumerate(moves):
+        end = next((a["date"] for a in moves[index + 1 :] if a["drop_id"] == move["add_id"]), None)
+        starts = [
+            row["date"]
+            for row in best[0]["starts"]
+            if row["owner"] == "user"
+            and row["player_id"] == move["add_id"]
+            and row["date"] >= move["date"]
+            and (end is None or row["date"] < end)
+        ]
+        move["realized"] = {
+            "dates": starts,
+            "until": end,
+            "starts": len(starts),
+            "primitives": {k: context["players"][move["add_id"]]["rates"][k] * len(starts) for k in TOTALS},
+        }
+        move["arithmetic_basis"] = "Step-local prefix counterfactual; later moves excluded. Not final player tenure."
+        if end:
+            terminal = next(a for a in reversed(moves) if a["stream_slot"] == move["stream_slot"])
+            direct = [
+                c
+                for c in result["shortcut_comparisons"]
+                if any(a["add_id"] == terminal["add_id"] and a["drop_id"] == move["drop_id"] for a in c["actions"])
+            ]
+            if direct:
+                comparison = max(direct, key=lambda c: c["focus_score"] - c["season_cost"])
+                move["direct_comparison"] = comparison
+                extra = len(moves) - comparison["acquisitions"]
+                gain = comparison["incremental_focus_gain"] * 100
+                move["chain_reason"] = (
+                    f"{extra} extra acquisition{'s' if extra != 1 else ''} vs direct "
+                    f"on {next(a['date'] for a in comparison['actions'] if a['add_id'] == terminal['add_id'])}: "
+                    f"+{gain:.2f} selected-five heuristic points."
+                )
+            else:
+                move["chain_reason"] = (
+                    f"Stream {', '.join(starts) or 'no usable dates'} before {end}; "
+                    "no legal, guard-preserving direct shortcut was found under the observed dates and locks."
+                )
+    final_keys = {(r["date"], r["player_id"]) for r in best[0]["starts"] if r["owner"] == "user"}
+    baseline_keys = {(r["date"], r["player_id"]) for r in baseline["starts"] if r["owner"] == "user"}
+    added = {
+        k: sum(
+            context["players"][pid]["rates"][k] for _, pid in final_keys - baseline_keys if pid not in context["roster"]
+        )
+        for k in TOTALS
+    }
+    lost = {
+        k: sum(
+            context["players"][pid]["rates"][k]
+            for _, pid in baseline_keys - final_keys
+            if any(m["drop_id"] == pid for m in moves)
+        )
+        for k in TOTALS
+    }
+    # Visible sequence gross Get/Lose includes every recovered/displaced start,
+    # including retained roster players; no intermediate prefix cancellation.
+    realized_primitives = _primitive_arithmetic(
+        baseline,
+        best[0],
+        {k: sum(context["players"][pid]["rates"][k] for _, pid in final_keys - baseline_keys) for k in TOTALS},
+        {k: sum(context["players"][pid]["rates"][k] for _, pid in baseline_keys - final_keys) for k in TOTALS},
+    )
+    realized_impact = {
+        "arithmetic": {
+            "primitives": realized_primitives,
+            "categories": _category_arithmetic(baseline, best[0], realized_primitives),
+        },
+        "added_starts": [
+            {"date": day, "player_id": pid, "name": context["players"][pid].get("name", pid)}
+            for day, pid in sorted(final_keys - baseline_keys)
+        ],
+        "lost_starts": [
+            {"date": day, "player_id": pid, "name": context["players"][pid].get("name", pid)}
+            for day, pid in sorted(baseline_keys - final_keys)
+        ],
+    }
     primitives = _primitive_arithmetic(baseline, best[0], added, lost)
     cost = sum(m["season_cost"] for m in moves)
+    beam_budget_reached = result["search"]["evaluation_limit_reached"]
+    layer_limited |= beam_budget_reached
+    result["search"]["evaluation_limit_reached"] = evaluations >= context["evaluation_limit"]
     search = result["search"]
     search.update(
         stop_reason=(
@@ -1240,6 +1441,17 @@ def plan_waivers(payload):
         lineup_policy="selected-five greedy matching; optional negative-value benching",
         objective_saturation="bounded category edges; .005 net and .01 non-cushion gain materiality threshold",
         evaluations=evaluations,
+        beam_evaluation_budget=search_limit,
+        beam_budget_reached=beam_budget_reached,
+        shortcut_evaluations=shortcut_evaluations,
+        shortcut_verification_complete=shortcut_complete,
+        acquisition_equivalence=(
+            "Prefer fewer adds within .005 net focus score and .01 per selected category edge; same whole horizon"
+        ),
+        shortcut_policy=(
+            "Delete moves and bypass every ancestry segment at all intervening dates; "
+            "replay all legality and prefix guards"
+        ),
         evaluation_limit=context["evaluation_limit"],
         beam_width=context["beam"],
         beam_pruned=pruned,
@@ -1249,7 +1461,7 @@ def plan_waivers(payload):
         candidate_pool=sum(p["owner"] == "free" for p in context["players"].values()),
         evaluated_drop_ids=sorted(evaluated_drops),
         legal_drop_ids=sorted(pid for pid in context["roster"] if not context["players"][pid]["protection"]),
-        forecasts=len(library),
+        forecasts=1 + evaluations,
         category_sets_evaluated=len(all_sets),
         first_layer_pairs_evaluated=first_layer_evaluated,
         first_layer_pairs_total=first_layer_total,
@@ -1307,6 +1519,7 @@ def plan_waivers(payload):
         alternatives_explanation="Secondary alternatives compete; only recommended_plan.moves form one ordered plan.",
         recommended_plan={
             "moves": moves,
+            "realized_impact": realized_impact,
             "selected_categories": list(selected),
             "score_before": _focus(baseline, selected),
             "score_after": _focus(best[0], selected) - cost,

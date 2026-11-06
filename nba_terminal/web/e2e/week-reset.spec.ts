@@ -37,6 +37,7 @@ test("new matchup dailyTrue/raw1/user7/0 without counter yields ordered plan", a
   const region = page.getByRole("region", { name: "Ordered pickup plan" });
   await expect(region.locator(".ww-moves > li")).not.toHaveCount(0);
   await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
+  await expect(page.getByRole("region", { name: "Final plan get lose and net" })).toBeVisible();
   await page.getByText("Full analysis & data", { exact: true }).click();
   await expect(
     page.getByRole("region", { name: "All nine move calculations" }).first().locator("tbody tr"),

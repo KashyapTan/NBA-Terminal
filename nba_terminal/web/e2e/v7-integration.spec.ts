@@ -7,18 +7,15 @@ import {
 } from "../src/league-fantasy-model";
 import { forecastValue } from "../src/MatchupForecast";
 
+const provider = `http://127.0.0.1:${process.env.FANTASY_E2E_PORT || "8217"}`;
 const root = "/api/fantasy/espn";
 const headers = { "X-Fantasy-Request": "1" };
-const evidence = "../../docs/evidence/v7-integrated";
+const evidence = process.env.EVIDENCE_DIR || "../../docs/evidence/v7-integrated";
 async function control(page: Page, data: object) {
-  expect(
-    (await page.request.post("http://127.0.0.1:8217/__test__/v7-control", { data })).ok(),
-  ).toBe(true);
+  expect((await page.request.post(`${provider}/__test__/v7-control`, { data })).ok()).toBe(true);
 }
 async function counters(page: Page) {
-  return (
-    await (await page.request.get("http://127.0.0.1:8217/__test__/connection-control")).json()
-  ).calls;
+  return (await (await page.request.get(`${provider}/__test__/connection-control`)).json()).calls;
 }
 function save(name: string, data: unknown) {
   mkdirSync(evidence, { recursive: true });
@@ -26,7 +23,7 @@ function save(name: string, data: unknown) {
 }
 async function open(page: Page, league: number) {
   await control(page, { league });
-  await page.request.post("http://127.0.0.1:8217/__test__/connection-control", { data: {} });
+  await page.request.post(`${provider}/__test__/connection-control`, { data: {} });
   await page.goto("/fantasy");
   await page.waitForLoadState("networkidle");
   expect(
@@ -109,6 +106,27 @@ function arithmetic(plan: WaiverPlan) {
   }
 }
 async function rendered(page: Page, plan: WaiverPlan) {
+  if (plan.recommended_plan?.moves.length) {
+    const summary = page.getByRole("region", { name: "Final plan get lose and net" });
+    await expect(summary).toBeVisible();
+    for (const { key } of LEAGUE_CATEGORIES) {
+      const impact = plan.recommended_plan.realized_impact!.arithmetic.categories[key];
+      const delta =
+        forecastValue(plan.projected!.totals, key)! - forecastValue(plan.baseline!.totals, key)!;
+      expect(impact.net).toBeCloseTo(delta, 9);
+      const shown = key.endsWith("pct")
+        ? `${(delta * 100).toFixed(2)} pp`
+        : delta.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      await expect(summary.locator(`[data-category="${key}"] strong`)).toContainText(shown);
+    }
+    for (const move of plan.recommended_plan.moves) {
+      expect(move.realized!.dates).toEqual(
+        plan
+          .projected!.starts!.filter((r) => r.owner === "user" && r.player_id === move.add_id)
+          .map((r) => r.date),
+      );
+    }
+  }
   const table = page.locator(".ww-forecast-table");
   await expect(table.locator("tbody tr")).toHaveCount(9);
   for (const { key } of LEAGUE_CATEGORIES) {
@@ -359,7 +377,7 @@ test("actual unchanged observation/cache refresh stays stable; schedule changes 
   expect(changed.projected!.schedule_explanations!["100"].remaining_games).toBe(3);
   await expect(page.locator(".ww-move").filter({ hasText: "4 games left" })).not.toHaveCount(0);
   await expect(page.locator(".ww-analysis")).toHaveAttribute("open");
-  await page.request.post("http://127.0.0.1:8217/__test__/connection-control", {
+  await page.request.post(`${provider}/__test__/connection-control`, {
     data: { failures: [503] },
   });
   await page.getByRole("button", { name: "Refresh league", exact: true }).click();

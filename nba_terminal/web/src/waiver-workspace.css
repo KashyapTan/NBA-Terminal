@@ -669,3 +669,27 @@
     gap: 12px;
   }
 }
+
+@media (max-width: 600px) {
+  .ww-benefits[aria-label="Final realized pickup contribution"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ww-benefits[aria-label="Final realized pickup contribution"] .ww-benefit {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ww-sequence-impact {
+  border: 1px solid #303b49;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.ww-sequence-impact .ww-benefits {
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+}
+@media (max-width: 600px) {
+  .ww-sequence-impact .ww-benefits {
+    grid-template-columns: 1fr;
+  }
+}

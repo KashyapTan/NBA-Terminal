@@ -5,6 +5,7 @@ Never accesses private ESPN or changes a fantasy roster. No fake plan route.
 """
 
 import copy
+import os
 
 import uvicorn
 import v7_e2e_server as transport
@@ -106,4 +107,10 @@ async def configure(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8218, access_log=False, log_level="warning")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=int(os.environ.get("FANTASY_E2E_PORT", "8218")),
+        access_log=False,
+        log_level="warning",
+    )
