@@ -1,0 +1,95 @@
+{
+  "raw_directory": "/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V9_CHAIN/data/raw-e3e9988a7f3ac124",
+  "files": [
+    {
+      "name": "production-build-0-plan.json",
+      "bytes": 189926,
+      "sha256": "fd8f78f610dc6da3121338e073a9e355714c93090af56faae1a5c8e15b3c41c2"
+    },
+    {
+      "name": "production-build-0.001-plan.json",
+      "bytes": 189926,
+      "sha256": "fd8f78f610dc6da3121338e073a9e355714c93090af56faae1a5c8e15b3c41c2"
+    },
+    {
+      "name": "production-build-2-plan.json",
+      "bytes": 320500,
+      "sha256": "a8248d1262404df6fe0b4b204f7bea8a22b39b72a2d19678ce5d3e0884de545c"
+    },
+    {
+      "name": "production-build-crowded-plan.json",
+      "bytes": 214247,
+      "sha256": "a8d5ad3fd686affc7c5890f700c91c8cf6fa32a43d6121c3761d693bddb53351"
+    },
+    {
+      "name": "production-build-harmful-plan.json",
+      "bytes": 182715,
+      "sha256": "3f0a95c0a78a96544866034d59cd0c12a761d73519212d1a219538d1408d2215"
+    },
+    {
+      "name": "production-build-locked-plan.json",
+      "bytes": 89062,
+      "sha256": "72c47d6f9aed0abed31c7ec29e513f1761407862259bc33d937ce07701130c70"
+    },
+    {
+      "name": "production-build-other-plan.json",
+      "bytes": 184726,
+      "sha256": "d11bb4b7ce3df1ad67a7f459e9241349c04161c0a8e492d8624d13c681f04d9d"
+    },
+    {
+      "name": "production-build-quota-plan.json",
+      "bytes": 216788,
+      "sha256": "765cb90a45d79f28098014ed8295d0d9e12a6e1bb46a8b4e281705cc26280a9f"
+    },
+    {
+      "name": "production-build-waiver-plan.json",
+      "bytes": 184726,
+      "sha256": "d11bb4b7ce3df1ad67a7f459e9241349c04161c0a8e492d8624d13c681f04d9d"
+    },
+    {
+      "name": "vite-proxy-0-plan.json",
+      "bytes": 189926,
+      "sha256": "fd8f78f610dc6da3121338e073a9e355714c93090af56faae1a5c8e15b3c41c2"
+    },
+    {
+      "name": "vite-proxy-0.001-plan.json",
+      "bytes": 189926,
+      "sha256": "fd8f78f610dc6da3121338e073a9e355714c93090af56faae1a5c8e15b3c41c2"
+    },
+    {
+      "name": "vite-proxy-2-plan.json",
+      "bytes": 320500,
+      "sha256": "a8248d1262404df6fe0b4b204f7bea8a22b39b72a2d19678ce5d3e0884de545c"
+    },
+    {
+      "name": "vite-proxy-crowded-plan.json",
+      "bytes": 214247,
+      "sha256": "a8d5ad3fd686affc7c5890f700c91c8cf6fa32a43d6121c3761d693bddb53351"
+    },
+    {
+      "name": "vite-proxy-harmful-plan.json",
+      "bytes": 182715,
+      "sha256": "3f0a95c0a78a96544866034d59cd0c12a761d73519212d1a219538d1408d2215"
+    },
+    {
+      "name": "vite-proxy-locked-plan.json",
+      "bytes": 89062,
+      "sha256": "72c47d6f9aed0abed31c7ec29e513f1761407862259bc33d937ce07701130c70"
+    },
+    {
+      "name": "vite-proxy-other-plan.json",
+      "bytes": 184726,
+      "sha256": "d11bb4b7ce3df1ad67a7f459e9241349c04161c0a8e492d8624d13c681f04d9d"
+    },
+    {
+      "name": "vite-proxy-quota-plan.json",
+      "bytes": 216788,
+      "sha256": "765cb90a45d79f28098014ed8295d0d9e12a6e1bb46a8b4e281705cc26280a9f"
+    },
+    {
+      "name": "vite-proxy-waiver-plan.json",
+      "bytes": 184726,
+      "sha256": "d11bb4b7ce3df1ad67a7f459e9241349c04161c0a8e492d8624d13c681f04d9d"
+    }
+  ]
+}

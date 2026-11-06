@@ -46,4 +46,4 @@ tests/test_game_center.py::test_real_traditional_provider_to_reaches_player_and_
     endpoint = service.boxscoretraditionalv2.BoxScoreTraditionalV2(game_id="0022600152", get_request=False)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 527 passed, 1 warning in 13.20s ========================
+======================= 527 passed, 1 warning in 12.26s ========================

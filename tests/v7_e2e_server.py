@@ -6,6 +6,7 @@ Only this owned server8217 is started. No route or optimizer result is replaced.
 
 import copy
 import json
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -225,4 +226,10 @@ async def configure(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8217, access_log=False, log_level="warning")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=int(os.environ.get("FANTASY_E2E_PORT", "8217")),
+        access_log=False,
+        log_level="warning",
+    )

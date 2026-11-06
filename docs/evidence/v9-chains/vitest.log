@@ -6,10 +6,10 @@ $ vitest run --coverage
 
  Test Files  25 passed (25)
       Tests  150 passed (150)
-   Start at  14:32:27
-   Duration  2.98s (environment 40%, tests 33%, setup 15%, transform 6%, import 5%, worker 2%)
+   Start at  14:52:56
+   Duration  2.84s (environment 44%, tests 30%, setup 13%, transform 6%, import 4%, worker 2%)
 
-Environment  jsdom was created 25 times · 12.53s total, 40% of tracked time
+Environment  jsdom was created 25 times · 13.01s total, 44% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 
@@ -17,7 +17,7 @@ Environment  jsdom was created 25 times · 12.53s total, 40% of tracked time
 -------------------|---------|----------|---------|---------|-------------------
 File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 -------------------|---------|----------|---------|---------|-------------------
-All files          |    93.3 |    80.12 |    90.4 |   94.36 |
+All files          |   93.25 |    80.18 |   90.28 |   94.31 |
  ActualSources.tsx |   89.28 |    75.94 |   81.25 |   88.46 | 153-155,222
  ...yticsTools.tsx |   96.35 |    87.74 |   92.98 |   96.87 | 331,467,600,703
  App.tsx           |   92.67 |    78.02 |   86.95 |   95.23 | ...16,805-814,876
@@ -30,11 +30,11 @@ All files          |    93.3 |    80.12 |    90.4 |   94.36 |
  ...upForecast.tsx |     100 |    96.66 |     100 |     100 | 41-42,82
  ...erAnalysis.tsx |   98.63 |    78.36 |   98.18 |   99.21 | 602
  PlayerBrowser.tsx |   94.02 |    77.14 |    87.5 |   94.82 | 74,257-265
- ...ileDetails.tsx |   92.59 |    82.16 |   86.76 |   94.16 | ...38,452,470,596
+ ...ileDetails.tsx |   92.59 |    83.43 |   86.76 |   94.16 | ...38,452,470,596
  ShotChart.tsx     |     100 |     82.1 |     100 |     100 | ...50-257,338-344
  ...Arithmetic.tsx |   79.48 |    66.66 |   71.42 |   81.08 | 46-53,220-257
  WaiverStatus.tsx  |    92.3 |    62.85 |   83.33 |    92.3 | 158
- ...rWorkspace.tsx |   97.77 |    80.91 |   95.65 |   97.72 | 216
+ ...rWorkspace.tsx |   95.65 |    80.74 |   91.66 |   95.55 | 216,383
  api.ts            |     100 |    83.33 |     100 |     100 | 16
  ...y-lifecycle.ts |   98.64 |    97.72 |     100 |     100 | 24,118
  fantasy-model.ts  |     100 |    94.73 |     100 |     100 | 215-216,243-245
@@ -45,8 +45,8 @@ All files          |    93.3 |    80.12 |    90.4 |   94.36 |
 -------------------|---------|----------|---------|---------|-------------------
 
 =============================== Coverage summary ===============================
-Statements   : 93.3% ( 1798/1927 )
-Branches     : 80.12% ( 2108/2631 )
-Functions    : 90.4% ( 641/709 )
-Lines        : 94.36% ( 1608/1704 )
+Statements   : 93.25% ( 1798/1928 )
+Branches     : 80.18% ( 2113/2635 )
+Functions    : 90.28% ( 641/710 )
+Lines        : 94.31% ( 1608/1705 )
 ================================================================================

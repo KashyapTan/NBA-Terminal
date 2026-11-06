@@ -9,10 +9,11 @@ import { forecastValue } from "../src/MatchupForecast";
 
 const root = "/api/fantasy/espn";
 const headers = { "X-Fantasy-Request": "1" };
-const evidence = "../../docs/evidence/v9-chains";
+const evidence = process.env.EVIDENCE_DIR || "../../docs/evidence/v9-chains";
+const rawEvidence = process.env.V9_RAW_EVIDENCE_DIR || "test-results/v9-raw";
 function save(name: string, data: unknown) {
-  mkdirSync(evidence, { recursive: true });
-  writeFileSync(`${evidence}/${name}.json`, JSON.stringify(data, null, 2));
+  mkdirSync(rawEvidence, { recursive: true });
+  writeFileSync(`${rawEvidence}/${name}.json`, JSON.stringify(data, null, 2));
 }
 async function open(page: Page, league: number, mode = "") {
   await page.request.post("http://127.0.0.1:8219/__test__/v9-control", {

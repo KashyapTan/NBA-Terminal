@@ -24,7 +24,9 @@ The all-nine direct comparison, prefix arithmetic (explicitly labeled step-local
 
 ## Evidence inventory
 
-`*-plan.json`: actual HTTP responses through provider normalizer → adapter → optimizer. Names/rates/rosters are **controlled synthetic fixtures**, with previously retained public season schedule dates. They are not this user's private plan. `vite-proxy-*` uses 4219, `production-build-*` uses 8219 and the built application. There are no fake optimizer/plan route responses.
+Complete `*-plan.json` HTTP responses are retained **outside Git** in this task's durable evidence home, not repeated in the source diff. [raw-artifacts.json](raw-artifacts.json) records the exact directory, byte lengths and SHA256 hashes. [verification-summary.md](verification-summary.md) is the compact review matrix and essential all-nine examples. The reproducible `tests/summarize_v9_evidence.py` exporter creates both from the complete responses.
+
+The captures are actual HTTP responses through provider normalizer → adapter → optimizer. Names/rates/rosters are **controlled synthetic fixtures**, with previously retained public season schedule dates. They are not this user's private plan. `vite-proxy-*` uses 4219, `production-build-*` uses 8219 and the built application. There are no fake optimizer/plan route responses.
 
 - `0` and `0.001`: useless and materially equivalent interim streams produce one direct add, saving one acquisition.
 - `2`: useful Nov 6/7 stream → Nov 8 terminal pickup retains two acquisitions. Final cards, final forecast, daily starts, weighted FG/FT, both banked rosters and all-nine arithmetic reconcile.
@@ -32,6 +34,23 @@ The all-nine direct comparison, prefix arithmetic (explicitly labeled step-local
 - `crowded`: ten occupied slots remove claimed interim value.
 - `harmful`: points, shooting and turnover cross-category losses are asserted visible in the sequence summary with analysis closed; desktop/mobile screenshots retained.
 
+Raw archives:
+
+- Initial 21f0167 captures: `data/raw-21f0167/` in the same task home (18 unmodified responses).
+- Prior published a8eae93 captures: `/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V9_CHAIN/data/raw-a8eae93/` (18 unmodified responses).
+- Current V9 captures: the `raw_directory` in raw-artifacts.json (`data/raw-e3e9988a7f3ac124/` in the same task home).
+- V7, V8 and week-reset regression captures: `data/v7-regression/`, `data/v8-regression/`, `data/week-reset-regression/` in that task home. Original failed CI log: `data/ci-42280637184-failed.log`.
+
+Regenerate the full V9 responses with `V9_RAW_EVIDENCE_DIR=/absolute/evidence/path bunx playwright test --config playwright.v9.config.ts`, then run `uv run python tests/summarize_v9_evidence.py --raw /absolute/evidence/path --output docs/evidence/v9-chains`. CI defaults to ignored `test-results/v9-raw/`; raw responses are never written into tracked source. For V7/V8 use `E2E_PORT=4219 FANTASY_E2E_PORT=8219 EVIDENCE_DIR=/absolute/evidence/path`; default CI ports remain unchanged. Run HTTP suites sequentially to avoid port contention.
+
 Desktop and 390×844 mobile screenshots are retained for each main case through both hosts. The page stays within viewport width; collapsed analysis is asserted. Screenshots were visually inspected. Tests also check the missing-direct bounded-search case, same-day redundancy, re-add prevention, delayed acquisition/transaction lock dates, negative selected shooting/TO tradeoffs and hard evaluation accounting.
 
 See `checks.txt` for exact commands and outcomes, and `code_review/waiver-v9-chains.md` for the high-risk self-review. Remote CI is a separate current-commit requirement, recorded in task delivery evidence. Only a human may merge.
+
+## CI compatibility and reviewability follow-up
+
+Current a8eae93 CI run 42280637184 failed six V7 browser cases because realized cards had hidden the provider's games-left rows and their help. All six failures were visible schedule assertions (4/4 starts, 2/2 starts, or refresh from 4 to 3 games); underlying all-nine API/provider arithmetic checks passed before those assertions. Restored provider scheduled-game counts together with final complete-plan usable starts and baseline lost starts. The help distinguishes final tenure from step-local legacy data. Original V7 assertions remain; additional V7/V8/week-reset checks verify visible final-plan net and selected dates. All existing refresh/source/weighted-math checks remain.
+
+The a8eae93 PR contained 137,650 inserted text lines: 136,272 (99%) were 18 repeated raw plan responses; implementation/tests/docs were 1,133 lines and other evidence 245. Raw responses are now retained externally with hash references; compact summaries and essential screenshots remain tracked. The final diff breakdown is recorded in typed delivery evidence and the parent report.
+
+After cleanup the net PR contains approximately 1.8k inserted text lines, including compact evidence/logs; no raw plan JSON payloads remain in the diff. Exact final-commit counts are in typed task evidence. Complete raw archives for all three observed revisions remain available in the task home, with an archive index at `data/v9-raw-archive-index.json`.

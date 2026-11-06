@@ -269,6 +269,7 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
               sample={props.samples[move.add_id]}
               targets={props.targets}
               scheduleCounts={props.scheduleCounts?.[index]}
+              sequenceImpact={props.sequenceImpact}
             />
           ))}
         </ol>
@@ -312,6 +313,7 @@ function CompactMove({
   sample,
   targets,
   scheduleCounts,
+  sequenceImpact,
 }: {
   move: PickupRecommendation;
   index: number;
@@ -319,6 +321,7 @@ function CompactMove({
   sample?: QualifiedSample;
   targets: Category[];
   scheduleCounts?: NonNullable<WaiverWorkspaceProps["scheduleCounts"]>[number];
+  sequenceImpact?: RealizedPlanImpact;
 }) {
   // Show selected targets and every harmful spillover; detailed nine-category math stays below.
   const categories = LEAGUE_CATEGORIES.filter(({ key }) => {
@@ -366,23 +369,33 @@ function CompactMove({
           </InfoTooltip>
         </p>
       )}
-      {!move.realized && (
-        <div className="ww-schedule">
-          <span>
-            <b className="ww-add-label">ADD</b> {number(scheduleCounts?.addRemainingGames)} games
-            left · {number(move.add_starts)} usable starts
-          </span>
-          <span>
-            <b className="ww-drop-label">DROP</b> {number(scheduleCounts?.dropRemainingGames)} games
-            left · {number(move.drop_starts)} usable starts
-          </span>
-          <InfoTooltip label={`Games and usable starts for move ${index + 1}`}>
-            Games left counts remaining scheduled games. Usable starts counts games this plan can
-            put in your lineup, after the move date, game locks, availability and slot limits. Drop
-            starts are the lineup starts lost by this move. Unknown counts show ?.
-          </InfoTooltip>
-        </div>
-      )}
+      <div className="ww-schedule">
+        <span>
+          <b className="ww-add-label">ADD</b> {number(scheduleCounts?.addRemainingGames)} games left
+          · {number(move.realized?.starts ?? move.add_starts)} usable starts
+        </span>
+        <span>
+          <b className="ww-drop-label">DROP</b> {number(scheduleCounts?.dropRemainingGames)} games
+          left ·{" "}
+          {number(
+            move.realized
+              ? sequenceImpact?.lost_starts.filter(
+                  (r) => r.player_id === move.drop_id && r.date >= move.date,
+                ).length
+              : move.drop_starts,
+          )}{" "}
+          usable starts
+        </span>
+        <InfoTooltip label={`Games and usable starts for move ${index + 1}`}>
+          Games left counts remaining scheduled games from the provider. ADD usable starts are the
+          pickup’s final dated starts in the complete plan, after locks, availability and slot
+          limits. DROP usable starts are future baseline starts lost for that player in the complete
+          plan. An intermediate player’s earlier production stays banked in the plan; zero future
+          lost starts does not erase it. The sequence summary includes all displaced starts too.
+          Unknown counts show ?. Legacy saved results without final-plan fields use step-local
+          starts.
+        </InfoTooltip>
+      </div>
       <p className="ww-sample">
         Current sample · {number(sample?.minutes)} MPG · {number(sample?.games)} GP /{" "}
         {number(sample?.teamGames)} team games

@@ -206,6 +206,12 @@ it("shows final realized tenure instead of full-horizon prefix add/drop/net", ()
       fta: 2,
     },
   };
+  props.moves[0].drop_starts = 99; // Prefix-only future retention must not return in the final-plan row.
+  props.sequenceImpact = {
+    arithmetic: props.moves[0].arithmetic!,
+    added_starts: [],
+    lost_starts: [],
+  };
   props.moves[0].direct_comparison = {
     acquisitions: 1,
     extra_acquisitions: 1,
@@ -220,6 +226,9 @@ it("shows final realized tenure instead of full-horizon prefix add/drop/net", ()
   const first = container.querySelector(".ww-move")!;
   expect(first).toHaveTextContent("Final plan: 1 usable starts · 2026-11-03 · drop on 2026-11-04");
   expect(first).toHaveTextContent("extra acquisition");
+  expect(first).toHaveTextContent("ADD ? games left · 1 usable starts");
+  expect(first).toHaveTextContent("DROP ? games left · 0 usable starts");
+  expect(first).not.toHaveTextContent("99 usable starts");
   expect(first).toHaveTextContent("Produced 1/3");
   expect(first).not.toHaveTextContent("Add 20Drop 10Net +7Gain");
   expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");

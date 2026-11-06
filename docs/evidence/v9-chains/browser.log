@@ -1,40 +1,40 @@
 $ playwright test
-[WebServer] (node:64856) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (node:15983) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
 
 Running 17 tests using 7 workers
 
-(node:64871) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:15999) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16002) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:15997) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64872) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64874) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16001) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:15998) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:64875) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16003) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-  ✓   6 [chromium] › e2e/game-flow.spec.ts:308:1 › renders an honest API failure state (514ms)
-  ✓   4 [chromium] › e2e/game-flow.spec.ts:259:1 › shows an honest unavailable shot chart while retaining player stats (544ms)
-  ✓   3 [chromium] › e2e/game-flow.spec.ts:221:1 › fans drill from season feed through box score to a player's real shot chart (814ms)
-  ✓   7 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 1440px (825ms)
-  ✓   1 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 390px (829ms)
-  ✓   8 [chromium] › e2e/game-flow.spec.ts:314:1 › season log keyboard link opens the actual historical box score with phase context (367ms)
-  ✓   9 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 390px (406ms)
-  ✓   5 [chromium] › e2e/game-flow.spec.ts:270:1 › explores player sample comparisons and shot controls (1.0s)
-  ✓  13 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 390px and retains keyboard game links (354ms)
-  ✓  10 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 1440px (446ms)
-  ✓  14 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 1440px and retains keyboard game links (364ms)
-  ✓  12 [chromium] › e2e/league-strategy-ui.spec.ts:144:1 › browser setup and consented pairing states work without exposing cookie inputs (541ms)
-  ✓   2 [chromium] › e2e/fantasy.spec.ts:50:1 › Fantasy supports season stats, sample filters, player comparison and shortlist (1.5s)
-  ✓  15 [chromium] › e2e/waiver-plan-diagnosis.spec.ts:8:1 › empty ordered plan names its budget blocker inline on desktop and mobile (497ms)
-  ✓  11 [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile (817ms)
-  ✓  16 [chromium] › e2e/waiver-workspace.spec.ts:4:1 › compact workspace has closed analysis, true net and dismissible keyboard help (379ms)
-  ✓  17 [chromium] › e2e/waiver-workspace.spec.ts:45:1 › mobile saved result retains compact cards and touch help (602ms)
+  ✓   5 [chromium] › e2e/game-flow.spec.ts:308:1 › renders an honest API failure state (532ms)
+  ✓   3 [chromium] › e2e/game-flow.spec.ts:259:1 › shows an honest unavailable shot chart while retaining player stats (546ms)
+  ✓   2 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 390px (748ms)
+  ✓   6 [chromium] › e2e/game-center-polish.spec.ts:20:3 › compact three-date schedule and brand navigation at 1440px (804ms)
+  ✓   7 [chromium] › e2e/game-flow.spec.ts:221:1 › fans drill from season feed through box score to a player's real shot chart (826ms)
+  ✓   8 [chromium] › e2e/game-flow.spec.ts:314:1 › season log keyboard link opens the actual historical box score with phase context (381ms)
+  ✓   4 [chromium] › e2e/game-flow.spec.ts:270:1 › explores player sample comparisons and shot controls (967ms)
+  ✓   9 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 390px (422ms)
+  ✓  10 [chromium] › e2e/game-flow.spec.ts:347:3 › selected player game stats and charts stay compact at 1440px (445ms)
+  ✓  13 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 390px and retains keyboard game links (313ms)
+  ✓  14 [chromium] › e2e/player-analysis.spec.ts:4:3 › independent player profile fits 1440px and retains keyboard game links (357ms)
+  ✓  12 [chromium] › e2e/league-strategy-ui.spec.ts:144:1 › browser setup and consented pairing states work without exposing cookie inputs (506ms)
+  ✓  15 [chromium] › e2e/waiver-plan-diagnosis.spec.ts:8:1 › empty ordered plan names its budget blocker inline on desktop and mobile (523ms)
+  ✓   1 [chromium] › e2e/fantasy.spec.ts:50:1 › Fantasy supports season stats, sample filters, player comparison and shortlist (1.5s)
+  ✓  16 [chromium] › e2e/waiver-workspace.spec.ts:4:1 › compact workspace has closed analysis, true net and dismissible keyboard help (357ms)
+  ✓  11 [chromium] › e2e/league-strategy-ui.spec.ts:7:1 › strategy hierarchy, score and five-category remaining-total alternatives remain usable on mobile (818ms)
+  ✓  17 [chromium] › e2e/waiver-workspace.spec.ts:45:1 › mobile saved result retains compact cards and touch help (564ms)
 [WebServer] error: "vite" exited with code 143
 
-  17 passed (2.4s)
+  17 passed (2.3s)
