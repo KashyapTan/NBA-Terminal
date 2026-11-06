@@ -206,6 +206,15 @@ it("shows final realized tenure instead of full-horizon prefix add/drop/net", ()
       fta: 2,
     },
   };
+  props.moves[0].direct_comparison = {
+    acquisitions: 1,
+    extra_acquisitions: 1,
+    focus_score: 0.5,
+    season_cost: 0,
+    incremental_focus_gain: 0.02,
+    actions: [{ date: "2026-11-04", drop_id: "d", add_id: "b" }],
+    arithmetic: props.moves[0].arithmetic!.categories,
+  };
   props.moves[0].chain_reason = "1 extra acquisition vs direct: +2 selected-five heuristic points.";
   const { container } = render(<WaiverWorkspace {...props} />);
   const first = container.querySelector(".ww-move")!;
@@ -213,5 +222,35 @@ it("shows final realized tenure instead of full-horizon prefix add/drop/net", ()
   expect(first).toHaveTextContent("extra acquisition");
   expect(first).toHaveTextContent("Produced 1/3");
   expect(first).not.toHaveTextContent("Add 20Drop 10Net +7Gain");
+  expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
+});
+
+it("keeps sequence get, lost/displaced production and harmful net visible with analysis closed", () => {
+  const props = fixture();
+  const arithmetic = structuredClone(props.moves[0].arithmetic!);
+  arithmetic.categories.pts = { ...arithmetic.categories.pts, add: 3, drop: 7, net: -4 };
+  arithmetic.categories.to = { ...arithmetic.categories.to, add: 5, drop: 1, net: 4 };
+  arithmetic.categories.fg_pct = {
+    ...arithmetic.categories.fg_pct,
+    net: -0.01,
+    makes: { before: 10, add: 1, drop: 2, spillover: 0, after: 9, net: -1 },
+    attempts: { before: 20, add: 4, drop: 2, spillover: 0, after: 22, net: 2 },
+  };
+  props.sequenceImpact = {
+    arithmetic,
+    added_starts: [{ date: "2026-11-03", player_id: "a", name: "Alex Guard" }],
+    lost_starts: [{ date: "2026-11-03", player_id: "d", name: "Displaced starter" }],
+  };
+  const { container } = render(<WaiverWorkspace {...props} />);
+  const summary = screen.getByRole("region", { name: "Final plan get lose and net" });
+  expect(summary).toBeVisible();
+  expect(summary).toHaveTextContent("including displaced starts");
+  expect(summary.querySelector('[data-category="pts"]')).toHaveTextContent(
+    "Get 3Lose 7Net -4 Loss",
+  );
+  expect(summary.querySelector('[data-category="to"] .ww-loss')).toHaveTextContent("Net +4 Loss");
+  expect(summary.querySelector('[data-category="fg_pct"]')).toHaveTextContent(
+    "Get 1/4Lose 2/2Net -1.00 pp Loss",
+  );
   expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
 });

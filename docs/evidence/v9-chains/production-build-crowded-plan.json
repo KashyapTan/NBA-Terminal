@@ -8160,6 +8160,233 @@
   },
   "recommended_plan": {
     "moves": [],
+    "realized_impact": {
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 200,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 200,
+            "net": 0
+          },
+          "reb": {
+            "before": 120,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 120,
+            "net": 0
+          },
+          "ast": {
+            "before": 120,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 120,
+            "net": 0
+          },
+          "stl": {
+            "before": 58,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 58,
+            "net": 0
+          },
+          "blk": {
+            "before": 58,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 58,
+            "net": 0
+          },
+          "threes": {
+            "before": 110,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 110,
+            "net": 0
+          },
+          "to": {
+            "before": 10.199999999999996,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 10.199999999999996,
+            "net": 0
+          },
+          "fgm": {
+            "before": 60,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 60,
+            "net": 0
+          },
+          "fga": {
+            "before": 120,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 120,
+            "net": 0
+          },
+          "ftm": {
+            "before": 40,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 40,
+            "net": 0
+          },
+          "fta": {
+            "before": 65,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0,
+            "after": 65,
+            "net": 0
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 200,
+            "after": 200,
+            "net": 0,
+            "opponent_before": 120,
+            "opponent_after": 120,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "reb": {
+            "before": 120,
+            "after": 120,
+            "net": 0,
+            "opponent_before": 28,
+            "opponent_after": 28,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "ast": {
+            "before": 120,
+            "after": 120,
+            "net": 0,
+            "opponent_before": 26,
+            "opponent_after": 26,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "stl": {
+            "before": 58,
+            "after": 58,
+            "net": 0,
+            "opponent_before": 10,
+            "opponent_after": 10,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "blk": {
+            "before": 58,
+            "after": 58,
+            "net": 0,
+            "opponent_before": 9,
+            "opponent_after": 9,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "threes": {
+            "before": 110,
+            "after": 110,
+            "net": 0,
+            "opponent_before": 12,
+            "opponent_after": 12,
+            "lower_is_better": false,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "to": {
+            "before": 10.199999999999996,
+            "after": 10.199999999999996,
+            "net": 0,
+            "opponent_before": 13,
+            "opponent_after": 13,
+            "lower_is_better": true,
+            "add": 0,
+            "drop": 0,
+            "spillover": 0
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 60,
+              "add": 0,
+              "drop": 0,
+              "spillover": 0,
+              "after": 60,
+              "net": 0
+            },
+            "attempts": {
+              "before": 120,
+              "add": 0,
+              "drop": 0,
+              "spillover": 0,
+              "after": 120,
+              "net": 0
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.6153846153846154,
+            "after": 0.6153846153846154,
+            "net": 0,
+            "opponent_before": 0.7931034482758621,
+            "opponent_after": 0.7931034482758621,
+            "lower_is_better": false,
+            "makes": {
+              "before": 40,
+              "add": 0,
+              "drop": 0,
+              "spillover": 0,
+              "after": 40,
+              "net": 0
+            },
+            "attempts": {
+              "before": 65,
+              "add": 0,
+              "drop": 0,
+              "spillover": 0,
+              "after": 65,
+              "net": 0
+            },
+            "percentage_points": 0,
+            "additive": false
+          }
+        }
+      },
+      "added_starts": [],
+      "lost_starts": []
+    },
     "selected_categories": [
       "reb",
       "ast",

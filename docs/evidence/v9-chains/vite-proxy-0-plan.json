@@ -6531,6 +6531,239 @@
         "stream_roster_id": "1"
       }
     ],
+    "realized_impact": {
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 100.1,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0,
+            "after": 103.1,
+            "net": 3
+          },
+          "reb": {
+            "before": 20.1,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0,
+            "after": 23.1,
+            "net": 3
+          },
+          "ast": {
+            "before": 20.1,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0,
+            "after": 23.1,
+            "net": 3
+          },
+          "stl": {
+            "before": 8.05,
+            "add": 1.5,
+            "drop": 0,
+            "spillover": 0,
+            "after": 9.55,
+            "net": 1.5
+          },
+          "blk": {
+            "before": 8.05,
+            "add": 1.5,
+            "drop": 0,
+            "spillover": 0,
+            "after": 9.55,
+            "net": 1.5
+          },
+          "threes": {
+            "before": 10.1,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0,
+            "after": 13.1,
+            "net": 3
+          },
+          "to": {
+            "before": 10.01,
+            "add": 0.01,
+            "drop": 0,
+            "spillover": -2.1337098754514727e-16,
+            "after": 10.02,
+            "net": 0.009999999999999787
+          },
+          "fgm": {
+            "before": 41,
+            "add": 1,
+            "drop": 0,
+            "spillover": 0,
+            "after": 42,
+            "net": 1
+          },
+          "fga": {
+            "before": 82,
+            "add": 2,
+            "drop": 0,
+            "spillover": 0,
+            "after": 84,
+            "net": 2
+          },
+          "ftm": {
+            "before": 21,
+            "add": 1,
+            "drop": 0,
+            "spillover": 0,
+            "after": 22,
+            "net": 1
+          },
+          "fta": {
+            "before": 27,
+            "add": 2,
+            "drop": 0,
+            "spillover": 0,
+            "after": 29,
+            "net": 2
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 100.1,
+            "after": 103.1,
+            "net": 3,
+            "opponent_before": 120,
+            "opponent_after": 120,
+            "lower_is_better": false,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0
+          },
+          "reb": {
+            "before": 20.1,
+            "after": 23.1,
+            "net": 3,
+            "opponent_before": 28,
+            "opponent_after": 28,
+            "lower_is_better": false,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0
+          },
+          "ast": {
+            "before": 20.1,
+            "after": 23.1,
+            "net": 3,
+            "opponent_before": 26,
+            "opponent_after": 26,
+            "lower_is_better": false,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0
+          },
+          "stl": {
+            "before": 8.05,
+            "after": 9.55,
+            "net": 1.5,
+            "opponent_before": 10,
+            "opponent_after": 10,
+            "lower_is_better": false,
+            "add": 1.5,
+            "drop": 0,
+            "spillover": 0
+          },
+          "blk": {
+            "before": 8.05,
+            "after": 9.55,
+            "net": 1.5,
+            "opponent_before": 9,
+            "opponent_after": 9,
+            "lower_is_better": false,
+            "add": 1.5,
+            "drop": 0,
+            "spillover": 0
+          },
+          "threes": {
+            "before": 10.1,
+            "after": 13.1,
+            "net": 3,
+            "opponent_before": 12,
+            "opponent_after": 12,
+            "lower_is_better": false,
+            "add": 3,
+            "drop": 0,
+            "spillover": 0
+          },
+          "to": {
+            "before": 10.01,
+            "after": 10.02,
+            "net": 0.009999999999999787,
+            "opponent_before": 13,
+            "opponent_after": 13,
+            "lower_is_better": true,
+            "add": 0.01,
+            "drop": 0,
+            "spillover": -2.1337098754514727e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 41,
+              "add": 1,
+              "drop": 0,
+              "spillover": 0,
+              "after": 42,
+              "net": 1
+            },
+            "attempts": {
+              "before": 82,
+              "add": 2,
+              "drop": 0,
+              "spillover": 0,
+              "after": 84,
+              "net": 2
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7777777777777778,
+            "after": 0.7586206896551724,
+            "net": -0.019157088122605415,
+            "opponent_before": 0.7931034482758621,
+            "opponent_after": 0.7931034482758621,
+            "lower_is_better": false,
+            "makes": {
+              "before": 21,
+              "add": 1,
+              "drop": 0,
+              "spillover": 0,
+              "after": 22,
+              "net": 1
+            },
+            "attempts": {
+              "before": 27,
+              "add": 2,
+              "drop": 0,
+              "spillover": 0,
+              "after": 29,
+              "net": 2
+            },
+            "percentage_points": -1.9157088122605415,
+            "additive": false
+          }
+        }
+      },
+      "added_starts": [
+        {
+          "date": "2026-11-08",
+          "player_id": "101",
+          "name": "Derrick Jones Jr."
+        }
+      ],
+      "lost_starts": []
+    },
     "selected_categories": [
       "blk",
       "pts",

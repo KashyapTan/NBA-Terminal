@@ -18,7 +18,9 @@ Prefer a shorter legal plan when its net focus score is no more than .005 below 
 
 Shortcut forecasts and prefixes share the same hard evaluation limit and a ledger cache. If verification cannot finish, the unverified multi-add plan is withheld in favor of an explored legal zero/one-add plan; search metadata exposes incomplete verification. Search bounds, candidate truncation and upstream market coverage remain explicit. Global optimality is not claimed.
 
-Compact cards now report pickup production from **final selected player-dates**, with the date of its later drop when applicable. Retained chains show exact extra acquisition count and selected-five improvement versus their best legal direct shortcut. The all-nine direct comparison, prefix arithmetic (explicitly labeled step-local), lost/displaced starts and provider details stay in the bottom collapsed analysis. Overall plan add/drop terms use final-minus-baseline selected starts: unrealized intermediate retention is no longer counted as gross final production. Spillover completes every primitive identity.
+Compact cards now report pickup production from **final selected player-dates**, with the date of its later drop when applicable. Retained chains show exact extra acquisition count and selected-five improvement versus their best legal direct shortcut. A visible sequence-level **Get / Lose / Net** strip compares the final selected player-dates with the unchanged roster. Get includes new pickups and recovered starts; Lose includes dropped and displaced starts. Both gross terms use set differences, so temporary retention is never both gained and removed. All nine categories remain visible, selected-five stars and green/red text distinguish gains/losses, TO points down, and shooting shows gross makes/attempts plus the true weighted full-team percentage-point effect. The concise extra-add/date/benefit text keeps the longer heuristic explanation in an i help.
+
+The all-nine direct comparison, prefix arithmetic (explicitly labeled step-local), lost/displaced starts and provider details stay in the bottom collapsed analysis. Overall plan add/drop terms use final-minus-baseline selected starts: unrealized intermediate retention is no longer counted as gross final production. Spillover completes every primitive identity.
 
 ## Evidence inventory
 
@@ -28,7 +30,7 @@ Compact cards now report pickup production from **final selected player-dates**,
 - `2`: useful Nov 6/7 stream → Nov 8 terminal pickup retains two acquisitions. Final cards, final forecast, daily starts, weighted FG/FT, both banked rosters and all-nine arithmetic reconcile.
 - `waiver`, `other`, `quota`, `locked`: provider market/ownership/acquisition/immutable-lock boundaries.
 - `crowded`: ten occupied slots remove claimed interim value.
-- `harmful`: shooting/turnover cross-category losses stay in full-plan arithmetic.
+- `harmful`: points, shooting and turnover cross-category losses are asserted visible in the sequence summary with analysis closed; desktop/mobile screenshots retained.
 
 Desktop and 390×844 mobile screenshots are retained for each main case through both hosts. The page stays within viewport width; collapsed analysis is asserted. Screenshots were visually inspected. Tests also check the missing-direct bounded-search case, same-day redundancy, re-add prevention, delayed acquisition/transaction lock dates, negative selected shooting/TO tradeoffs and hard evaluation accounting.
 

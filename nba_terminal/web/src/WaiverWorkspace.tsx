@@ -10,6 +10,7 @@ import {
   type LeaguePlayer,
   type PickupRecommendation,
   type PlanForecast,
+  type RealizedPlanImpact,
 } from "./league-fantasy-model";
 import { signedChange, WaiverArithmetic } from "./WaiverArithmetic";
 import "./waiver-workspace.css";
@@ -52,6 +53,7 @@ export interface WaiverWorkspaceProps {
   filters: PickupFilters;
   onFiltersChange: (filters: PickupFilters) => void;
   moves: PickupRecommendation[];
+  sequenceImpact?: RealizedPlanImpact;
   /** Backend source counts in the same ordered sequence; never inferred from starts. */
   scheduleCounts?: { addRemainingGames: number | null; dropRemainingGames: number | null }[];
   players: Record<string, LeaguePlayer>;
@@ -76,7 +78,7 @@ const STOP_LABELS: Record<WorkspaceStop, string> = {
 const number = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value)
     ? "?"
-    : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 export function WaiverWorkspace(props: WaiverWorkspaceProps) {
   const [draft, setDraft] = useState<Category[] | null>(null);
@@ -254,6 +256,9 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
             </InfoTooltip>
           </span>
         </div>
+        {props.moves.length > 0 && props.sequenceImpact && (
+          <SequenceImpact impact={props.sequenceImpact} targets={props.targets} />
+        )}
         <ol className="ww-moves">
           {props.moves.map((move, index) => (
             <CompactMove
@@ -345,11 +350,19 @@ function CompactMove({
           {move.realized.until
             ? ` · drop on ${move.realized.until}`
             : " · held through matchup end"}
-          .{move.chain_reason && <> {move.chain_reason}</>}
+          .
+          {move.chain_reason && (
+            <>
+              {" "}
+              {move.direct_comparison
+                ? `${move.direct_comparison.extra_acquisitions} extra acquisition vs ${move.direct_comparison.actions.find((a) => a.drop_id === move.drop_id)?.date ?? "direct"} direct (+${(move.direct_comparison.incremental_focus_gain * 100).toFixed(2)} focus pts).`
+                : "Streaming route required."}
+            </>
+          )}
           <InfoTooltip label={`Final contribution for move ${index + 1}`}>
-            Heuristic focus points are not win probability. These are the pickup’s actual selected
-            starts in the complete dated plan. Previously banked production stays fixed. Step-local
-            comparisons are in Full analysis & data.
+            {move.chain_reason} Heuristic focus points are not win probability. These are the
+            pickup’s actual selected starts in the complete dated plan. Previously banked production
+            stays fixed. Step-local comparisons are in Full analysis & data.
           </InfoTooltip>
         </p>
       )}
@@ -428,5 +441,53 @@ function CompactMove({
         </div>
       )}
     </li>
+  );
+}
+
+function SequenceImpact({ impact, targets }: { impact: RealizedPlanImpact; targets: Category[] }) {
+  return (
+    <section role="region" className="ww-sequence-impact" aria-label="Final plan get lose and net">
+      <div className="ww-section-label">
+        <b>Whole plan vs unchanged roster</b>
+        <InfoTooltip label="About realized get lose and net">
+          Get includes every new or recovered selected player-date. Lose includes dropped and
+          displaced starts. Each is counted once across the complete dated plan, with banked actuals
+          fixed. Shooting Get/Lose are makes/attempts; Net is the weighted full-team
+          percentage-point change. Lower TO helps. ★ marks your selected five. Lost starts:{" "}
+          {impact.lost_starts.map((r) => `${r.name} (${r.date})`).join(", ") || "none"}.
+        </InfoTooltip>
+      </div>
+      <p className="ww-sample">
+        Get {impact.added_starts.length} starts · Lose {impact.lost_starts.length} starts, including
+        displaced starts
+      </p>
+      <div className="ww-benefits">
+        {LEAGUE_CATEGORIES.map(({ key, label }) => {
+          const row = impact.arithmetic.categories[key];
+          const net = row.net;
+          const gain = net != null && (key === "to" ? net < 0 : net > 0);
+          const loss = net != null && (key === "to" ? net > 0 : net < 0);
+          const part = (side: "add" | "drop") =>
+            row.makes && row.attempts
+              ? `${number(row.makes[side])}/${number(row.attempts[side])}`
+              : number(row[side]);
+          return (
+            <div className="ww-benefit" key={key} data-category={key}>
+              <b>
+                {label}
+                {key === "to" ? " ↓" : ""}
+                {targets.includes(key) ? " ★" : ""}
+              </b>
+              <span>Get {part("add")}</span>
+              <span>Lose {part("drop")}</span>
+              <strong className={gain ? "ww-gain" : loss ? "ww-loss" : ""}>
+                Net {signedChange(net, key)}{" "}
+                <small>{gain ? "Gain" : loss ? "Loss" : net === 0 ? "Even" : "Unknown"}</small>
+              </strong>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

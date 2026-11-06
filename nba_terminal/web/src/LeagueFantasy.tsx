@@ -655,6 +655,7 @@ function WaiverStrategy({
   }
   return (
     <WaiverWorkspace
+      sequenceImpact={plan?.recommended_plan?.realized_impact}
       matchup={`${user?.name ?? "Your team"} vs ${opponent?.name ?? "Opponent unverified"}`}
       remainingAddsLabel={remainingAddsLabel}
       refreshedLabel={`Updated ${new Date(snapshot.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}

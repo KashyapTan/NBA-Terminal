@@ -1309,6 +1309,7 @@ def plan_waivers(payload):
         {
             "actions": state[1],
             "acquisitions": len(state[1]),
+            "extra_acquisitions": len(best[1]) - len(state[1]),
             "focus_score": _focus(state[0], selected),
             "season_cost": sum(a["season_cost"] for a in state[1]),
             "incremental_focus_gain": _focus(best[0], selected) - _focus(state[0], selected),
@@ -1383,6 +1384,28 @@ def plan_waivers(payload):
             if any(m["drop_id"] == pid for m in moves)
         )
         for k in TOTALS
+    }
+    # Visible sequence gross Get/Lose includes every recovered/displaced start,
+    # including retained roster players; no intermediate prefix cancellation.
+    realized_primitives = _primitive_arithmetic(
+        baseline,
+        best[0],
+        {k: sum(context["players"][pid]["rates"][k] for _, pid in final_keys - baseline_keys) for k in TOTALS},
+        {k: sum(context["players"][pid]["rates"][k] for _, pid in baseline_keys - final_keys) for k in TOTALS},
+    )
+    realized_impact = {
+        "arithmetic": {
+            "primitives": realized_primitives,
+            "categories": _category_arithmetic(baseline, best[0], realized_primitives),
+        },
+        "added_starts": [
+            {"date": day, "player_id": pid, "name": context["players"][pid].get("name", pid)}
+            for day, pid in sorted(final_keys - baseline_keys)
+        ],
+        "lost_starts": [
+            {"date": day, "player_id": pid, "name": context["players"][pid].get("name", pid)}
+            for day, pid in sorted(baseline_keys - final_keys)
+        ],
     }
     primitives = _primitive_arithmetic(baseline, best[0], added, lost)
     cost = sum(m["season_cost"] for m in moves)
@@ -1496,6 +1519,7 @@ def plan_waivers(payload):
         alternatives_explanation="Secondary alternatives compete; only recommended_plan.moves form one ordered plan.",
         recommended_plan={
             "moves": moves,
+            "realized_impact": realized_impact,
             "selected_categories": list(selected),
             "score_before": _focus(baseline, selected),
             "score_after": _focus(best[0], selected) - cost,

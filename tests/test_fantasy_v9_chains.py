@@ -46,6 +46,16 @@ def check(result, data):
         for k in TOTALS:
             expected = next(p for p in data["players"] if p["id"] == move["add_id"])["current_rates"][k] * len(dates)
             assert move["realized"]["primitives"][k] == pytest.approx(expected)
+    visible = result["recommended_plan"]["realized_impact"]
+    for k in TOTALS:
+        row = visible["arithmetic"]["primitives"][k]
+        assert row["spillover"] == pytest.approx(0)
+        assert row["before"] + row["add"] - row["drop"] == pytest.approx(row["after"])
+        for side, field in (("added_starts", "add"), ("lost_starts", "drop")):
+            expected = sum(
+                next(p for p in data["players"] if p["id"] == r["player_id"])["current_rates"][k] for r in visible[side]
+            )
+            assert row[field] == pytest.approx(expected)
     for k in TOTALS:
         row = result["recommended_plan"]["arithmetic"]["primitives"][k]
         assert row["before"] + row["add"] - row["drop"] + row["spillover"] == pytest.approx(row["after"])
@@ -155,3 +165,26 @@ def test_missing_direct_path_is_explicitly_replayed_despite_candidate_and_beam_b
     assert [(m["drop_id"], m["add_id"]) for m in result["actions"]] == [("root", "final")]
     assert not result["search"]["first_layer_complete"]
     assert result["search"]["shortcut_evaluations"] > 0
+
+
+def test_visible_sequence_loss_includes_displaced_retained_player_not_only_drop():
+    data = chain(6)
+    data.update(available_adds=1, lineup_slots=["UTIL"] * 10)
+    data["margin_sd"] = {k: 0.05 if k.endswith("pct") else 25 for k in CATEGORIES}
+    data["players"][1]["core_protection_override"] = True
+    data["players"][2]["eligible"] = False
+    for n in range(10):
+        data["players"].append(
+            player(
+                f"occupied{n}", "user", [DAYS[0]], protected=True, current_rates=rates(reb=3, ast=3, stl=2, threes=3)
+            )
+        )
+    result = plan_waivers(data)
+    check(result, data)
+    assert result["actions"][0]["drop_id"] == "root"
+    impact = result["recommended_plan"]["realized_impact"]
+    assert len(impact["lost_starts"]) == 1
+    assert impact["lost_starts"][0]["player_id"].startswith("occupied")
+    assert impact["arithmetic"]["categories"]["reb"]["add"] == 6
+    assert impact["arithmetic"]["categories"]["reb"]["drop"] == 3
+    assert impact["arithmetic"]["categories"]["reb"]["net"] == 3

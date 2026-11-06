@@ -4,7 +4,7 @@ platform darwin -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0
 rootdir: /Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/36d61d73a7a81a5afa6f8a81214350d086ff0f47c633777f95846555fce9b795
 configfile: pyproject.toml
 plugins: cov-7.1.0, anyio-4.14.2
-collected 526 items
+collected 527 items
 
 tests/test_analytics.py ......                                           [  1%]
 tests/test_architecture.py .                                             [  1%]
@@ -19,15 +19,15 @@ tests/test_fantasy_nba.py ...............                                [ 34%]
 tests/test_fantasy_optimizer.py .....................................    [ 41%]
 tests/test_fantasy_optimizer_v4.py .......................               [ 45%]
 tests/test_fantasy_provider_recovery.py .........................        [ 50%]
-tests/test_fantasy_service.py ........                                   [ 52%]
+tests/test_fantasy_service.py ........                                   [ 51%]
 tests/test_fantasy_strategy_v2.py .................                      [ 55%]
 tests/test_fantasy_strategy_v3.py ..............                         [ 57%]
 tests/test_fantasy_v2_chain.py ..                                        [ 58%]
-tests/test_fantasy_v5_diagnosis.py .........                             [ 60%]
+tests/test_fantasy_v5_diagnosis.py .........                             [ 59%]
 tests/test_fantasy_v6_engine.py ........................                 [ 64%]
 tests/test_fantasy_v7_schedule.py .....................                  [ 68%]
 tests/test_fantasy_v8_lineups.py ...............                         [ 71%]
-tests/test_fantasy_v9_chains.py .............                            [ 73%]
+tests/test_fantasy_v9_chains.py ..............                           [ 74%]
 tests/test_game_center.py .......................                        [ 78%]
 tests/test_game_center_phase.py ..                                       [ 78%]
 tests/test_game_center_schedule_api.py .                                 [ 78%]
@@ -46,4 +46,4 @@ tests/test_game_center.py::test_real_traditional_provider_to_reaches_player_and_
     endpoint = service.boxscoretraditionalv2.BoxScoreTraditionalV2(game_id="0022600152", get_request=False)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 526 passed, 1 warning in 12.29s ========================
+======================= 527 passed, 1 warning in 13.20s ========================

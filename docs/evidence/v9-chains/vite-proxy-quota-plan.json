@@ -7431,6 +7431,250 @@
         "stream_roster_id": "1"
       }
     ],
+    "realized_impact": {
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 100.1,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": 5.689893001203927e-15,
+            "after": 104,
+            "net": 3.9000000000000057
+          },
+          "reb": {
+            "before": 20.1,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15,
+            "after": 24,
+            "net": 3.8999999999999986
+          },
+          "ast": {
+            "before": 20.1,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15,
+            "after": 24,
+            "net": 3.8999999999999986
+          },
+          "stl": {
+            "before": 8.05,
+            "add": 2,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16,
+            "after": 10,
+            "net": 1.9499999999999993
+          },
+          "blk": {
+            "before": 8.05,
+            "add": 2,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16,
+            "after": 10,
+            "net": 1.9499999999999993
+          },
+          "threes": {
+            "before": 10.1,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": 3.608224830031759e-16,
+            "after": 14,
+            "net": 3.9000000000000004
+          },
+          "to": {
+            "before": 10.01,
+            "add": 0.02,
+            "drop": 0.01,
+            "spillover": -2.1337098754514727e-16,
+            "after": 10.02,
+            "net": 0.009999999999999787
+          },
+          "fgm": {
+            "before": 41,
+            "add": 2,
+            "drop": 1,
+            "spillover": 0,
+            "after": 42,
+            "net": 1
+          },
+          "fga": {
+            "before": 82,
+            "add": 4,
+            "drop": 2,
+            "spillover": 0,
+            "after": 84,
+            "net": 2
+          },
+          "ftm": {
+            "before": 21,
+            "add": 2,
+            "drop": 1,
+            "spillover": 0,
+            "after": 22,
+            "net": 1
+          },
+          "fta": {
+            "before": 27,
+            "add": 4,
+            "drop": 2,
+            "spillover": 0,
+            "after": 29,
+            "net": 2
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 100.1,
+            "after": 104,
+            "net": 3.9000000000000057,
+            "opponent_before": 120,
+            "opponent_after": 120,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": 5.689893001203927e-15
+          },
+          "reb": {
+            "before": 20.1,
+            "after": 24,
+            "net": 3.8999999999999986,
+            "opponent_before": 28,
+            "opponent_after": 28,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15
+          },
+          "ast": {
+            "before": 20.1,
+            "after": 24,
+            "net": 3.8999999999999986,
+            "opponent_before": 26,
+            "opponent_after": 26,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15
+          },
+          "stl": {
+            "before": 8.05,
+            "after": 10,
+            "net": 1.9499999999999993,
+            "opponent_before": 10,
+            "opponent_after": 10,
+            "lower_is_better": false,
+            "add": 2,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16
+          },
+          "blk": {
+            "before": 8.05,
+            "after": 10,
+            "net": 1.9499999999999993,
+            "opponent_before": 9,
+            "opponent_after": 9,
+            "lower_is_better": false,
+            "add": 2,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16
+          },
+          "threes": {
+            "before": 10.1,
+            "after": 14,
+            "net": 3.9000000000000004,
+            "opponent_before": 12,
+            "opponent_after": 12,
+            "lower_is_better": false,
+            "add": 4,
+            "drop": 0.1,
+            "spillover": 3.608224830031759e-16
+          },
+          "to": {
+            "before": 10.01,
+            "after": 10.02,
+            "net": 0.009999999999999787,
+            "opponent_before": 13,
+            "opponent_after": 13,
+            "lower_is_better": true,
+            "add": 0.02,
+            "drop": 0.01,
+            "spillover": -2.1337098754514727e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 41,
+              "add": 2,
+              "drop": 1,
+              "spillover": 0,
+              "after": 42,
+              "net": 1
+            },
+            "attempts": {
+              "before": 82,
+              "add": 4,
+              "drop": 2,
+              "spillover": 0,
+              "after": 84,
+              "net": 2
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7777777777777778,
+            "after": 0.7586206896551724,
+            "net": -0.019157088122605415,
+            "opponent_before": 0.7931034482758621,
+            "opponent_after": 0.7931034482758621,
+            "lower_is_better": false,
+            "makes": {
+              "before": 21,
+              "add": 2,
+              "drop": 1,
+              "spillover": 0,
+              "after": 22,
+              "net": 1
+            },
+            "attempts": {
+              "before": 27,
+              "add": 4,
+              "drop": 2,
+              "spillover": 0,
+              "after": 29,
+              "net": 2
+            },
+            "percentage_points": -1.9157088122605415,
+            "additive": false
+          }
+        }
+      },
+      "added_starts": [
+        {
+          "date": "2026-11-06",
+          "player_id": "100",
+          "name": "Sam Merrill"
+        },
+        {
+          "date": "2026-11-07",
+          "player_id": "100",
+          "name": "Sam Merrill"
+        }
+      ],
+      "lost_starts": [
+        {
+          "date": "2026-11-07",
+          "player_id": "1",
+          "name": "Jalen Green"
+        }
+      ]
+    },
     "selected_categories": [
       "blk",
       "pts",

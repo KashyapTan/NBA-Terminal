@@ -986,6 +986,7 @@
           }
         ],
         "acquisitions": 1,
+        "extra_acquisitions": 1,
         "focus_score": 0.3373058271689019,
         "season_cost": 0,
         "incremental_focus_gain": 0.2550435632920435,
@@ -2999,6 +3000,7 @@
           }
         ],
         "acquisitions": 1,
+        "extra_acquisitions": 1,
         "focus_score": 0.3373058271689019,
         "season_cost": 0,
         "incremental_focus_gain": 0.2550435632920435,
@@ -9607,6 +9609,7 @@
             }
           ],
           "acquisitions": 1,
+          "extra_acquisitions": 1,
           "focus_score": 0.3373058271689019,
           "season_cost": 0,
           "incremental_focus_gain": 0.2550435632920435,
@@ -10681,6 +10684,255 @@
         "stream_roster_id": "1"
       }
     ],
+    "realized_impact": {
+      "arithmetic": {
+        "primitives": {
+          "pts": {
+            "before": 100.1,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": 5.689893001203927e-15,
+            "after": 107,
+            "net": 6.900000000000006
+          },
+          "reb": {
+            "before": 20.1,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15,
+            "after": 27,
+            "net": 6.899999999999999
+          },
+          "ast": {
+            "before": 20.1,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15,
+            "after": 27,
+            "net": 6.899999999999999
+          },
+          "stl": {
+            "before": 8.05,
+            "add": 3.5,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16,
+            "after": 11.5,
+            "net": 3.4499999999999993
+          },
+          "blk": {
+            "before": 8.05,
+            "add": 3.5,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16,
+            "after": 11.5,
+            "net": 3.4499999999999993
+          },
+          "threes": {
+            "before": 10.1,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": 3.608224830031759e-16,
+            "after": 17,
+            "net": 6.9
+          },
+          "to": {
+            "before": 10.01,
+            "add": 0.03,
+            "drop": 0.01,
+            "spillover": -4.2500725161431774e-16,
+            "after": 10.03,
+            "net": 0.019999999999999574
+          },
+          "fgm": {
+            "before": 41,
+            "add": 3,
+            "drop": 1,
+            "spillover": 0,
+            "after": 43,
+            "net": 2
+          },
+          "fga": {
+            "before": 82,
+            "add": 6,
+            "drop": 2,
+            "spillover": 0,
+            "after": 86,
+            "net": 4
+          },
+          "ftm": {
+            "before": 21,
+            "add": 3,
+            "drop": 1,
+            "spillover": 0,
+            "after": 23,
+            "net": 2
+          },
+          "fta": {
+            "before": 27,
+            "add": 6,
+            "drop": 2,
+            "spillover": 0,
+            "after": 31,
+            "net": 4
+          }
+        },
+        "categories": {
+          "pts": {
+            "before": 100.1,
+            "after": 107,
+            "net": 6.900000000000006,
+            "opponent_before": 120,
+            "opponent_after": 120,
+            "lower_is_better": false,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": 5.689893001203927e-15
+          },
+          "reb": {
+            "before": 20.1,
+            "after": 27,
+            "net": 6.899999999999999,
+            "opponent_before": 28,
+            "opponent_after": 28,
+            "lower_is_better": false,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15
+          },
+          "ast": {
+            "before": 20.1,
+            "after": 27,
+            "net": 6.899999999999999,
+            "opponent_before": 26,
+            "opponent_after": 26,
+            "lower_is_better": false,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": -1.4155343563970746e-15
+          },
+          "stl": {
+            "before": 8.05,
+            "after": 11.5,
+            "net": 3.4499999999999993,
+            "opponent_before": 10,
+            "opponent_after": 10,
+            "lower_is_better": false,
+            "add": 3.5,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16
+          },
+          "blk": {
+            "before": 8.05,
+            "after": 11.5,
+            "net": 3.4499999999999993,
+            "opponent_before": 9,
+            "opponent_after": 9,
+            "lower_is_better": false,
+            "add": 3.5,
+            "drop": 0.05,
+            "spillover": -7.077671781985373e-16
+          },
+          "threes": {
+            "before": 10.1,
+            "after": 17,
+            "net": 6.9,
+            "opponent_before": 12,
+            "opponent_after": 12,
+            "lower_is_better": false,
+            "add": 7,
+            "drop": 0.1,
+            "spillover": 3.608224830031759e-16
+          },
+          "to": {
+            "before": 10.01,
+            "after": 10.03,
+            "net": 0.019999999999999574,
+            "opponent_before": 13,
+            "opponent_after": 13,
+            "lower_is_better": true,
+            "add": 0.03,
+            "drop": 0.01,
+            "spillover": -4.2500725161431774e-16
+          },
+          "fg_pct": {
+            "before": 0.5,
+            "after": 0.5,
+            "net": 0,
+            "opponent_before": 0.5,
+            "opponent_after": 0.5,
+            "lower_is_better": false,
+            "makes": {
+              "before": 41,
+              "add": 3,
+              "drop": 1,
+              "spillover": 0,
+              "after": 43,
+              "net": 2
+            },
+            "attempts": {
+              "before": 82,
+              "add": 6,
+              "drop": 2,
+              "spillover": 0,
+              "after": 86,
+              "net": 4
+            },
+            "percentage_points": 0,
+            "additive": false
+          },
+          "ft_pct": {
+            "before": 0.7777777777777778,
+            "after": 0.7419354838709677,
+            "net": -0.03584229390681004,
+            "opponent_before": 0.7931034482758621,
+            "opponent_after": 0.7931034482758621,
+            "lower_is_better": false,
+            "makes": {
+              "before": 21,
+              "add": 3,
+              "drop": 1,
+              "spillover": 0,
+              "after": 23,
+              "net": 2
+            },
+            "attempts": {
+              "before": 27,
+              "add": 6,
+              "drop": 2,
+              "spillover": 0,
+              "after": 31,
+              "net": 4
+            },
+            "percentage_points": -3.584229390681004,
+            "additive": false
+          }
+        }
+      },
+      "added_starts": [
+        {
+          "date": "2026-11-06",
+          "player_id": "100",
+          "name": "Sam Merrill"
+        },
+        {
+          "date": "2026-11-07",
+          "player_id": "100",
+          "name": "Sam Merrill"
+        },
+        {
+          "date": "2026-11-08",
+          "player_id": "101",
+          "name": "Derrick Jones Jr."
+        }
+      ],
+      "lost_starts": [
+        {
+          "date": "2026-11-07",
+          "player_id": "1",
+          "name": "Jalen Green"
+        }
+      ]
+    },
     "selected_categories": [
       "blk",
       "pts",
@@ -10987,6 +11239,7 @@
         }
       ],
       "acquisitions": 1,
+      "extra_acquisitions": 1,
       "focus_score": 0.33082755881938053,
       "season_cost": 0,
       "incremental_focus_gain": 0.26152183164156484,
@@ -11133,6 +11386,7 @@
         }
       ],
       "acquisitions": 1,
+      "extra_acquisitions": 1,
       "focus_score": 0.33082755881938053,
       "season_cost": 0,
       "incremental_focus_gain": 0.26152183164156484,
@@ -11279,6 +11533,7 @@
         }
       ],
       "acquisitions": 1,
+      "extra_acquisitions": 1,
       "focus_score": 0.3373058271689019,
       "season_cost": 0,
       "incremental_focus_gain": 0.2550435632920435,
@@ -11425,6 +11680,7 @@
         }
       ],
       "acquisitions": 1,
+      "extra_acquisitions": 1,
       "focus_score": 0.39694889985905374,
       "season_cost": 0,
       "incremental_focus_gain": 0.19540049060189163,

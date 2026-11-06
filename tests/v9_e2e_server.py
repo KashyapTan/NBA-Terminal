@@ -44,6 +44,11 @@ def payload():
     if STATE["mode"] == "locked":
         league["teams"][0]["isTransactionLocked"] = True
     for entry in raw["pool"]["players"]:
+        if STATE["mode"] == "harmful":
+            if espn.player_body(entry)["id"] == 100:
+                entry["status"] = "WAIVERS"
+            else:
+                espn.player_body(entry)["proTeamId"] = 13
         if espn.player_body(entry)["id"] == 101:
             if STATE["mode"] == "waiver":
                 entry["status"] = "WAIVERS"
@@ -112,7 +117,11 @@ def rate_rows():
             )
         )
         if STATE["mode"] == "harmful" and p["id"] == 100:
-            rows[-1].update(TOV=50, FGM=0, FGA=30, FTM=0, FTA=30)
+            rows[-1].update(PTS=0, TOV=50, FGM=0, FGA=30, FTM=0, FTA=30)
+        if STATE["mode"] == "harmful" and p["id"] == 1:
+            rows[-1].update(PTS=12)
+        if STATE["mode"] == "harmful" and p["id"] == 101:
+            rows[-1].update(PTS=0, REB=10, AST=10, STL=5, BLK=5, TOV=5, FGM=0, FGA=10, FTM=0, FTA=10)
     return rows
 
 

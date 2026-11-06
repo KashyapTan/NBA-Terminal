@@ -155,6 +155,16 @@ test("dated direct shortcuts and useful streams through actual provider pipeline
       expect(m.realized!.dates).toEqual(dates);
       expect(m.realized!.starts).toBe(dates.length);
     }
+    const summary = page.getByRole("region", { name: "Final plan get lose and net" });
+    await expect(summary).toBeVisible();
+    await expect(summary).toContainText("Get");
+    await expect(summary).toContainText("Lose");
+    for (const { key } of LEAGUE_CATEGORIES) {
+      const row = plan.recommended_plan!.realized_impact!.arithmetic.categories[key];
+      const target = summary.locator(`[data-category="${key}"]`);
+      await expect(target).toContainText("Net");
+      expect(row.net).toBeCloseTo(plan.recommended_plan!.arithmetic.categories[key].net!, 8);
+    }
     save(`${info.project.name}-${interim}-plan`, plan);
     await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
     await page.screenshot({
@@ -197,6 +207,28 @@ test("provider ownership, waiver status, quota and immutable locks survive short
       expect(plan.recommended_plan!.arithmetic.categories.ft_pct.net).toBeLessThan(0);
     }
     expect(new Set(moves.map((m) => m.add_id)).size).toBe(moves.length);
+    if (mode === "harmful") {
+      const summary = page.getByRole("region", { name: "Final plan get lose and net" });
+      await expect(summary).toBeVisible();
+      for (const key of ["pts", "fg_pct", "ft_pct", "to"]) {
+        await expect(summary.locator(`[data-category="${key}"] .ww-loss`)).toContainText("Loss");
+      }
+      await expect(page.locator(".ww-analysis")).not.toHaveAttribute("open");
+      await page.screenshot({
+        path: `${evidence}/${info.project.name}-harmful-desktop.png`,
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(summary.locator('[data-category="pts"]')).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await page.screenshot({
+        path: `${evidence}/${info.project.name}-harmful-mobile.png`,
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+    }
     save(`${info.project.name}-${mode}-plan`, plan);
     await page.context().clearCookies();
     await page.evaluate(() => localStorage.clear());

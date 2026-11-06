@@ -334,6 +334,7 @@ export interface PlanArithmetic {
 export interface PickupRecommendation {
   direct_comparison?: {
     acquisitions: number;
+    extra_acquisitions: number;
     focus_score: number;
     season_cost: number;
     incremental_focus_gain: number;
@@ -419,7 +420,13 @@ export interface PickupRecommendation {
   >;
 }
 /** Scores are dimensionless 0..1; the UI displays them on a heuristic 0..100 scale. */
+export interface RealizedPlanImpact {
+  arithmetic: PlanArithmetic;
+  added_starts: { date: string; player_id: string; name: string }[];
+  lost_starts: { date: string; player_id: string; name: string }[];
+}
 export interface RecommendedPlan {
+  realized_impact?: RealizedPlanImpact;
   moves: PickupRecommendation[];
   score_before: number;
   score_after: number;
