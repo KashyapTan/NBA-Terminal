@@ -332,6 +332,22 @@ export interface PlanArithmetic {
   categories: Record<Category, CategoryArithmetic>;
 }
 export interface PickupRecommendation {
+  direct_comparison?: {
+    acquisitions: number;
+    focus_score: number;
+    season_cost: number;
+    incremental_focus_gain: number;
+    actions: { date: string; add_id: string; drop_id: string }[];
+    arithmetic: Record<Category, CategoryArithmetic>;
+  };
+  realized?: {
+    dates: string[];
+    until: string | null;
+    starts: number;
+    primitives: Record<string, number>;
+  };
+  chain_reason?: string;
+  arithmetic_basis?: string;
   schedule_explanations?: { add: ScheduleExplanation; drop: ScheduleExplanation };
   pickup_sample?: PickupSample;
   drop_sample?: PickupSample;

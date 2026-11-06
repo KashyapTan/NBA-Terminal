@@ -26,7 +26,9 @@ export function WaiverArithmetic({
 }) {
   return (
     <div className="move-arithmetic">
-      <p>{move.rationale}</p>
+      <p>
+        {move.arithmetic_basis} {move.rationale}
+      </p>
       <p>
         Selected per-game rate × usable starts. Drop loss counts starts lost after the effective
         date; other lineup changes include displaced and recovered roster starts. Banked actuals
@@ -52,6 +54,35 @@ export function WaiverArithmetic({
             </>
           )}
         </p>
+      )}
+      {move.direct_comparison && (
+        <section aria-label="Legal direct shortcut comparison">
+          <p>
+            {move.chain_reason} Compared over the same entire matchup, with both rosters’ banked
+            actuals, frozen focus and legal daily lineups. Extra adds require more than .005 net
+            focus score or .01 in a selected category edge. Soft season costs remain included.
+          </p>
+          <p>
+            Direct alternative:{" "}
+            {move.direct_comparison.actions
+              .map((a) => `${a.date}: ${a.drop_id} → ${a.add_id}`)
+              .join("; ")}{" "}
+            · {move.direct_comparison.acquisitions} acquisitions.
+          </p>
+          <div className="nine-category-net">
+            {LEAGUE_CATEGORIES.map(({ key, label }) => (
+              <span key={key}>
+                {label}
+                {key === "to" ? " ↓" : ""}
+                <b>{signedChange(move.direct_comparison?.arithmetic[key].net, key)}</b>
+              </span>
+            ))}
+          </div>
+          <p>
+            Values above: full plan minus direct alternative; shooting is weighted team percentage
+            points.
+          </p>
+        </section>
       )}
       <CategoryNetSummary arithmetic={move.arithmetic} impacts={move.category_impacts} />
       <p className="arithmetic-scroll-hint">

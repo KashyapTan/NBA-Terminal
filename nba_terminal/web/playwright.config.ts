@@ -10,6 +10,7 @@ export default defineConfig({
     "v6-integration.spec.ts",
     "v7-integration.spec.ts",
     "v8-integration.spec.ts",
+    "v9-integration.spec.ts",
     "v5-integration.spec.ts",
     "analytics-tools.spec.ts",
     "week-reset.spec.ts",

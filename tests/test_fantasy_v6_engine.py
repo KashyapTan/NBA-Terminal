@@ -151,9 +151,11 @@ def test_depth_reservation_prevents_large_first_layer_starving_continuations():
     result = plan_waivers(data)
     assert len(result["actions"]) == 2
     assert result["search"]["depth_reached"] == 2
-    assert result["search"]["layer_evaluations"][0] == 6
+    # V9 reserves one third of the same total for legal shortcut verification.
+    assert result["search"]["layer_evaluations"][0] == 4
     assert result["search"]["evaluations"] <= 12
-    assert result["search"]["stop_reason"] == "evaluation_limit"
+    assert result["search"]["stop_reason"] in {"evaluation_limit", "layer_limit"}
+    assert result["search"]["beam_budget_reached"]
     assert not result["search"]["first_layer_complete"]
 
 

@@ -669,3 +669,12 @@
     gap: 12px;
   }
 }
+
+@media (max-width: 600px) {
+  .ww-benefits[aria-label="Final realized pickup contribution"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ww-benefits[aria-label="Final realized pickup contribution"] .ww-benefit {
+    grid-template-columns: 1fr;
+  }
+}

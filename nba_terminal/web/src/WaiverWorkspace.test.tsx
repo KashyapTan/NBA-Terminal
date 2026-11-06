@@ -185,3 +185,33 @@ it("provides a concrete reconnect destination for definitive auth errors", () =>
     "/fantasy?fantasyTab=dashboard",
   );
 });
+
+it("shows final realized tenure instead of full-horizon prefix add/drop/net", () => {
+  const props = fixture();
+  props.moves[0].realized = {
+    dates: ["2026-11-03"],
+    until: "2026-11-04",
+    starts: 1,
+    primitives: {
+      pts: 4,
+      reb: 2,
+      ast: 3,
+      stl: 1,
+      blk: 0,
+      threes: 1,
+      to: 2,
+      fgm: 1,
+      fga: 3,
+      ftm: 1,
+      fta: 2,
+    },
+  };
+  props.moves[0].chain_reason = "1 extra acquisition vs direct: +2 selected-five heuristic points.";
+  const { container } = render(<WaiverWorkspace {...props} />);
+  const first = container.querySelector(".ww-move")!;
+  expect(first).toHaveTextContent("Final plan: 1 usable starts · 2026-11-03 · drop on 2026-11-04");
+  expect(first).toHaveTextContent("extra acquisition");
+  expect(first).toHaveTextContent("Produced 1/3");
+  expect(first).not.toHaveTextContent("Add 20Drop 10Net +7Gain");
+  expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
+});

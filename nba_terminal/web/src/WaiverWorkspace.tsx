@@ -338,57 +338,95 @@ function CompactMove({
           <b>{move.date}</b>
         </div>
       </div>
-      <div className="ww-schedule">
-        <span>
-          <b className="ww-add-label">ADD</b> {number(scheduleCounts?.addRemainingGames)} games left
-          · {number(move.add_starts)} usable starts
-        </span>
-        <span>
-          <b className="ww-drop-label">DROP</b> {number(scheduleCounts?.dropRemainingGames)} games
-          left · {number(move.drop_starts)} usable starts
-        </span>
-        <InfoTooltip label={`Games and usable starts for move ${index + 1}`}>
-          Games left counts remaining scheduled games. Usable starts counts games this plan can put
-          in your lineup, after the move date, game locks, availability and slot limits. Drop starts
-          are the lineup starts lost by this move. Unknown counts show ?.
-        </InfoTooltip>
-      </div>
+      {move.realized && (
+        <p className="ww-sample">
+          Final plan: {move.realized.starts} usable starts ·{" "}
+          {move.realized.dates.join(", ") || "none"}
+          {move.realized.until
+            ? ` · drop on ${move.realized.until}`
+            : " · held through matchup end"}
+          .{move.chain_reason && <> {move.chain_reason}</>}
+          <InfoTooltip label={`Final contribution for move ${index + 1}`}>
+            Heuristic focus points are not win probability. These are the pickup’s actual selected
+            starts in the complete dated plan. Previously banked production stays fixed. Step-local
+            comparisons are in Full analysis & data.
+          </InfoTooltip>
+        </p>
+      )}
+      {!move.realized && (
+        <div className="ww-schedule">
+          <span>
+            <b className="ww-add-label">ADD</b> {number(scheduleCounts?.addRemainingGames)} games
+            left · {number(move.add_starts)} usable starts
+          </span>
+          <span>
+            <b className="ww-drop-label">DROP</b> {number(scheduleCounts?.dropRemainingGames)} games
+            left · {number(move.drop_starts)} usable starts
+          </span>
+          <InfoTooltip label={`Games and usable starts for move ${index + 1}`}>
+            Games left counts remaining scheduled games. Usable starts counts games this plan can
+            put in your lineup, after the move date, game locks, availability and slot limits. Drop
+            starts are the lineup starts lost by this move. Unknown counts show ?.
+          </InfoTooltip>
+        </div>
+      )}
       <p className="ww-sample">
         Current sample · {number(sample?.minutes)} MPG · {number(sample?.games)} GP /{" "}
         {number(sample?.teamGames)} team games
       </p>
-      <div className="ww-benefits" aria-label="Remaining matchup add drop and net">
-        {categories.map(({ key, label }) => {
-          const row = move.arithmetic?.categories[key];
-          const calc = move.calculation?.[key];
-          const net = row?.net ?? calc?.net_total;
-          const gain = net != null && (key === "to" ? net < 0 : net > 0);
-          const loss = net != null && (key === "to" ? net > 0 : net < 0);
-          const shooting = key.endsWith("pct");
-          const shootingPart = (part: "add" | "drop") =>
-            row?.makes && row.attempts
-              ? `${number(row.makes[part])}/${number(row.attempts[part])}`
-              : "?";
-          return (
+      {move.realized ? (
+        <div className="ww-benefits" aria-label="Final realized pickup contribution">
+          {LEAGUE_CATEGORIES.map(({ key, label }) => (
             <div key={key} className="ww-benefit">
               <b>
                 {label}
                 {key === "to" ? " ↓" : ""}
               </b>
               <span>
-                Add {shooting ? shootingPart("add") : number(row?.add ?? calc?.added_total)}
+                Produced{" "}
+                {key === "fg_pct"
+                  ? `${number(move.realized?.primitives.fgm)}/${number(move.realized?.primitives.fga)}`
+                  : key === "ft_pct"
+                    ? `${number(move.realized?.primitives.ftm)}/${number(move.realized?.primitives.fta)}`
+                    : number(move.realized?.primitives[key])}
               </span>
-              <span>
-                Drop {shooting ? shootingPart("drop") : number(row?.drop ?? calc?.lost_total)}
-              </span>
-              <strong className={gain ? "ww-gain" : loss ? "ww-loss" : ""}>
-                Net {signedChange(net, key)}
-                <small>{gain ? "Gain" : loss ? "Loss" : net === 0 ? "Even" : "Unknown"}</small>
-              </strong>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ww-benefits" aria-label="Remaining matchup add drop and net">
+          {categories.map(({ key, label }) => {
+            const row = move.arithmetic?.categories[key];
+            const calc = move.calculation?.[key];
+            const net = row?.net ?? calc?.net_total;
+            const gain = net != null && (key === "to" ? net < 0 : net > 0);
+            const loss = net != null && (key === "to" ? net > 0 : net < 0);
+            const shooting = key.endsWith("pct");
+            const shootingPart = (part: "add" | "drop") =>
+              row?.makes && row.attempts
+                ? `${number(row.makes[part])}/${number(row.attempts[part])}`
+                : "?";
+            return (
+              <div key={key} className="ww-benefit">
+                <b>
+                  {label}
+                  {key === "to" ? " ↓" : ""}
+                </b>
+                <span>
+                  Add {shooting ? shootingPart("add") : number(row?.add ?? calc?.added_total)}
+                </span>
+                <span>
+                  Drop {shooting ? shootingPart("drop") : number(row?.drop ?? calc?.lost_total)}
+                </span>
+                <strong className={gain ? "ww-gain" : loss ? "ww-loss" : ""}>
+                  Net {signedChange(net, key)}
+                  <small>{gain ? "Gain" : loss ? "Loss" : net === 0 ? "Even" : "Unknown"}</small>
+                </strong>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </li>
   );
 }
