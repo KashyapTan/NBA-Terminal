@@ -31,6 +31,7 @@ export interface QualifiedSample {
   teamGames: number | null;
 }
 export type WorkspaceStop =
+  | "category_outcome_guard"
   | "unknown_budget"
   | "no_remaining_dates"
   | "budget_exhausted"
@@ -67,6 +68,8 @@ export interface WaiverWorkspaceProps {
   technicalControls?: ReactNode;
 }
 const STOP_LABELS: Record<WorkspaceStop, string> = {
+  category_outcome_guard:
+    "Keep current roster · no qualifying plan found without worsening projected category results",
   unknown_budget: "Available adds need verification",
   no_remaining_dates: "No remaining matchup dates",
   budget_exhausted: "No adds left in this plan",
@@ -246,7 +249,9 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
           <h3>
             {props.moves.length
               ? `${props.moves.length} ${props.moves.length === 1 ? "move" : "moves"} to consider`
-              : "No moves yet"}
+              : props.stop === "category_outcome_guard"
+                ? "No qualifying moves"
+                : "No moves yet"}
           </h3>
           <span>
             Remaining matchup{" "}
@@ -343,7 +348,7 @@ function CompactMove({
           </div>
         </div>
         <div className="ww-timing">
-          <b>{move.date}</b>
+          <b>Effective {move.date}</b>
         </div>
       </div>
       {move.realized && (

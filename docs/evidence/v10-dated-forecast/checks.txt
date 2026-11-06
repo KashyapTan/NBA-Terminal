@@ -1,0 +1,22 @@
+Accepted revision2; isolated branch mx/NBA_WAIVER_V9_CHAIN fast-forwarded from066982d to exact current-main cebd6205925961d93faa9d068a45ac6399efbefc before edits. No primary mutation. Final HEAD and NEW scoped PR are in typed delivery evidence.
+
+passed: uv run ruff check .
+passed: uv run coverage run -m pytest —533 tests, one existing NBA endpoint deprecation warning.
+passed: uv run coverage report —97% combined, game_center96%, webapp100%, both above93% requirements.
+passed: bun run lint; bun run format:check; bun run typecheck.
+passed: bun run coverage —151 tests in25 files;94.31% lines.
+passed: bun run build —TypeScript/Vite production bundle.
+passed: E2E_PORT=4219 CI=true bun run e2e —17 browser tests.
+passed: E2E_PORT=4219 FANTASY_E2E_PORT=8219 EVIDENCE_DIR=<task-home>/data/revision2/v7 bunx playwright test --config playwright.v7.config.ts —8 tests, both hosts.
+passed: E2E_PORT=4219 FANTASY_E2E_PORT=8219 EVIDENCE_DIR=<task-home>/data/revision2/v8 bunx playwright test --config playwright.v8.config.ts —2 tests, both hosts.
+passed: FANTASY_E2E_PORT=8219 EVIDENCE_DIR=<task-home>/data/revision2/week bunx playwright test --config playwright.week-reset.config.ts —1 production HTTP test.
+passed: EVIDENCE_DIR=<task-home>/data/revision2/v9 V9_RAW_EVIDENCE_DIR=<task-home>/data/revision2/v9-raw bunx playwright test --config playwright.v9.config.ts —4 tests, both hosts, useful streaming retained.
+passed: V10_RAW_EVIDENCE_DIR=<task-home>/data/revision2/raw bunx playwright test --config playwright.v10.config.ts —6 tests, both hosts; screenshot all9 + today/Sunday counterfactuals; valid five-win plan; before/after executed ownership/quota; stable refresh; live/ET banking; exact end totals after executing the hypothetical plan; current/hypothetical daily UI dates.
+passed: Old exact-base optimizer source loaded from git object into private task evidence with current controlled fixture —reproduces Sunday Jones-for-Merrill,4–5→3–6 and TO73.7→74.8; current code recommends zero.
+passed: git diff --check; desktop/mobile evidence visually inspected.
+
+All HTTP suites ran locally sequentially on owned4219/8219. Current-HEAD remote CI is separate, recorded in final typed evidence. Raw API responses are outside tracked source with exact hashes/byte lengths in raw-artifacts.json. <task-home> expands to /Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V9_CHAIN.
+
+Initial test findings preserved in self-review: raw win-count-only ranking selected3–4–2 over2–0–7; production policy changed to rank five-win state and net result first rather than weakening V7 schedule assertions. Provider test initially reused opponent IDs across14 teams and reversed steal/block ESPN IDs; corrected the fixture to a valid unique2-team league and production stat mapping. No provider normalization guard relaxed. Constructed shooting denominators are test inputs, not private observations.
+
+No private reproduction, credential change, live fantasy write, server5173 change or merge. Bounded/heuristic limitations remain explicit. Generated unrelated old browser screenshots restored to exact base bytes; owned previews cleaned after tests.

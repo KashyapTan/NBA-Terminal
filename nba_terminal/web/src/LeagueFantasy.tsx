@@ -569,27 +569,29 @@ function WaiverStrategy({
         : "Adds unverified";
   const search = plan?.search;
   const stop: WorkspaceStop | undefined =
-    plan?.evaluation_state === "no_qualified_pickups"
-      ? "empty_qualified_pool"
-      : plan?.evaluation_state === "required_inputs_unknown" || plan?.status === "unavailable"
-        ? "required_data_missing"
-        : search?.selected_plan_stop_reason === "acquisition_budget_used" ||
-            plan?.evaluation_state === "known_zero_acquisitions"
-          ? "budget_exhausted"
-          : search?.stop_reason === "unknown_budget" ||
-              plan?.evaluation_state === "conditional_opportunities"
-            ? "unknown_budget"
-            : search?.stop_reason === "no_remaining_dates"
-              ? "no_remaining_dates"
-              : search?.evaluation_limit_reached ||
-                  search?.layer_pruned ||
-                  search?.beam_pruned ||
-                  search?.candidate_truncated ||
-                  plan?.evaluation_state === "search_incomplete"
-                ? "search_limit"
-                : plan
-                  ? "no_positive_continuation"
-                  : undefined;
+    plan?.status === "ready" && !moves.length && (plan.outcome_policy?.rejected_plans ?? 0) > 0
+      ? "category_outcome_guard"
+      : plan?.evaluation_state === "no_qualified_pickups"
+        ? "empty_qualified_pool"
+        : plan?.evaluation_state === "required_inputs_unknown" || plan?.status === "unavailable"
+          ? "required_data_missing"
+          : search?.selected_plan_stop_reason === "acquisition_budget_used" ||
+              plan?.evaluation_state === "known_zero_acquisitions"
+            ? "budget_exhausted"
+            : search?.stop_reason === "unknown_budget" ||
+                plan?.evaluation_state === "conditional_opportunities"
+              ? "unknown_budget"
+              : search?.stop_reason === "no_remaining_dates"
+                ? "no_remaining_dates"
+                : search?.evaluation_limit_reached ||
+                    search?.layer_pruned ||
+                    search?.beam_pruned ||
+                    search?.candidate_truncated ||
+                    plan?.evaluation_state === "search_incomplete"
+                  ? "search_limit"
+                  : plan
+                    ? "no_positive_continuation"
+                    : undefined;
   const problem =
     !onPlan ||
     leagueError ||
@@ -778,6 +780,7 @@ function WaiverStrategy({
             {JSON.stringify(
               {
                 search: plan?.search,
+                outcome_policy: plan?.outcome_policy,
                 filters: plan?.pickup_filter_summary,
                 market: snapshot.market_coverage,
                 acquisition_budget: plan?.acquisition_budget,

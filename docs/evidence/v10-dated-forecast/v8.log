@@ -1,0 +1,14 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/36d61d73a7a81a5afa6f8a81214350d086ff0f47c633777f95846555fce9b795/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:1925) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:1941) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v8-integration.spec.ts:135:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh (4.9s)
+(node:2504) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [production-build] › e2e/v8-integration.spec.ts:135:1 › real HTTP daily selections reconcile and stay focus-aware across desktop/mobile and refresh (4.5s)
+
+  2 passed (10.5s)
