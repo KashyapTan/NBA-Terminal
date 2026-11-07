@@ -1,0 +1,18 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/36d61d73a7a81a5afa6f8a81214350d086ff0f47c633777f95846555fce9b795/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:24269) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:24270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v10-integration.spec.ts:110:1 › Sunday retains interim starts but rejects screenshot four-to-three category result (1.5s)
+  ✓  2 [vite-proxy] › e2e/v10-integration.spec.ts:177:1 › executed moves refresh authoritative ownership quota and banking without replaying old plan (3.2s)
+  ✓  3 [vite-proxy] › e2e/v10-integration.spec.ts:261:1 › ET scoring boundary and started game stay banked with no future duplicate (2.1s)
+(node:25039) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [production-build] › e2e/v10-integration.spec.ts:110:1 › Sunday retains interim starts but rejects screenshot four-to-three category result (1.3s)
+  ✓  5 [production-build] › e2e/v10-integration.spec.ts:177:1 › executed moves refresh authoritative ownership quota and banking without replaying old plan (2.8s)
+  ✓  6 [production-build] › e2e/v10-integration.spec.ts:261:1 › ET scoring boundary and started game stay banked with no future duplicate (2.0s)
+
+  6 passed (14.1s)

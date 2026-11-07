@@ -97,3 +97,9 @@ jobs:
         env:
           CI: "true"
         run: bunx playwright test --config playwright.v9.config.ts
+
+      - name: Dated ownership and projected category outcome integration
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bunx playwright test --config playwright.v10.config.ts

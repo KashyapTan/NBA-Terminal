@@ -807,6 +807,7 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         "protection_policy",
         "recommended_plan",
         "shortcut_comparisons",
+        "outcome_policy",
         "primary_recommendation_kind",
         "projection_metadata",
         "score_basis",

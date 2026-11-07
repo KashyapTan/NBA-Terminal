@@ -263,3 +263,13 @@ it("keeps sequence get, lost/displaced production and harmful net visible with a
   );
   expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
 });
+
+it("explains a no-move category-outcome decision without expanding analysis", () => {
+  const props = fixture();
+  props.moves = [];
+  props.stop = "category_outcome_guard";
+  const { container } = render(<WaiverWorkspace {...props} />);
+  expect(screen.getByText("No qualifying moves")).toBeVisible();
+  expect(screen.getByText(/Keep current roster/)).toBeVisible();
+  expect(container.querySelector(".ww-analysis")).not.toHaveAttribute("open");
+});

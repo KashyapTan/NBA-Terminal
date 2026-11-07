@@ -110,6 +110,8 @@ def _assessment(ours, theirs, deviations):
         margin = (
             None if left[key] is None or right[key] is None else (left[key] - right[key]) * (-1 if key == "to" else 1)
         )
+        if margin is not None and abs(margin) < 1e-9:
+            margin = 0.0  # Same tie tolerance as the browser W/L/T comparator.
         probability = None
         if margin is not None and deviations is not None:
             probability = min(1 - 1e-6, max(1e-6, (1 + erf(margin / (deviations[key] * sqrt(2)))) / 2))
@@ -698,6 +700,20 @@ def _focus(forecast, selected):
     return sum(_edges(forecast)[k] for k in selected) / 5
 
 
+def _outcome(forecast, keys=CATEGORIES):
+    states = [forecast["categories"][k]["state"] for k in keys]
+    return {"wins": states.count("winning"), "losses": states.count("losing"), "ties": states.count("tied")}
+
+
+def _preserves_outcome(before, after, selected):
+    return all(
+        _outcome(after, keys)["wins"] >= _outcome(before, keys)["wins"]
+        and (_outcome(after, keys)["wins"] - _outcome(after, keys)["losses"])
+        >= (_outcome(before, keys)["wins"] - _outcome(before, keys)["losses"])
+        for keys in (CATEGORIES, selected)
+    )
+
+
 def _guards(baseline, forecast, selected, aggressive=False):
     if aggressive:
         return True
@@ -924,8 +940,10 @@ def _equivalent_or_better(shorter, longer, selected):
     left, right = shorter[0], longer[0]
     short_score = _focus(left, selected) - sum(a["season_cost"] for a in shorter[1])
     long_score = _focus(right, selected) - sum(a["season_cost"] for a in longer[1])
-    return short_score >= long_score - 0.005 - 1e-12 and all(
-        _edges(left)[k] >= _edges(right)[k] - 0.01 - 1e-12 for k in selected
+    return (
+        _preserves_outcome(right, left, selected)
+        and short_score >= long_score - 0.005 - 1e-12
+        and all(_edges(left)[k] >= _edges(right)[k] - 0.01 - 1e-12 for k in selected)
     )
 
 
@@ -1099,7 +1117,15 @@ def plan_waivers(payload):
     def rank(state, selected=None):
         eligible = [selected] if selected else subsets
         score = max(set_scores(state)[s] for s in eligible)
+        focus = selected or subsets[0]
+        all_outcome, focus_outcome = _outcome(state[0]), _outcome(state[0], focus)
         return (
+            -int(all_outcome["wins"] >= 5),
+            -(all_outcome["wins"] - all_outcome["losses"]),
+            -all_outcome["wins"],
+            -focus_outcome["wins"],
+            all_outcome["losses"],
+            focus_outcome["losses"],
             -score,
             len(state[1]),
             sum(a["season_cost"] for a in state[1]),
@@ -1217,6 +1243,7 @@ def plan_waivers(payload):
         beam = expanded[: context["beam"]]
     # Rank the explored states under the frozen focus and its prefix guards.
     choices = []
+    outcome_rejected = []
     library_by_key = {state_key(state): state for state in library}
     for state in library:
         set_scores(state)
@@ -1227,6 +1254,9 @@ def plan_waivers(payload):
             if not _guards(baseline, state[0], selected, aggressive) or any(
                 not _guards(baseline, s[0], selected, aggressive) for s in prefixes
             ):
+                continue
+            if not _preserves_outcome(baseline, state[0], selected):
+                outcome_rejected.append(state)
                 continue
             if state[1] and not _material(baseline, state[0], selected, cost):
                 continue
@@ -1291,9 +1321,13 @@ def plan_waivers(payload):
             if candidate is None:
                 continue
             comparisons.append(candidate)
-            if _equivalent_or_better(candidate, best, selected) and (
-                not candidate[1]
-                or _material(baseline, candidate[0], selected, sum(a["season_cost"] for a in candidate[1]))
+            if (
+                _preserves_outcome(baseline, candidate[0], selected)
+                and _equivalent_or_better(candidate, best, selected)
+                and (
+                    not candidate[1]
+                    or _material(baseline, candidate[0], selected, sum(a["season_cost"] for a in candidate[1]))
+                )
             ):
                 alternatives.append(candidate)
         if not shortcut_complete:
@@ -1477,6 +1511,7 @@ def plan_waivers(payload):
         if (
             len(state[1]) == 1
             and _guards(baseline, state[0], selected, aggressive)
+            and _preserves_outcome(baseline, state[0], selected)
             and _material(baseline, state[0], selected, state[1][0]["season_cost"])
         ):
             alternatives.append(_describe_move(context, baseline, state[0], state[1][0], selected))
@@ -1487,6 +1522,30 @@ def plan_waivers(payload):
     alternatives = list(unique.values())
     for index, alternative in enumerate(alternatives, 1):
         alternative.update(rank=index, conditional_on_one_add=context["budget"] is None)
+    outcome_policy = {
+        "basis": (
+            "Five outright wins, net category result (wins minus losses), "
+            "outright/selected wins, then material focus gain"
+        ),
+        "guard": (
+            "Final plan cannot reduce all-nine or selected-five outright wins or wins-minus-losses; same dated totals"
+        ),
+        "baseline": {"all_nine": _outcome(baseline), "selected_five": _outcome(baseline, selected)},
+        "projected": {"all_nine": _outcome(best[0]), "selected_five": _outcome(best[0], selected)},
+        "rejected_plans": len(outcome_rejected),
+        "examples_truncated": len(outcome_rejected) > 8,
+        "examples": [
+            {
+                "actions": state[1],
+                "all_nine": _outcome(state[0]),
+                "selected_five": _outcome(state[0], selected),
+                "totals": state[0]["user_totals"],
+                "opponent_totals": state[0]["opponent_totals"],
+                "starts": state[0]["starts"],
+            }
+            for state in sorted(outcome_rejected, key=lambda state: state_key(state))[:8]
+        ],
+    }
     safe = [k for k in selected if _edges(baseline)[k] >= 0.8]
     result.update(
         status="ready" if context["budget"] is not None else "incomplete",
@@ -1508,17 +1567,19 @@ def plan_waivers(payload):
         safe_categories=safe,
         improvement_categories=[k for k in selected if k not in safe],
         projected=best[0],
+        outcome_policy=outcome_policy,
         actions=moves,
         plan=moves,
         remaining_adds=None if context["budget"] is None else context["budget"] - len(moves),
         recommendations=alternatives,
-        score_basis="selected_five_heuristic_edges_minus_soft_season_cost",
+        score_basis="projected_category_outcome_then_selected_five_edges_minus_soft_season_cost",
         recommendation_groups={
             pid: [m["rank"] for m in alternatives if m["drop_id"] == pid] for pid in sorted(context["roster"])
         },
         alternatives_explanation="Secondary alternatives compete; only recommended_plan.moves form one ordered plan.",
         recommended_plan={
             "moves": moves,
+            "outcome_policy": outcome_policy,
             "realized_impact": realized_impact,
             "selected_categories": list(selected),
             "score_before": _focus(baseline, selected),
@@ -1532,7 +1593,10 @@ def plan_waivers(payload):
             "budget_after": None if context["budget"] is None else context["budget"] - len(moves),
             "weakest_selected_edge": min(_edges(best[0])[k] for k in selected),
             "viable_five": all(_edges(best[0])[k] >= 0.4 for k in selected),
-            "guard_policy": "selected baseline cushion >=.80; preserve viable-edge count >=.40",
+            "guard_policy": (
+                "Final all-nine/selected-five wins and wins-minus-losses cannot decrease; "
+                "prefix selected cushion >=.80 and viable-edge count >=.40"
+            ),
             "aggressive_opt_in": aggressive,
             "coverage": search,
             "optimality": "best explored",
@@ -1567,6 +1631,10 @@ def plan_waivers(payload):
         "basis": "same final totals and chosen five; wider heuristic scale, not reranked alternatives",
     }
     if not moves and context["budget"] is not None and context["budget"] > 0:
+        if outcome_rejected:
+            result["reasons"].append(
+                "Keep current roster: no explored material plan preserves projected category wins and ties."
+            )
         result["reasons"].append(
             "No materially beneficial legal ordered plan was found among explored states "
             "under the selected-category guards."

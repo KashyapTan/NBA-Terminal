@@ -1,0 +1,16 @@
+[WebServer] warning: `VIRTUAL_ENV=/Users/kash/Documents/NBA-Terminal/.venv` does not match the project environment path `/Users/kash/Documents/.multplx-worktrees-ff5b3c227fe18eb4/36d61d73a7a81a5afa6f8a81214350d086ff0f47c633777f95846555fce9b795/.venv` and will be ignored; use `--active` to target the active environment instead
+[WebServer] (node:3383) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:3577) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [vite-proxy] › e2e/v9-integration.spec.ts:134:1 › dated direct shortcuts and useful streams through actual provider pipeline (4.7s)
+  ✓  2 [vite-proxy] › e2e/v9-integration.spec.ts:190:1 › provider ownership, waiver status, quota and immutable locks survive shortcut comparisons (7.6s)
+(node:4864) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [production-build] › e2e/v9-integration.spec.ts:134:1 › dated direct shortcuts and useful streams through actual provider pipeline (4.4s)
+  ✓  4 [production-build] › e2e/v9-integration.spec.ts:190:1 › provider ownership, waiver status, quota and immutable locks survive shortcut comparisons (7.1s)
+
+  4 passed (24.9s)

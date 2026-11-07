@@ -1,0 +1,90 @@
+{
+  "directory": "/Users/kash/.local/share/multplx/.multplx-homes-2bf4cbefadc55a81/NBA_WAIVER_V9_CHAIN/data/revision2/capture-20261106T203946Z",
+  "files": [
+    {
+      "name": "before-full-plan.json",
+      "bytes": 153372,
+      "sha256": "74b50a87eec4a9db6c3e49975a5994b60874fb13e91c1d05d651153b106dc7f8"
+    },
+    {
+      "name": "before-initial-reproduction.json",
+      "bytes": 153131,
+      "sha256": "c27d5e38f30025ea6430ab7c85d9bcf3871308f6c640fba19cd5782a01169fa7"
+    },
+    {
+      "name": "optimizer-cebd620.py",
+      "bytes": 74670,
+      "sha256": "37642b48987d888d1a0daecc5a0db2c8a16f1063f9e801aaf547777a7089517a"
+    },
+    {
+      "name": "production-build-after-executed.json",
+      "bytes": 199164,
+      "sha256": "c86e143ed707bdbc9ecbc7b35039f6f36b453b6617550e8c1ff32274e5e0986e"
+    },
+    {
+      "name": "production-build-after-first.json",
+      "bytes": 300907,
+      "sha256": "b5c9a7a4d5541ec4e54b6082840b3c026e8778e08873062918beef97612e1279"
+    },
+    {
+      "name": "production-build-before-executed.json",
+      "bytes": 403368,
+      "sha256": "ca9613925070a3094f3ff09013f6c6438ff6590023c3d1112444e7c168363e43"
+    },
+    {
+      "name": "production-build-beneficial.json",
+      "bytes": 374938,
+      "sha256": "1b68366d71497a03fe08d681b00ba14b2e719a6d064221a5fa97e420c1982320"
+    },
+    {
+      "name": "production-build-et-banking.json",
+      "bytes": 257713,
+      "sha256": "a5cb1f8e81d48ab8a1a97a1d65d05ac9cb01445012360bb37162962b8dc68cc2"
+    },
+    {
+      "name": "production-build-owned-snapshot.json",
+      "bytes": 132919,
+      "sha256": "7451af524d1d8f55bbeb45e78ee626e14a8654473e27ab2906b28dc790de04cb"
+    },
+    {
+      "name": "production-build-screenshot-shape.json",
+      "bytes": 300907,
+      "sha256": "5325511a1b848239c2e1f4eecae5f20454a80f7f5ddc673b1a700701c0cbe47d"
+    },
+    {
+      "name": "vite-proxy-after-executed.json",
+      "bytes": 199164,
+      "sha256": "c86e143ed707bdbc9ecbc7b35039f6f36b453b6617550e8c1ff32274e5e0986e"
+    },
+    {
+      "name": "vite-proxy-after-first.json",
+      "bytes": 300907,
+      "sha256": "b5c9a7a4d5541ec4e54b6082840b3c026e8778e08873062918beef97612e1279"
+    },
+    {
+      "name": "vite-proxy-before-executed.json",
+      "bytes": 403368,
+      "sha256": "ca9613925070a3094f3ff09013f6c6438ff6590023c3d1112444e7c168363e43"
+    },
+    {
+      "name": "vite-proxy-beneficial.json",
+      "bytes": 374938,
+      "sha256": "1b68366d71497a03fe08d681b00ba14b2e719a6d064221a5fa97e420c1982320"
+    },
+    {
+      "name": "vite-proxy-et-banking.json",
+      "bytes": 257713,
+      "sha256": "a5cb1f8e81d48ab8a1a97a1d65d05ac9cb01445012360bb37162962b8dc68cc2"
+    },
+    {
+      "name": "vite-proxy-owned-snapshot.json",
+      "bytes": 132919,
+      "sha256": "7451af524d1d8f55bbeb45e78ee626e14a8654473e27ab2906b28dc790de04cb"
+    },
+    {
+      "name": "vite-proxy-screenshot-shape.json",
+      "bytes": 300907,
+      "sha256": "5325511a1b848239c2e1f4eecae5f20454a80f7f5ddc673b1a700701c0cbe47d"
+    }
+  ]
+}

@@ -425,6 +425,27 @@ export interface RealizedPlanImpact {
   added_starts: { date: string; player_id: string; name: string }[];
   lost_starts: { date: string; player_id: string; name: string }[];
 }
+export interface OutcomeCounts {
+  wins: number;
+  losses: number;
+  ties: number;
+}
+export interface OutcomePolicy {
+  basis: string;
+  guard: string;
+  baseline: { all_nine: OutcomeCounts; selected_five: OutcomeCounts };
+  projected: { all_nine: OutcomeCounts; selected_five: OutcomeCounts };
+  rejected_plans: number;
+  examples_truncated: boolean;
+  examples: {
+    actions: { date: string; add_id: string; drop_id: string }[];
+    all_nine: OutcomeCounts;
+    selected_five: OutcomeCounts;
+    totals: Stats;
+    opponent_totals: Stats;
+    starts: { date: string; player_id: string; owner: string }[];
+  }[];
+}
 export interface RecommendedPlan {
   realized_impact?: RealizedPlanImpact;
   moves: PickupRecommendation[];
@@ -442,6 +463,7 @@ export interface RecommendedPlan {
   optimality: string;
 }
 export interface WaiverPlan {
+  outcome_policy?: OutcomePolicy;
   projection_metadata?: Record<string, ProjectionEvidence>;
   pickup_filter_summary?: {
     thresholds: { min_minutes: number; min_games: number; min_participation: number };
