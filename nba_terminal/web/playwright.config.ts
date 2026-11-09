@@ -12,6 +12,7 @@ export default defineConfig({
     "v8-integration.spec.ts",
     "v9-integration.spec.ts",
     "v10-integration.spec.ts",
+    "opponent-integration.spec.ts",
     "v5-integration.spec.ts",
     "analytics-tools.spec.ts",
     "week-reset.spec.ts",

@@ -18,6 +18,7 @@ ASSUMPTIONS = [
     "Rates and supplied schedules remain constant; unavailable dates contribute no games.",
     "Available current-season rates are primary, including small samples; missing fields use labeled prior fallback.",
     "Availability and transaction eligibility are assumed unless explicitly reported out or locked.",
+    "Opponent future starts maximize legal playing capacity, ranked across all nine categories before user focus.",
 ]
 LIMITATIONS = [
     "Model sensitivity estimates are not calibrated probabilities or guarantees; category correlations are ignored.",
@@ -151,7 +152,14 @@ def _fits_slot(player, slot):
 
 
 def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=None, decisions=None):
-    """Rank marginal five-category value, then find a feasible matching by augmentation."""
+    """Rank marginal category value, then find a feasible matching by augmentation.
+
+    Opponents use all nine categories and maximum legal playing capacity. Their
+    observed bench assignment and our chosen focus are not future lineup policy.
+    The ranked matching is deterministic, not a global category optimum.
+    """
+    if opponent:
+        selected = None
 
     def utility(left, right):
         categories, probability = _assessment(left, right, deviations)
@@ -183,8 +191,8 @@ def _lineup(players, slots, ours, theirs, deviations, opponent=False, selected=N
         return False
 
     for player in sorted(players, key=priority):
-        # Optional benching avoids forced negative TO/shooting contributions.
-        if priority(player)[0] <= 0:
+        # User focus may bench negative TO/shooting contributions; opponent fills legal capacity.
+        if opponent or priority(player)[0] <= 0:
             fitted = match(player, set())
             reason = "capacity_or_position" if not fitted else "focus_selected"
         else:
@@ -298,7 +306,6 @@ def _forecast(context, actions):
                 theirs,
                 context["sd"],
                 True,
-                selected=context.get("scored_categories"),
                 decisions=decisions,
             )
         for owner, lineup in (("user", user), ("opponent", opponent)):
@@ -411,7 +418,9 @@ def _attach_daily(context, result):
                                 day, context["slots"]
                             )
                         ),
-                        "focus": list(context.get("scored_categories") or CATEGORIES),
+                        "focus": list(
+                            CATEGORIES if owner == "opponent" else context.get("scored_categories") or CATEGORIES
+                        ),
                         "players": rows,
                     }
                 )
@@ -951,7 +960,7 @@ def plan_waivers(payload):
     """Return one best explored legal ordered plan; all calculations are pure.
 
     Automatic focus uses baseline edges and optimistic pickup potential, then
-    frozen before search. Every forecast uses that selected-five objective. Beam
+    frozen before search. User forecasts use that selected-five objective. Beam
     Expansion permits non-improving intermediate moves.
     Exact global lineup/plan optimization is deliberately not claimed.
     """
@@ -1001,9 +1010,14 @@ def plan_waivers(payload):
             or any(k not in CATEGORIES for k in requested)
         ):
             raise ValueError("Select exactly five unique supported category keys")
-        if requested:
-            context["scored_categories"] = requested
+        # Establish one opponent date ledger before user focus discovery or any
+        # counterfactual. Even the focus seed must use this same opponent.
         baseline = _forecast(context, [])
+        context["opponent_starts"] = [s for s in baseline["starts"] if s["owner"] == "opponent"]
+        context["opponent_decisions"] = {
+            day: {pid: reason for pid, reason in rows.items() if context["players"][pid]["owner"] == "opponent"}
+            for day, rows in baseline["bench_reasons"].items()
+        }
         if not requested:
             # Discover focus cheaply using current edges and optimistic pickup potential.
             # Potential is only a seed: every actual move still gets full roster/slot guards.
@@ -1033,13 +1047,8 @@ def plan_waivers(payload):
             )[:5]
             ranked = sorted(CATEGORIES, key=lambda k: (-potential[k], -(_edges(baseline)[k] or 0), CATEGORIES.index(k)))
             requested = cushions + [k for k in ranked if k not in cushions][: 5 - len(cushions)]
-            context["scored_categories"] = requested
-            baseline = _forecast(context, [])
-        context["opponent_starts"] = [s for s in baseline["starts"] if s["owner"] == "opponent"]
-        context["opponent_decisions"] = {
-            day: {pid: reason for pid, reason in rows.items() if context["players"][pid]["owner"] == "opponent"}
-            for day, rows in baseline["bench_reasons"].items()
-        }
+        context["scored_categories"] = requested
+        baseline = _forecast(context, [])
     except (KeyError, ValueError, TypeError, AttributeError, OverflowError) as error:
         result["reasons"] = [f"Incomplete or invalid optimizer inputs: {error}"]
         return result

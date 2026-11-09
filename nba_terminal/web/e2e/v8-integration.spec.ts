@@ -76,7 +76,9 @@ function reconcile(plan: WaiverPlan) {
       const production: Record<string, number> = {};
       for (const day of rows) {
         expect(day.capacity).toBe(10);
-        expect(day.focus).toEqual(plan.selected_categories);
+        expect(day.focus).toEqual(
+          owner === "opponent" ? LEAGUE_CATEGORIES.map((c) => c.key) : plan.selected_categories,
+        );
         const starts = day.players.filter((p) => p.state === "start");
         expect(starts.length).toBeLessThanOrEqual(10);
         expect(new Set(day.players.map((p) => p.player_id)).size).toBe(day.players.length);
