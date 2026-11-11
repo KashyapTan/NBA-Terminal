@@ -103,3 +103,9 @@ jobs:
         env:
           CI: "true"
         run: bunx playwright test --config playwright.v10.config.ts
+
+      - name: Opponent all-nine legal lineup HTTP integration
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bunx playwright test --config playwright.opponent.config.ts

@@ -52,7 +52,7 @@ def reconcile(result, data):
             for day in forecast["daily_lineups"]:
                 if day["owner"] != owner:
                     continue
-                assert day["focus"] == result["selected_categories"]
+                assert day["focus"] == (list(CATEGORIES) if owner == "opponent" else result["selected_categories"])
                 starts = [p for p in day["players"] if p["state"] == "start"]
                 assert len(starts) <= day["capacity"] <= 10
                 assert len({p["player_id"] for p in day["players"]}) == len(day["players"])

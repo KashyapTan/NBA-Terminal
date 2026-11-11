@@ -116,7 +116,9 @@ export function MatchupForecast({
           Now: this matchup's banked stats. At end: banked plus remaining usable lineup production
           for each team, before moves. After plan: your total after all ordered moves. FG/FT use
           total makes / attempts; fewer TO wins. W–L–T counts categories won, lost and tied. Stars
-          mark your focus five. Estimates can change.
+          mark your focus five. Opponent future lineups use all nine categories and the most legal
+          playing starts, up to ten per day, including available bench players. Your targets and
+          pickup plans do not change that opponent forecast. Estimates can change.
         </InfoTooltip>
       </div>
       <p className="ww-forecast-score">

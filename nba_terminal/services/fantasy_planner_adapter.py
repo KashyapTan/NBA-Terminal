@@ -179,7 +179,9 @@ def _attach_locked_lineups(forecast, user, opponent, remaining, now):
                 row["team"] = ESPN_TEAMS.get(int(row["team"]), row["team"])
         locked_ids = {p["player_id"] for p in locked}
         day["players"] = locked + [p for p in day["players"] if p["player_id"] not in locked_ids]
-        day["rules_source"] = "ESPN lineupSlotCounts / eligibleSlots; bench and IR excluded"
+        day["rules_source"] = (
+            "ESPN active lineupSlotCounts / eligibleSlots; available bench players eligible, IR excluded"
+        )
 
 
 PICKUP_FILTER_DEFAULTS = {"min_minutes": 15, "min_games": 2, "min_participation": 0.5}
