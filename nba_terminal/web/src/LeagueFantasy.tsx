@@ -509,7 +509,7 @@ function WaiverStrategy({
     preferences.counts_snapshot_at,
     snapshot.fetched_at,
   ]);
-  const { plan, busy, error, lifecycle } = useWaiverPlan(
+  const { plan, busy, error, lifecycle, cancelSearch } = useWaiverPlan(
     snapshot,
     preferences,
     onPlan,
@@ -568,30 +568,39 @@ function WaiverStrategy({
         ? "Matchup uncapped · adds unverified"
         : "Adds unverified";
   const search = plan?.search;
-  const stop: WorkspaceStop | undefined =
-    plan?.status === "ready" && !moves.length && (plan.outcome_policy?.rejected_plans ?? 0) > 0
-      ? "category_outcome_guard"
-      : plan?.evaluation_state === "no_qualified_pickups"
-        ? "empty_qualified_pool"
-        : plan?.evaluation_state === "required_inputs_unknown" || plan?.status === "unavailable"
-          ? "required_data_missing"
-          : search?.selected_plan_stop_reason === "acquisition_budget_used" ||
-              plan?.evaluation_state === "known_zero_acquisitions"
-            ? "budget_exhausted"
-            : search?.stop_reason === "unknown_budget" ||
-                plan?.evaluation_state === "conditional_opportunities"
-              ? "unknown_budget"
-              : search?.stop_reason === "no_remaining_dates"
-                ? "no_remaining_dates"
-                : search?.evaluation_limit_reached ||
-                    search?.layer_pruned ||
-                    search?.beam_pruned ||
-                    search?.candidate_truncated ||
-                    plan?.evaluation_state === "search_incomplete"
-                  ? "search_limit"
-                  : plan
-                    ? "no_positive_continuation"
-                    : undefined;
+  const stop: WorkspaceStop | undefined = (() => {
+    if (search?.phase === "paused") return "paused";
+    if (search?.phase === "searching") return "searching";
+    if (search?.phase === "cancelled") return "cancelled";
+    if (plan?.evaluation_state === "no_qualified_pickups") return "empty_qualified_pool";
+    if (plan?.evaluation_state === "required_inputs_unknown" || plan?.status === "unavailable")
+      return "required_data_missing";
+    if (
+      search?.stop_reason === "unknown_budget" ||
+      plan?.evaluation_state === "conditional_opportunities"
+    )
+      return "unknown_budget";
+    if (search?.stop_reason === "no_remaining_dates") return "no_remaining_dates";
+    if (plan?.evaluation_state === "known_zero_acquisitions") return "budget_exhausted";
+    if (plan?.status === "ready" && !moves.length && (plan.outcome_policy?.rejected_plans ?? 0) > 0)
+      return search?.phase === "finished"
+        ? snapshot.market_complete === true
+          ? "finished_guard"
+          : "partial_guard"
+        : "category_outcome_guard";
+    if (search?.phase === "finished")
+      return snapshot.market_complete !== true ? "partial_market" : "finished_scoped";
+    if (search?.selected_plan_stop_reason === "acquisition_budget_used") return "budget_exhausted";
+    if (
+      search?.evaluation_limit_reached ||
+      search?.layer_pruned ||
+      search?.beam_pruned ||
+      search?.candidate_truncated ||
+      plan?.evaluation_state === "search_incomplete"
+    )
+      return "search_limit";
+    return plan ? "no_positive_continuation" : undefined;
+  })();
   const problem =
     !onPlan ||
     leagueError ||
@@ -662,6 +671,8 @@ function WaiverStrategy({
       remainingAddsLabel={remainingAddsLabel}
       refreshedLabel={`Updated ${new Date(snapshot.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
       updating={loading || busy}
+      searching={search?.phase === "searching"}
+      onCancelSearch={cancelSearch}
       readOnly={lifecycle.readOnly}
       resultState={lifecycle.state}
       onRefresh={onRefresh}

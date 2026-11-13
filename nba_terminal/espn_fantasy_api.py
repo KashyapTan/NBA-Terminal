@@ -109,6 +109,7 @@ class Connection:
     active: bool = True
     context_id: str = field(default_factory=lambda: secrets.token_urlsafe(16))
     lock: Any = field(default_factory=threading.Lock)
+    search: Any = None
 
     def status(self) -> dict:
         choices = team_choices(self.raw, self.client.swid)
@@ -127,6 +128,9 @@ class Connection:
 
     def clear(self) -> None:
         self.active = False
+        if self.search:
+            self.search.cancel()
+            self.search = None
         self.client.clear()
         self.raw = {}
         self.cached = None
@@ -316,6 +320,8 @@ async def select_team(request: Request, response: Response) -> dict:
 def select_sync(conn: Connection, team_id: int) -> dict:
     with session_lock(conn):
         validate_team(conn.raw, team_id, conn.client.swid)
+        if conn.search:
+            conn.search.cancel()
         conn.team_id, conn.cached = team_id, None
         return conn.status()
 
@@ -360,6 +366,8 @@ def snapshot_sync(conn: Connection, refresh: bool, compare_team_id: int | None) 
             raise EspnError("team_required", "Select your team before fetching a matchup.", 409)
         # Cache full normalized data once; changing comparison is pure and does not refetch.
         if refresh or conn.refresh_failed or conn.cached is None or conn.cached_until <= time.monotonic():
+            if conn.search:
+                conn.search.cancel()
             raw = conn.client.league()
             result = conn.client.snapshot(raw, conn.team_id)
             ensure_active(conn)
@@ -422,6 +430,8 @@ async def waiver_plan(request: Request, response: Response) -> dict:
     }
     if not isinstance(preferences, dict) or set(preferences) - allowed:
         raise fail("invalid_fields", "Send planner preferences only; league facts come from the server.")
+    if request.headers.get("x-fantasy-search") == "progressive":
+        return await worker(request, start_plan_sync, conn, preferences)
     return await worker(request, plan_sync, conn, preferences)
 
 
@@ -442,6 +452,39 @@ def plan_sync(conn: Connection, preferences: dict) -> dict:
             )
         ensure_active(conn)
         return result
+
+
+def start_plan_sync(conn: Connection, preferences: dict) -> dict:
+    from nba_terminal.services.waiver_search import start_search
+
+    current = snapshot_sync(conn, False, None)
+    with session_lock(conn):
+        if conn.team_id != current["selected_team_id"] or conn.cached != current:
+            raise EspnError("snapshot_changed", "League data changed before analysis.", 409)
+        job = start_search(conn, current, preferences)
+    # Search never holds the connection lock or performs provider I/O.
+    return job.advance(conn)
+
+
+@router.post("/plan/{job_id}")
+async def advance_plan(job_id: str, request: Request, response: Response) -> dict:
+    guard(request, response)
+    conn = connection(request)
+    job = conn.search
+    if job is None or not secrets.compare_digest(job.id, job_id):
+        raise fail("search_not_found", "Local search is not in this session.", 404)
+    return await worker(request, job.advance, conn)
+
+
+@router.delete("/plan/{job_id}")
+async def cancel_plan(job_id: str, request: Request, response: Response) -> dict:
+    guard(request, response)
+    conn = connection(request)
+    job = conn.search
+    if job is None or not secrets.compare_digest(job.id, job_id):
+        raise fail("search_not_found", "Local search is not in this session.", 404)
+    job.cancel()
+    return {"phase": "cancelled", "job_id": job.id}
 
 
 # The extension uses an isolated content script's same-origin fetch. Never allow an

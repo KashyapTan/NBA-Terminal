@@ -11,6 +11,7 @@ export default defineConfig({
     "v7-integration.spec.ts",
     "v8-integration.spec.ts",
     "v9-integration.spec.ts",
+    "waiver-search-integration.spec.ts",
     "v10-integration.spec.ts",
     "opponent-integration.spec.ts",
     "v5-integration.spec.ts",

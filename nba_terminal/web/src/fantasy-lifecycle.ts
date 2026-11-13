@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import currentUsageDeclaration from "./current-usage-declaration.json";
-import { FantasyApiError } from "./league-fantasy-api";
+import { advanceWaiverPlan, cancelWaiverPlan, FantasyApiError } from "./league-fantasy-api";
 import type { LeagueSnapshot, PlannerPreferences, WaiverPlan } from "./league-fantasy-model";
 import { declaredUsage } from "./usage-declaration";
 
@@ -80,18 +80,89 @@ export function useWaiverPlan(
   const [result, setResult] = useState<{ plan: WaiverPlan; identity: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const settled = useRef<string | null>(null);
+  const cancelCurrent = useRef<() => void>(() => {});
   const [revoked, setRevoked] = useState(false);
   useEffect(() => {
-    if (!latest.current.onPlan || !snapshot.league.supported || blocked) {
+    if (!latest.current.onPlan || !snapshot.league.supported || blocked || refreshing) {
       setBusy(false);
       return;
     }
+    const requestIdentity = stableIdentity([identity, attempt]);
+    if (settled.current === requestIdentity) {
+      setBusy(false);
+      setError(null);
+      return;
+    }
     let active = true;
+    let jobId: string | undefined;
+    let stopped = false;
+    cancelCurrent.current = () => {
+      stopped = true;
+      clearTimeout(timer);
+      if (jobId) void cancelWaiverPlan(jobId).catch(() => {});
+      setResult(
+        (current) =>
+          current && {
+            ...current,
+            plan: {
+              ...current.plan,
+              search: current.plan.search && {
+                ...current.plan.search,
+                phase: "cancelled",
+                complete: false,
+              },
+            },
+          },
+      );
+    };
     let timer: ReturnType<typeof setTimeout> | undefined;
     const controller = new AbortController();
     setBusy(true);
     setError(null);
     setRevoked(false);
+    function publish(plan: WaiverPlan) {
+      if (!active || stopped) return;
+      setResult({ plan, identity });
+      setBusy(false);
+      setError(null);
+      jobId = plan.search?.job_id;
+      if (plan.search?.phase !== "searching") settled.current = requestIdentity;
+      if (jobId && plan.search?.phase === "searching")
+        timer = setTimeout(() => void continueSearch(0), 100);
+    }
+    async function continueSearch(tries: number) {
+      if (!active || stopped || !jobId) return;
+      try {
+        publish(await advanceWaiverPlan(jobId, controller.signal));
+      } catch (failure) {
+        if (!active || stopped) return;
+        if (retryable(failure) && tries < 2)
+          timer = setTimeout(() => void continueSearch(tries + 1), 2000 * 2 ** tries);
+        else {
+          setError("Search paused. Refresh to verify current data.");
+          if (jobId) void cancelWaiverPlan(jobId).catch(() => {});
+          setResult(
+            (current) =>
+              current && {
+                ...current,
+                plan: {
+                  ...current.plan,
+                  search: current.plan.search && {
+                    ...current.plan.search,
+                    phase: "paused",
+                    complete: false,
+                  },
+                },
+              },
+          );
+          if (reconnectNeeded(failure)) {
+            setResult(null);
+            setRevoked(true);
+          }
+        }
+      }
+    }
     async function run(tries: number) {
       const { snapshot: current, preferences: prefs, onPlan: fetchPlan } = latest.current;
       try {
@@ -109,11 +180,11 @@ export function useWaiverPlan(
           },
           controller.signal,
         );
-        if (active) {
-          setResult({ plan, identity });
-          setBusy(false);
-          setError(null);
+        if (!active || stopped) {
+          if (plan.search?.job_id) void cancelWaiverPlan(plan.search.job_id).catch(() => {});
+          return;
         }
+        publish(plan);
       } catch (failure) {
         if (!active) return;
         setError(
@@ -132,9 +203,10 @@ export function useWaiverPlan(
     return () => {
       active = false;
       controller.abort();
+      if (jobId) void cancelWaiverPlan(jobId).catch(() => {});
       clearTimeout(timer);
     };
-  }, [identity, attempt, blocked, snapshot.league.supported, !!onPlan]);
+  }, [identity, attempt, blocked, snapshot.league.supported, !!onPlan, refreshing]);
   const outdated = result?.identity !== identity;
   const readOnly = blocked || refreshing || busy || !!error || outdated;
   const lifecycle: FantasyLifecycle = {
@@ -155,5 +227,11 @@ export function useWaiverPlan(
           ? "Updating analysis"
           : "Up to date",
   };
-  return { plan: result?.plan ?? null, busy, error, lifecycle };
+  return {
+    plan: result?.plan ?? null,
+    busy,
+    error,
+    lifecycle,
+    cancelSearch: () => cancelCurrent.current(),
+  };
 }

@@ -46,6 +46,7 @@ async function request<T>(
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: {
       "X-Fantasy-Request": "1",
+      ...(path === "/plan" ? { "X-Fantasy-Search": "progressive" } : {}),
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -80,6 +81,11 @@ export type LeagueFantasyApi = typeof leagueFantasyApi;
 
 export const requestWaiverPlan = (preferences: PlannerPreferences, signal?: AbortSignal) =>
   request<WaiverPlan>("/plan", "POST", preferences, signal);
+
+export const advanceWaiverPlan = (id: string, signal?: AbortSignal) =>
+  request<WaiverPlan>(`/plan/${encodeURIComponent(id)}`, "POST", {}, signal);
+export const cancelWaiverPlan = (id: string) =>
+  request<{ phase: string }>(`/plan/${encodeURIComponent(id)}`, "DELETE");
 
 export interface BrowserBridgeStatus {
   enabled: boolean;

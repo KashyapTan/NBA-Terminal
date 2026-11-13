@@ -31,6 +31,13 @@ export interface QualifiedSample {
   teamGames: number | null;
 }
 export type WorkspaceStop =
+  | "finished_guard"
+  | "partial_guard"
+  | "paused"
+  | "searching"
+  | "cancelled"
+  | "finished_scoped"
+  | "partial_market"
   | "category_outcome_guard"
   | "unknown_budget"
   | "no_remaining_dates"
@@ -44,6 +51,8 @@ export interface WaiverWorkspaceProps {
   remainingAddsLabel: string;
   refreshedLabel: string;
   updating: boolean;
+  searching?: boolean;
+  onCancelSearch?: () => void;
   readOnly?: boolean;
   resultState?: string;
   onRefresh?: () => void;
@@ -68,6 +77,15 @@ export interface WaiverWorkspaceProps {
   technicalControls?: ReactNode;
 }
 const STOP_LABELS: Record<WorkspaceStop, string> = {
+  finished_guard:
+    "Search finished · Keep current roster · no qualifying plan preserves category results",
+  partial_guard:
+    "Available-data search finished · Keep current roster · market coverage incomplete",
+  paused: "Search paused · refresh to verify current data",
+  searching: "Searching more moves · best verified plan shown as found",
+  cancelled: "Search cancelled · best verified result retained",
+  finished_scoped: "Search finished · best found under the lineup and search policy",
+  partial_market: "Search finished for available data · market coverage is incomplete",
   category_outcome_guard:
     "Keep current roster · no qualifying plan found without worsening projected category results",
   unknown_budget: "Available adds need verification",
@@ -113,6 +131,11 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
           disabled={props.updating}
         >
           Refresh league
+        </button>
+      )}
+      {props.searching && props.onCancelSearch && (
+        <button className="ww-refresh" type="button" onClick={props.onCancelSearch}>
+          Stop search
         </button>
       )}
       {props.readOnly && props.moves.length > 0 && (
@@ -278,7 +301,15 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
             />
           ))}
         </ol>
-        {props.stop && <p className="ww-stop">{STOP_LABELS[props.stop]}</p>}
+        {props.stop && (
+          <p className="ww-stop" role="status">
+            {props.searching && props.moves.length > 0
+              ? "Best found so far · searching more moves"
+              : props.stop === "finished_scoped" && !props.moves.length
+                ? "Search finished · no qualifying moves found under this search policy"
+                : STOP_LABELS[props.stop]}
+          </p>
+        )}
       </section>
       <MatchupForecast
         {...props.forecast}
