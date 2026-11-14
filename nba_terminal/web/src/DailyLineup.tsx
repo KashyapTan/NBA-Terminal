@@ -36,12 +36,14 @@ function contribution(player: DailyLineupPlayer, day: DailyLineupDay) {
     .join(" · ");
 }
 export function DailyLineup({
+  generation,
   baseline,
   projected,
   hasMoves,
   readOnly,
   complete,
 }: {
+  generation?: string;
   baseline?: PlanForecast | null;
   projected?: PlanForecast | null;
   hasMoves: boolean;
@@ -60,7 +62,7 @@ export function DailyLineup({
   const bench = day?.players.filter((p) => p.state === "bench") ?? [];
   const playing = day?.players.filter((p) => p.playing).length ?? 0;
   return (
-    <section className="ww-daily" aria-label="Daily lineup">
+    <section className="ww-daily" aria-label="Daily lineup" data-plan-generation={generation}>
       <div className="ww-daily-heading">
         <h2>Daily lineup</h2>
         <InfoTooltip label="About daily lineup">

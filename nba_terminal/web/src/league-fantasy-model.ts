@@ -501,6 +501,11 @@ export interface WaiverPlan {
     | "conditional_opportunities";
   recommended_plan?: RecommendedPlan | null;
   search?: {
+    job_id?: string;
+    publication?: number;
+    phase?: "searching" | "finished" | "cancelled" | "paused";
+    complete?: boolean;
+    coverage_scope?: string;
     stop_reason?: string;
     selected_plan_stop_reason?: string;
     depth_reached?: number;
@@ -514,7 +519,7 @@ export interface WaiverPlan {
     first_layer_complete?: boolean;
     candidate_pool?: number;
     candidate_limit?: number;
-    evaluation_limit?: number;
+    evaluation_limit?: number | null;
     evaluations: number;
     evaluation_limit_reached: boolean;
     legal_drop_ids?: string[];
