@@ -47,6 +47,7 @@ export type WorkspaceStop =
   | "empty_qualified_pool"
   | "required_data_missing";
 export interface WaiverWorkspaceProps {
+  generation?: string;
   matchup: string;
   remainingAddsLabel: string;
   refreshedLabel: string;
@@ -109,6 +110,7 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
       className="waiver-workspace"
       aria-label="Waiver workspace"
       data-result-state={props.resultState}
+      data-plan-generation={props.generation}
     >
       <header className="ww-heading">
         <div>
@@ -267,7 +269,11 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
         </details>
         {props.rosterControls}
       </div>
-      <section aria-label="Ordered pickup plan" className="ww-plan">
+      <section
+        aria-label="Ordered pickup plan"
+        className="ww-plan"
+        data-plan-generation={props.generation}
+      >
         <div className="ww-section-label">
           <h3>
             {props.moves.length
@@ -312,12 +318,14 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
         )}
       </section>
       <MatchupForecast
+        generation={props.generation}
         {...props.forecast}
         targets={props.targets}
         hasMoves={props.moves.length > 0}
         readOnly={props.readOnly}
       />
       <DailyLineup
+        generation={props.generation}
         baseline={props.baseline}
         projected={props.projected}
         hasMoves={props.moves.length > 0}
@@ -365,7 +373,12 @@ function CompactMove({
     return targets.includes(key) || (net != null && (key === "to" ? net > 0 : net < 0));
   });
   return (
-    <li className="ww-move">
+    <li
+      className="ww-move"
+      data-date={move.date}
+      data-add-id={move.add_id}
+      data-drop-id={move.drop_id}
+    >
       <div className="ww-move-top">
         <span className="ww-order">{index + 1}</span>
         <div className="ww-players">

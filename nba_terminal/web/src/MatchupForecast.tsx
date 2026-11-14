@@ -11,6 +11,7 @@ import {
 import { signedChange } from "./WaiverArithmetic";
 
 export interface MatchupForecastProps {
+  generation?: string;
   baseline?: PlanForecast | null;
   projected?: PlanForecast | null;
   hasMoves: boolean;
@@ -64,6 +65,7 @@ const display = (value: number | null, key: Category) =>
 
 /** Only source forecast totals are displayed: no per-move summing or browser lineup estimates. */
 export function MatchupForecast({
+  generation,
   baseline,
   projected,
   hasMoves,
@@ -109,7 +111,11 @@ export function MatchupForecast({
     (row) => row.edge === "unknown" || (hasMoves && row.plannedEdge === "unknown"),
   );
   return (
-    <section className="ww-forecast" aria-label="End-of-matchup comparison">
+    <section
+      className="ww-forecast"
+      aria-label="End-of-matchup comparison"
+      data-plan-generation={generation}
+    >
       <div className="ww-section-label">
         <h3>End of matchup</h3>
         <InfoTooltip label="About the matchup forecast">

@@ -27,6 +27,7 @@ class WaiverSearch:
         self.touched = time.monotonic()
         self.finished = False
         self.latest = None
+        self.publication = 0
         now = adapter.datetime.now(timezone.utc)
         tomorrow = now.astimezone(ZoneInfo("America/New_York")).date() + timedelta(days=1)
         self.valid_until = datetime.combine(tomorrow, datetime.min.time(), ZoneInfo("America/New_York"))
@@ -93,6 +94,7 @@ class WaiverSearch:
                 value = next(self.iterator, None)
                 if value is not None:
                     self.latest = value
+                    self.publication += 1
                 self.finished = value is None or value.get("search", {}).get("phase") != "searching"
             # Refresh, disconnect and preference replacement can race CPU work.
             if not self.valid(conn):
@@ -104,6 +106,7 @@ class WaiverSearch:
             result = copy.deepcopy(self.latest)
             result.setdefault("search", {}).update(
                 job_id=self.id,
+                publication=self.publication,
                 phase="cancelled" if self.cancelled.is_set() else "finished" if self.finished else "searching",
                 complete=self.finished and not self.cancelled.is_set(),
             )

@@ -8,10 +8,10 @@ passed: uv run coverage report --include='nba_terminal/webapp.py' --fail-under=9
 passed: QT_QPA_PLATFORM=offscreen uv run python [AGENTS desktop instantiation] — 9 pages
 passed: bun install --frozen-lockfile
 passed: bun run lint; bun run format:check; bun run typecheck
-passed: bun run coverage — 153 tests; 93.48% lines
+passed: bun run coverage — 153 tests; 93.93% lines
 passed: bun run build
 passed: FANTASY_E2E_PORT=8219 E2E_PORT=4219 bun x playwright test --config playwright.v7.config.ts — 8 tests
-passed: same ports playwright.v8.config.ts — 2 tests
+passed: same ports playwright.v8.config.ts — 4 tests
 passed: FANTASY_E2E_PORT=8219 playwright.week-reset.config.ts — 1 test
 passed: owned4219/8219 playwright.v9.config.ts — 4 tests
 passed: owned4219/8219 playwright.v10.config.ts — 6 tests

@@ -35,6 +35,7 @@ def test_http_progress_is_local_session_scoped_cancellable_and_invalidated(monke
             )
             assert result.status_code == 200
             job = result.json()["search"]["job_id"]
+            assert result.json()["search"]["publication"] == 1
             for _ in range(3):
                 progress = await owner.post(PREFIX + "/plan/" + job, headers=HEADERS, json={})
                 assert progress.status_code == 200
@@ -54,6 +55,7 @@ def test_http_progress_is_local_session_scoped_cancellable_and_invalidated(monke
             monkeypatch.setattr(espn.EspnClient, "league", unavailable)
             assert (await owner.get(PREFIX + "/snapshot?refresh=true")).status_code == 504
             saved = (await owner.post(PREFIX + "/plan/" + job, headers=HEADERS, json={})).json()
+            assert saved["search"]["publication"] == progress.json()["search"]["publication"]
             assert saved["read_only"] is True
             assert saved["freshness"] == "saved_after_refresh_failure"
             assert saved["actions"] == progress.json()["actions"]

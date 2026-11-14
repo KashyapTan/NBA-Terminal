@@ -24,3 +24,11 @@ The original image alone does not prove beneficial moves exist. The current priv
 Check results and exact publication/CI SHA are recorded in the task handoff; human merge is separate.
 
 For the larger 902-pickup HTTP fixture, the old 5,000-budget path evaluated 3,339 states (four adds) / 3,345 states (seven adds) because of reserved/layer budgets. Progressive search finished 10,820 states for each. The same snapshot used two market pages, the same roster/card/actual batches, and the same NBA rate/team/schedule batches; each additional progress request added zero provider calls. CDN attempts are counted separately in the retained HTTP evidence. [Local checks](checks.txt), [self-review](../../../code_review/waiver-search.md), and `tests/waiver_search_benchmark.py` provide reproducible commands and scope.
+
+## CI follow-up: compare the displayed publication
+
+Both d658dbd CI runs failed V8's preview check because it compared the first saved HTTP plan with a later, legally improved plan already displayed by the progressive UI. The real pipeline reproduces the one-pickup/Owned Player5 → two-pickup/Fixture Player100 transition. This is a test-publication timing error in the confirmed case; no lineup math or guard was changed.
+
+Responses now include `search.publication`, monotonically increasing within their session-owned job. Nonvisible generation markers let tests identify the rendered publication without freezing normal exploration. The original captured-plan assertions hold subsequent local requests; the new deterministic both-host test separately proves that actions, all-nine Get/Lose/Net and forecasts, and daily legal starts advance together. It also verifies that a delayed real response cannot replace the accepted publication after cancellation, and a failed provider refresh leaves that accepted view coherent/read-only. All original roster, position, start, actuals, net and refresh assertions remain.
+
+The follow-up passes all local gates, including four V8 host/tests and the unchanged full browser suite list. Failed old CI logs, both-host raw publications and a compact publication summary are retained outside Git with hashes under the task's `evidence/waiver-search-followup`. Exact new-head CI status is recorded in typed task evidence and the parent handoff; passing local checks alone does not claim CI readiness or merge.

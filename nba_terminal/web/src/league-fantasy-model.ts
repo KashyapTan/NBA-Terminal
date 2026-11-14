@@ -502,6 +502,7 @@ export interface WaiverPlan {
   recommended_plan?: RecommendedPlan | null;
   search?: {
     job_id?: string;
+    publication?: number;
     phase?: "searching" | "finished" | "cancelled" | "paused";
     complete?: boolean;
     coverage_scope?: string;

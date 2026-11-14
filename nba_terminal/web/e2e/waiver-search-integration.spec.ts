@@ -47,7 +47,9 @@ for (const adds of [4, 7]) {
     const firstCount = plan.search!.evaluations;
     expect(plan.actions.length).toBeGreaterThan(0);
     const opponent = plan.projected!.opponent_totals;
-    for (let slice = 0; slice < 8 && plan.search!.phase === "searching"; slice++) {
+    // CI CPU speed changes work per time slice. Complete this finite fixture's
+    // local search; the test timeout bounds failures, not an assumed slice count.
+    while (plan.search!.phase === "searching") {
       const next = page.request.post(`${root}/plan/${job}`, { headers, data: {} });
       const start = Date.now();
       expect((await page.request.get("/api/meta")).ok()).toBe(true);
@@ -59,6 +61,7 @@ for (const adds of [4, 7]) {
       expect(plan.projected!.opponent_totals).toEqual(opponent);
       expect(plan.search!.evaluation_limit).toBeNull();
     }
+    expect(plan.search!.complete).toBe(true);
     expect(plan.search!.evaluations).toBeGreaterThan(firstCount);
     expect(plan.search!.evaluations).toBeGreaterThan(5000);
     mkdirSync(rawEvidence, { recursive: true });

@@ -666,6 +666,11 @@ function WaiverStrategy({
   }
   return (
     <WaiverWorkspace
+      generation={
+        search?.job_id && search.publication != null
+          ? `${search.job_id}:${search.publication}`
+          : undefined
+      }
       sequenceImpact={plan?.recommended_plan?.realized_impact}
       matchup={`${user?.name ?? "Your team"} vs ${opponent?.name ?? "Opponent unverified"}`}
       remainingAddsLabel={remainingAddsLabel}
