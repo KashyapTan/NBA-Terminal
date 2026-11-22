@@ -109,3 +109,9 @@ jobs:
         env:
           CI: "true"
         run: bunx playwright test --config playwright.opponent.config.ts
+
+      - name: Progressive local waiver search integration
+        working-directory: nba_terminal/web
+        env:
+          CI: "true"
+        run: bunx playwright test --config playwright.waiver-search.config.ts

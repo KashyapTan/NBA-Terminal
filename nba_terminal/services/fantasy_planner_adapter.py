@@ -4,12 +4,13 @@ No network, authentication or transactions live here. Unknown health/locks use t
 user-authorized availability assumption; missing forecasting data remains visible.
 """
 
+import copy
 from datetime import date, datetime, timezone
 from math import isfinite
 from zoneinfo import ZoneInfo
 
 from nba_terminal.services.fantasy_nba import ESPN_TEAMS
-from nba_terminal.services.fantasy_optimizer import CATEGORIES, TOTALS, _rates, plan_waivers
+from nba_terminal.services.fantasy_optimizer import CATEGORIES, TOTALS, _rates, iter_waiver_plans, plan_waivers
 
 ACTIVE_SLOTS = {"PG", "SG", "SF", "PF", "C", "G", "F", "SG/SF", "G/F", "PF/C", "F/C", "UTIL"}
 
@@ -270,7 +271,7 @@ def pickup_exclusions(player, thresholds, season_id, now):
     return reasons, observed, denominator_known
 
 
-def plan_snapshot_waivers(snapshot, preferences, now=None):
+def iter_snapshot_waivers(snapshot, preferences, now=None, *, progressive=False, cancelled=lambda: False):
     """Default to automatic choices; explicit preferences narrow or correct facts."""
     now = now or datetime.now(timezone.utc)
     gaps, provenance = [], {}
@@ -296,7 +297,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         thresholds = pickup_filters(preferences.get("pickup_filters"))
     except ValueError as error:
         result["reasons"] = [str(error)]
-        return result
+        yield result
+        return
     filter_summary = {
         "thresholds": thresholds,
         "requested": 0,
@@ -318,7 +320,8 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     context = preferences.get("context")
     if not isinstance(context, dict) or any(context.get(k) != v for k, v in expected.items()):
         result["reasons"] = ["Preferences belong to another league, team or matchup. Refresh this matchup."]
-        return result
+        yield result
+        return
     if (
         preferences.get("user_confirmed_counts") is True
         and "counts_snapshot_at" in preferences
@@ -328,14 +331,16 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             result["reasons"] = [
                 "Manual acquisition counts were confirmed for older data. Verify current counts and reconfirm."
             ]
-            return result
+            yield result
+            return
         provenance["counts_confirmation"] = {
             "snapshot_fetched_at": snapshot["fetched_at"],
             "evaluated_at": now.isoformat(),
         }
     if not snapshot["league"].get("supported") or user is None or target is None or target_id == user_id:
         result["reasons"] = ["A supported nine-category league and an actual current opponent are required."]
-        return result
+        yield result
+        return
     provenance["context"] = {**expected, "fetched_at": snapshot["fetched_at"]}
     provenance["snapshot_data_gaps"] = snapshot.get("data_gaps", [])
     result["baseline"] = {
@@ -526,11 +531,13 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
             or len(ids) != len(set(ids))
         ):
             result["reasons"] = ["Candidate, drop and protection choices must contain unique eligible player IDs."]
-            return result
+            yield result
+            return
     slots = preferences.get("max_stream_slots", 2)
     if not _integer(slots) or not 1 <= slots <= 4:
         result["reasons"] = ["Maximum stream slots must be from one to four."]
-        return result
+        yield result
+        return
     today = now.astimezone(ZoneInfo("America/New_York")).date().isoformat()
     remaining = preferences.get("remaining_dates", snapshot["period"].get("remaining_dates", []))
     try:
@@ -549,18 +556,21 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
         remaining = sorted(d for d in remaining if d >= today)
     except (TypeError, ValueError):
         result.update(status="incomplete", reasons=["Remaining dates must be unique current-matchup ISO dates."])
-        return result
+        yield result
+        return
     if not remaining:
         gaps.append("No remaining matchup dates; future contributions and pickup timing cannot be projected.")
     lineup = [s for s in snapshot["league"].get("lineup_slots", []) if s not in ("BENCH", "IR", "IR+")]
     if not lineup or len(lineup) > 10 or any(slot not in ACTIVE_SLOTS for slot in lineup):
         gaps.append("Active lineup rules are missing, unsupported, or exceed the confirmed 10-player capacity.")
         result.update(status="incomplete", reasons=list(gaps))
-        return result
+        yield result
+        return
     overrides = preferences.get("player_overrides", {})
     if not isinstance(overrides, dict):
         result["reasons"] = ["Player corrections must be keyed by player ID."]
-        return result
+        yield result
+        return
     players, forecast_gaps, excluded = [], [], []
     candidate_capacity = max(0, 1000 - len(user["roster"]) - len(target["roster"]))
     qualified_candidates = selected_candidates = 0
@@ -789,78 +799,93 @@ def plan_snapshot_waivers(snapshot, preferences, now=None):
     }
     if preferences.get("uncertainty_mode") == "sensitivity":
         payload["margin_sd"] = preferences.get("margin_sd")
-    planned = plan_waivers(payload)
-    gaps.extend(g for g in planned.get("data_gaps", []) if g not in gaps)
-    for key in (
-        "status",
-        "evaluation_state",
-        "reasons",
-        "actions",
-        "plan",
-        "recommendations",
-        "recommendation_kind",
-        "strategy",
-        "remaining_adds",
-        "assumptions",
-        "limitations",
-        "search",
-        "uncertainty",
-        "protected_players",
-        "protection_policy",
-        "recommended_plan",
-        "shortcut_comparisons",
-        "outcome_policy",
-        "primary_recommendation_kind",
-        "projection_metadata",
-        "score_basis",
-        "selected_categories",
-        "safe_categories",
-        "improvement_categories",
-        "category_selection_source",
-        "horizon",
-        "recommendation_groups",
-        "alternatives_explanation",
-    ):
-        if key in planned:
-            result[key] = planned[key]
-    if filter_summary["requested"] and not filter_summary["qualified"] and not forecast_gaps:
-        result["evaluation_state"] = "no_qualified_pickups"
-        result["reasons"] = ["No requested pickup passed the current-season sample filters."]
-    if scaled is None:
-        result["limitations"].append("ESPN did not report matchup allowance scaling; the supplied matchup cap is used.")
-    if qualified_candidates > selected_candidates:
-        result["limitations"].append(
-            f"Optimizer resource bound selected {selected_candidates} of {qualified_candidates} qualified candidates; "
-            "raw market enumeration is retained separately."
+    template = copy.deepcopy(result)
+    plans = (
+        iter_waiver_plans(payload, progressive=True, cancelled=cancelled) if progressive else [plan_waivers(payload)]
+    )
+    for planned in plans:
+        result = copy.deepcopy(template)
+        gaps = result["data_gaps"]
+        provenance = result["provenance"]
+        gaps.extend(g for g in planned.get("data_gaps", []) if g not in gaps)
+        for key in (
+            "status",
+            "evaluation_state",
+            "reasons",
+            "actions",
+            "plan",
+            "recommendations",
+            "recommendation_kind",
+            "strategy",
+            "remaining_adds",
+            "assumptions",
+            "limitations",
+            "search",
+            "uncertainty",
+            "protected_players",
+            "protection_policy",
+            "recommended_plan",
+            "shortcut_comparisons",
+            "outcome_policy",
+            "primary_recommendation_kind",
+            "projection_metadata",
+            "score_basis",
+            "selected_categories",
+            "safe_categories",
+            "improvement_categories",
+            "category_selection_source",
+            "horizon",
+            "recommendation_groups",
+            "alternatives_explanation",
+        ):
+            if key in planned:
+                result[key] = planned[key]
+        if filter_summary["requested"] and not filter_summary["qualified"] and not forecast_gaps:
+            result["evaluation_state"] = "no_qualified_pickups"
+            result["reasons"] = ["No requested pickup passed the current-season sample filters."]
+        if scaled is None:
+            result["limitations"].append(
+                "ESPN did not report matchup allowance scaling; the supplied matchup cap is used."
+            )
+        if qualified_candidates > selected_candidates:
+            result["limitations"].append(
+                f"Optimizer resource bound selected {selected_candidates} of {qualified_candidates} "
+                "qualified candidates; "
+                "raw market enumeration is retained separately."
+            )
+            result.setdefault("search", {}).update(candidate_truncated=True, alternatives_complete=False)
+            if result["evaluation_state"] == "evaluated_no_material_benefit":
+                result["evaluation_state"] = "search_incomplete"
+        result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
+        result["projected"] = _forecast_view(planned["projected"])
+        for view in (result["baseline"], result["projected"]):
+            _attach_locked_lineups(view, user, target, remaining, now)
+        provenance["rates"] = planned["provenance"]
+        provenance["uncertainty"] = (f"{len(history)} complete prior weekly comparisons; " if history else "") + (
+            planned.get("uncertainty", {}).get("source", "unavailable") + "; uncalibrated model estimates"
         )
-        result.setdefault("search", {}).update(candidate_truncated=True, alternatives_complete=False)
-        if result["evaluation_state"] == "evaluated_no_material_benefit":
-            result["evaluation_state"] = "search_incomplete"
-    result["baseline"] = _forecast_view(planned["baseline"]) or result["baseline"]
-    result["projected"] = _forecast_view(planned["projected"])
-    for view in (result["baseline"], result["projected"]):
-        _attach_locked_lineups(view, user, target, remaining, now)
-    provenance["rates"] = planned["provenance"]
-    provenance["uncertainty"] = (f"{len(history)} complete prior weekly comparisons; " if history else "") + (
-        planned.get("uncertainty", {}).get("source", "unavailable") + "; uncalibrated model estimates"
-    )
-    provenance["availability"] = (
-        f"{assumed} players assumed available unless explicitly out; user toggles take precedence"
-    )
-    provenance["transactions"] = (
-        "ESPN locks/undroppable, user Protect and default core guard enforced; "
-        "core override never bypasses official locks"
-    )
-    if forecast_gaps:
-        result["status"] = "incomplete"
-        result["evaluation_state"] = "required_inputs_unknown"
-        result["reasons"] = list(forecast_gaps)
-        result["limitations"].append(
-            "Partial roster forecast: omitted players have unknown contributions, not zero ability."
+        provenance["availability"] = (
+            f"{assumed} players assumed available unless explicitly out; user toggles take precedence"
         )
-    if not remaining:
-        result.update(status="incomplete", evaluation_state="required_inputs_unknown", reasons=[gaps[-1]])
-    for action in result["actions"]:
-        action["stream_roster_id"] = action["stream_slot"]
-        action["stream_slot"] = drops.index(action["stream_slot"]) + 1
-    return result
+        provenance["transactions"] = (
+            "ESPN locks/undroppable, user Protect and default core guard enforced; "
+            "core override never bypasses official locks"
+        )
+        if forecast_gaps:
+            result["status"] = "incomplete"
+            result["evaluation_state"] = "required_inputs_unknown"
+            result["reasons"] = list(forecast_gaps)
+            result["limitations"].append(
+                "Partial roster forecast: omitted players have unknown contributions, not zero ability."
+            )
+        if not remaining:
+            result.update(status="incomplete", evaluation_state="required_inputs_unknown", reasons=[gaps[-1]])
+        for action in result["actions"]:
+            action["stream_roster_id"] = action["stream_slot"]
+            action["stream_slot"] = drops.index(action["stream_slot"]) + 1
+        yield result
+
+
+def plan_snapshot_waivers(snapshot, preferences, now=None):
+    """Synchronous compatibility path for saved snapshots and regression callers."""
+    return next(iter_snapshot_waivers(snapshot, preferences, now))

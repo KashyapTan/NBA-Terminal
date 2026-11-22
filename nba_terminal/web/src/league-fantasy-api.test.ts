@@ -17,7 +17,10 @@ it("sends private access only in a guarded same-origin POST body", async () => {
     credentials: "same-origin",
     cache: "no-store",
     method: "POST",
-    headers: { "X-Fantasy-Request": "1", "Content-Type": "application/json" },
+    headers: {
+      "X-Fantasy-Request": "1",
+      "Content-Type": "application/json",
+    },
   });
   expect(JSON.parse(options.body).espn_s2).toBe("test-only-s2");
 });
@@ -69,7 +72,11 @@ it("posts scoped plan preferences to the authenticated production route", async 
       method: "POST",
       credentials: "same-origin",
       body: JSON.stringify(preferences),
-      headers: { "X-Fantasy-Request": "1", "Content-Type": "application/json" },
+      headers: {
+        "X-Fantasy-Request": "1",
+        "X-Fantasy-Search": "progressive",
+        "Content-Type": "application/json",
+      },
     }),
   ]);
 });

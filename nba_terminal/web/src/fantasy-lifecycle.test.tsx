@@ -314,3 +314,83 @@ it("ignores provider cache fetch observations while reacting to the current qual
   next.fetched_at = "2026-11-03T05:00:00Z";
   expect(snapshotIdentity(next)).not.toBe(snapshotIdentity(original));
 });
+
+it("keeps a confirmed result usable during local continuation and stops without provider requests", async () => {
+  vi.useFakeTimers();
+  const snapshot = testSnapshot();
+  const initial = {
+    ...plan,
+    search: {
+      job_id: "local-job",
+      phase: "searching",
+      evaluations: 100,
+      evaluation_limit_reached: false,
+    },
+  } as WaiverPlan;
+  const fetcher = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...initial,
+      reasons: ["Improved"],
+      search: { ...initial.search, evaluations: 200 },
+    }),
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const onPlan = vi.fn().mockResolvedValue(initial);
+  const { result, unmount } = renderHook(() =>
+    useWaiverPlan(snapshot, {}, onPlan, 0, false, false),
+  );
+  await flush();
+  expect(result.current.lifecycle.readOnly).toBe(false);
+  expect(result.current.busy).toBe(false);
+  await act(async () => vi.advanceTimersByTimeAsync(100));
+  expect(result.current.plan?.reasons).toEqual(["Improved"]);
+  expect(onPlan).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls.every(([url]) => url === "/api/fantasy/espn/plan/local-job")).toBe(
+    true,
+  );
+  act(() => result.current.cancelSearch());
+  expect(result.current.plan?.search?.phase).toBe("cancelled");
+  expect(result.current.plan?.reasons).toEqual(["Improved"]);
+  const calls = fetcher.mock.calls.length;
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(fetcher).toHaveBeenCalledTimes(calls);
+  unmount();
+  vi.unstubAllGlobals();
+});
+
+it("pauses failed local progress read-only without restarting provider-backed planning", async () => {
+  vi.useFakeTimers();
+  const snapshot = testSnapshot();
+  const initial = {
+    ...plan,
+    search: {
+      job_id: "paused-job",
+      phase: "searching",
+      evaluations: 100,
+      evaluation_limit_reached: false,
+    },
+  } as WaiverPlan;
+  const fetcher = vi.fn((_url, options) =>
+    options.method === "DELETE"
+      ? Promise.resolve({ ok: true, json: async () => ({ phase: "cancelled" }) })
+      : Promise.reject(new FantasyApiError(503, "busy")),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  const onPlan = vi.fn().mockResolvedValue(initial);
+  const { result, unmount } = renderHook(() =>
+    useWaiverPlan(snapshot, {}, onPlan, 0, false, false),
+  );
+  await flush();
+  await act(async () => vi.advanceTimersByTimeAsync(7000));
+  expect(result.current.plan?.search?.phase).toBe("paused");
+  expect(result.current.plan?.reasons).toEqual(initial.reasons);
+  expect(result.current.lifecycle.readOnly).toBe(true);
+  expect(result.current.error).toContain("Search paused");
+  expect(onPlan).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls.every(([url]) => url === "/api/fantasy/espn/plan/paused-job")).toBe(
+    true,
+  );
+  unmount();
+  vi.unstubAllGlobals();
+});

@@ -31,6 +31,13 @@ export interface QualifiedSample {
   teamGames: number | null;
 }
 export type WorkspaceStop =
+  | "finished_guard"
+  | "partial_guard"
+  | "paused"
+  | "searching"
+  | "cancelled"
+  | "finished_scoped"
+  | "partial_market"
   | "category_outcome_guard"
   | "unknown_budget"
   | "no_remaining_dates"
@@ -40,10 +47,13 @@ export type WorkspaceStop =
   | "empty_qualified_pool"
   | "required_data_missing";
 export interface WaiverWorkspaceProps {
+  generation?: string;
   matchup: string;
   remainingAddsLabel: string;
   refreshedLabel: string;
   updating: boolean;
+  searching?: boolean;
+  onCancelSearch?: () => void;
   readOnly?: boolean;
   resultState?: string;
   onRefresh?: () => void;
@@ -68,6 +78,15 @@ export interface WaiverWorkspaceProps {
   technicalControls?: ReactNode;
 }
 const STOP_LABELS: Record<WorkspaceStop, string> = {
+  finished_guard:
+    "Search finished · Keep current roster · no qualifying plan preserves category results",
+  partial_guard:
+    "Available-data search finished · Keep current roster · market coverage incomplete",
+  paused: "Search paused · refresh to verify current data",
+  searching: "Searching more moves · best verified plan shown as found",
+  cancelled: "Search cancelled · best verified result retained",
+  finished_scoped: "Search finished · best found under the lineup and search policy",
+  partial_market: "Search finished for available data · market coverage is incomplete",
   category_outcome_guard:
     "Keep current roster · no qualifying plan found without worsening projected category results",
   unknown_budget: "Available adds need verification",
@@ -91,6 +110,7 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
       className="waiver-workspace"
       aria-label="Waiver workspace"
       data-result-state={props.resultState}
+      data-plan-generation={props.generation}
     >
       <header className="ww-heading">
         <div>
@@ -113,6 +133,11 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
           disabled={props.updating}
         >
           Refresh league
+        </button>
+      )}
+      {props.searching && props.onCancelSearch && (
+        <button className="ww-refresh" type="button" onClick={props.onCancelSearch}>
+          Stop search
         </button>
       )}
       {props.readOnly && props.moves.length > 0 && (
@@ -244,7 +269,11 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
         </details>
         {props.rosterControls}
       </div>
-      <section aria-label="Ordered pickup plan" className="ww-plan">
+      <section
+        aria-label="Ordered pickup plan"
+        className="ww-plan"
+        data-plan-generation={props.generation}
+      >
         <div className="ww-section-label">
           <h3>
             {props.moves.length
@@ -278,15 +307,25 @@ export function WaiverWorkspace(props: WaiverWorkspaceProps) {
             />
           ))}
         </ol>
-        {props.stop && <p className="ww-stop">{STOP_LABELS[props.stop]}</p>}
+        {props.stop && (
+          <p className="ww-stop" role="status">
+            {props.searching && props.moves.length > 0
+              ? "Best found so far · searching more moves"
+              : props.stop === "finished_scoped" && !props.moves.length
+                ? "Search finished · no qualifying moves found under this search policy"
+                : STOP_LABELS[props.stop]}
+          </p>
+        )}
       </section>
       <MatchupForecast
+        generation={props.generation}
         {...props.forecast}
         targets={props.targets}
         hasMoves={props.moves.length > 0}
         readOnly={props.readOnly}
       />
       <DailyLineup
+        generation={props.generation}
         baseline={props.baseline}
         projected={props.projected}
         hasMoves={props.moves.length > 0}
@@ -334,7 +373,12 @@ function CompactMove({
     return targets.includes(key) || (net != null && (key === "to" ? net > 0 : net < 0));
   });
   return (
-    <li className="ww-move">
+    <li
+      className="ww-move"
+      data-date={move.date}
+      data-add-id={move.add_id}
+      data-drop-id={move.drop_id}
+    >
       <div className="ww-move-top">
         <span className="ww-order">{index + 1}</span>
         <div className="ww-players">

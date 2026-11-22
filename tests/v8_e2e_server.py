@@ -6,17 +6,36 @@ Never accesses private ESPN or changes a fantasy roster. No fake plan route.
 
 import copy
 import os
+import threading
+import time
 
 import uvicorn
 import v7_e2e_server as transport
 from fastapi import Request
 
 from nba_terminal.services import espn_fantasy as espn
+from nba_terminal.services import fantasy_optimizer as optimizer
 
 app = transport.app
 BASE_PAYLOAD = transport.payload
 BASE_RATES = transport.rate_rows
-STATE = {"players": 13, "out": False, "rate_change": False, "pickup_boost": False}
+STATE = {"players": 13, "out": False, "rate_change": False, "pickup_boost": False, "publication_every": 0}
+SLICE_CLOCK = 0.0
+SLICE_LOCK = threading.Lock()
+
+
+def slice_clock():
+    # Scheduler-only seam: every real forecast still runs through the unchanged
+    # optimizer. A logical clock makes publication boundaries independent of CI CPU.
+    global SLICE_CLOCK
+    if not STATE["publication_every"]:
+        return time.monotonic()
+    with SLICE_LOCK:
+        SLICE_CLOCK += 0.36 / STATE["publication_every"]
+        return SLICE_CLOCK
+
+
+optimizer.monotonic = slice_clock
 
 
 def payload():
@@ -101,6 +120,7 @@ transport.rate_rows = rate_rows
 @app.post("/__test__/v8-control")
 async def configure(request: Request):
     data = await request.json()
+    STATE["publication_every"] = data.get("publication_every", 0)
     STATE.update({key: data[key] for key in STATE if key in data})
     transport.nba._CACHE.clear()
     return {"synthetic": True, **STATE}
